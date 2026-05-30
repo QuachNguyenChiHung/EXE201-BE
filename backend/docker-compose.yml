@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: ailogis-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+      - POSTGRES_DB=ailogis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - ailogis-network
+
+volumes:
+  postgres_data:
+    name: ailogis-db-data
+
+networks:
+  ailogis-network:
+    driver: bridge
