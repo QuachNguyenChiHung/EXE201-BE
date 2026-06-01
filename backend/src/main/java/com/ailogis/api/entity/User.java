@@ -39,4 +39,10 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
+
+    private String hashTaxCode;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_ai_subscription")
+    private AiSubscriptionTier aiTier;
 }

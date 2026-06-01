@@ -34,13 +34,15 @@ public class Warehouse {
     private String locationPostalCode;
 
     private Boolean isSponsor;
-    // Tạm thời để trống sponsor_type vì ta chưa làm bảng SponsorTier
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sponsor_type")
+    private SponsorTier sponsorType;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private WarehouseStatus status = WarehouseStatus.PENDING;
 
-    // --- CÁC QUAN HỆ MỚI (1-N) ---
     @OneToMany(mappedBy = "warehouse", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<WarehouseSection> sections = new ArrayList<>();
