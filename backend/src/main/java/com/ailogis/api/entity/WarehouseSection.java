@@ -18,8 +18,11 @@ public class WarehouseSection {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_warehouse", nullable = false)
-    @ToString.Exclude // Tránh lỗi đệ quy khi in log
+    @ToString.Exclude
     private Warehouse warehouse;
+
+    // Tên gọi hoặc nhãn hiển thị thân thiện của phòng (VD: "Phòng Đông Lạnh A1", "Kho Mát Tầng 2")
+    private String label;
 
     private Integer sector; // Số thứ tự hoặc mã phòng (VD: 1, 2, 3)
 

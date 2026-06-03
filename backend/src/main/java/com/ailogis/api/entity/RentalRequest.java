@@ -3,6 +3,10 @@ package com.ailogis.api.entity;
 import com.ailogis.api.enums.RequestStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,13 +29,42 @@ public class RentalRequest {
     @JoinColumn(name = "id_warehouse", nullable = false)
     private Warehouse warehouse;
 
-    private String cargoDescription; // Mô tả hàng hóa
-    private String otherDetail;      // Ghi chú thêm
+    // Mô tả hàng hóa
+    private String cargoDescription;
 
-    private Integer duration;        // Số thời gian thuê (VD: 6)
-    private String durationUnit;     // Đơn vị (VD: "Tháng", "Ngày")
+    // Ghi chú thêm
+    private String otherDetail;
 
-    private String renterRejectionReason; // Lý do hủy/từ chối
+    // Số thời gian thuê (VD: 6)
+    private Integer duration;
+
+    // Đơn vị (VD: "Tháng", "Ngày")
+    private String durationUnit;
+
+    private LocalDate startDate;
+    private LocalDate endDate;
+
+    // Mức giá mới mà Owner đề xuất lại cho Renter nếu không đồng ý với giá gốc
+    private Double offeredPrice;
+
+    // Đơn vị tính cho mức giá đề xuất (VD: "VND/m3", "VND/Tấn")
+    private String unit;
+
+    // Lời nhắn hoặc ghi chú của Chủ kho gửi cho Khách thuê khi duyệt, từ chối hoặc thương lượng lại giá
+    @Column(columnDefinition = "TEXT")
+    private String ownerNote;
+
+    // Lý do hủy/từ chối của renter
+    private String renterRejectionReason;
+
+    // Lý do hủy/từ chối của owner
+    private String rejectionReason;
+
+    @CreationTimestamp
+    private LocalDate submitAt;
+
+    @UpdateTimestamp
+    private LocalDate updatedAt;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default

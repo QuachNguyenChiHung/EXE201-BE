@@ -3,6 +3,10 @@ package com.ailogis.api.entity;
 import com.ailogis.api.enums.WarehouseStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -42,6 +46,12 @@ public class Warehouse {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private WarehouseStatus status = WarehouseStatus.PENDING;
+
+    @CreationTimestamp
+    private LocalDate createdAt;
+
+    @UpdateTimestamp
+    private LocalDate updatedAt;
 
     @OneToMany(mappedBy = "warehouse", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
