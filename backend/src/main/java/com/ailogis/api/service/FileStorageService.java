@@ -8,6 +8,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
@@ -44,7 +45,6 @@ public class FileStorageService {
                     .bucket(bucketName)
                     .key(uniqueFileName)
                     .contentType(file.getContentType())
-                     .acl(ObjectCannedACL.PUBLIC_READ)
                     .build();
 
             // 3. Thực thi việc đẩy file lên S3
@@ -66,6 +66,25 @@ public class FileStorageService {
         } catch (Exception ex) {
             log.error("Lỗi từ AWS S3: {}", ex.getMessage());
             throw new RuntimeException("Lỗi máy chủ khi upload lên Cloud!", ex);
+        }
+    }
+
+    public void deleteFile(String fileUrl) {
+        try {
+            if (fileUrl != null && fileUrl.contains(".amazonaws.com/")) {
+                // Tách URL để lấy chính xác Key của file (VD: "pdfs/uuid.pdf")
+                String[] parts = fileUrl.split("\\.amazonaws\\.com/");
+                if (parts.length == 2) {
+                    String key = parts[1];
+                    s3Client.deleteObject(DeleteObjectRequest.builder()
+                            .bucket(bucketName)
+                            .key(key)
+                            .build());
+                    log.info("🗑Đã xóa file cũ trên S3 thành công: {}", key);
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Lỗi khi xóa file trên S3: {}", ex.getMessage());
         }
     }
 }

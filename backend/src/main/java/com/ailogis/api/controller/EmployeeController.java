@@ -32,4 +32,14 @@ public class EmployeeController {
             @RequestBody WarehouseVerifyDTO dto) {
         return ResponseEntity.ok(employeeService.verifyWarehouse(id, dto.status()));
     }
+
+    @GetMapping("/statistic")
+    public ResponseEntity<StatisticResponseDTO> getGlobalStatistics() {
+        return ResponseEntity.ok(employeeService.getGlobalStatistics());
+    }
+
+    @GetMapping("/users-statistic")
+    public ResponseEntity<UserStatisticResponseDTO> getUsersStatistics() {
+        return ResponseEntity.ok(employeeService.getUsersStatistics());
+    }
 }

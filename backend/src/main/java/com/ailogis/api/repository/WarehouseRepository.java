@@ -13,4 +13,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
 
     // Tìm kho theo chủ sở hữu (dành cho Owner)
     List<Warehouse> findByOwnerId(Long ownerId);
+
+    long countByStatus(WarehouseStatus status);
 }

@@ -1,15 +1,17 @@
 package com.ailogis.api.service;
 
 import com.ailogis.api.dto.*;
+import com.ailogis.api.entity.Company;
+import com.ailogis.api.entity.User;
 import com.ailogis.api.entity.Warehouse;
-import com.ailogis.api.enums.WarehouseStatus;
-import com.ailogis.api.repository.UserRepository;
-import com.ailogis.api.repository.WarehouseRepository;
+import com.ailogis.api.enums.*;
+import com.ailogis.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +19,9 @@ public class EmployeeService {
 
     private final UserRepository userRepository;
     private final WarehouseRepository warehouseRepository;
+    private final RentalRequestRepository rentalRequestRepository;
+    private final ContractRepository contractRepository;
+    private final CompanyRepository companyRepository;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -65,5 +70,96 @@ public class EmployeeService {
                 w.getId(), w.getName(), w.getDescription(), w.getLocationAddressText(),
                 w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs, w.getStatus().name()
         );
+    }
+
+    public StatisticResponseDTO getGlobalStatistics() {
+        long totalUsers = userRepository.count();
+
+        Map<String, Long> usersByRole = Map.of(
+                "renter", userRepository.countByRole(Role.RENTER),
+                "warehouse", userRepository.countByRole(Role.OWNER),
+                "employee", userRepository.countByRole(Role.EMPLOYEE)
+        );
+
+        Map<String, Long> warehousesByStatus = Map.of(
+                "active", warehouseRepository.countByStatus(WarehouseStatus.APPROVED),
+                "pending", warehouseRepository.countByStatus(WarehouseStatus.PENDING),
+                "inactive", warehouseRepository.countByStatus(WarehouseStatus.REJECTED)
+        );
+
+        Map<String, Long> rentRequestsByStatus = Map.of(
+                "inprogress", rentalRequestRepository.countByStatus(RequestStatus.PENDING),
+                "completed", rentalRequestRepository.countByStatus(RequestStatus.APPROVED),
+                "cancelled", rentalRequestRepository.countByStatus(RequestStatus.REJECTED)
+        );
+
+        Map<String, Long> contractsByStatus = Map.of(
+                "active", contractRepository.countByStatus(ContractStatus.ACTIVE),
+                "ended", contractRepository.countByStatus(ContractStatus.COMPLETED)
+        );
+
+        return new StatisticResponseDTO(totalUsers, usersByRole, warehousesByStatus, rentRequestsByStatus, contractsByStatus);
+    }
+
+    public UserStatisticResponseDTO getUsersStatistics() {
+        Map<String, Long> usersByRole = Map.of(
+                "renter", userRepository.countByRole(Role.RENTER),
+                "warehouse", userRepository.countByRole(Role.OWNER),
+                "employee", userRepository.countByRole(Role.EMPLOYEE)
+        );
+        return new UserStatisticResponseDTO(usersByRole);
+    }
+
+    public List<UserDTO> searchUsers(String keyword) {
+        return userRepository.searchUsers(keyword).stream()
+                .map(u -> new UserDTO(
+                        u.getId(), u.getEmail(), u.getFullName(),
+                        u.getCompany() != null ? u.getCompany().getCompanyName() : "Cá nhân",
+                        u.getRole().name(), u.getStatus().name()
+                )).toList();
+    }
+
+    @Transactional
+    public UserDTO createEmployee(UserCreateUpdateDTO dto) {
+        // Lưu ý: Trong thực tế sẽ dùng passwordEncoder.encode(dto.password())
+        User newUser = User.builder()
+                .fullName(dto.name())
+                .email(dto.email())
+                .password(dto.password()) // Hiện tại đang lưu plain text
+                .phone(dto.phone())
+                .role(Role.valueOf(dto.role().toUpperCase()))
+                .status(UserStatus.valueOf(dto.status().toUpperCase()))
+                .avatarUrl(dto.imgLink())
+                .hashTaxCode(dto.hashTaxCode())
+                .build();
+
+        // Gắn company nếu có truyền lên
+        if (dto.companyID() != null) {
+            Company company = companyRepository.findById(dto.companyID())
+                    .orElseThrow(() -> new RuntimeException("Công ty không tồn tại!"));
+            newUser.setCompany(company);
+        }
+
+        User saved = userRepository.save(newUser);
+        return new UserDTO(saved.getId(), saved.getEmail(), saved.getFullName(),
+                saved.getCompany() != null ? saved.getCompany().getCompanyName() : null,
+                saved.getRole().name(), saved.getStatus().name());
+    }
+
+    @Transactional
+    public UserDTO updateUser(Long userId, UserCreateUpdateDTO dto) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+
+        if (dto.name() != null) user.setFullName(dto.name());
+        if (dto.phone() != null) user.setPhone(dto.phone());
+        if (dto.status() != null) user.setStatus(com.ailogis.api.enums.UserStatus.valueOf(dto.status().toUpperCase()));
+        if (dto.imgLink() != null) user.setAvatarUrl(dto.imgLink());
+        if (dto.hashTaxCode() != null) user.setHashTaxCode(dto.hashTaxCode());
+
+        User updated = userRepository.save(user);
+        return new UserDTO(updated.getId(), updated.getEmail(), updated.getFullName(),
+                updated.getCompany() != null ? updated.getCompany().getCompanyName() : null,
+                updated.getRole().name(), updated.getStatus().name());
     }
 }

@@ -18,4 +18,5 @@ public class CertificationType {
     private String label;
     private LocalDate updateDate;
     private String lawReferences;
+    private String pdfLink;
 }
