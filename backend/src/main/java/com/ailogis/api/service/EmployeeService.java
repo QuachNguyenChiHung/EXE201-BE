@@ -4,6 +4,7 @@ import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.Company;
 import com.ailogis.api.entity.User;
 import com.ailogis.api.entity.Warehouse;
+import com.ailogis.api.entity.WarehouseSection;
 import com.ailogis.api.enums.*;
 import com.ailogis.api.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -161,5 +162,71 @@ public class EmployeeService {
         return new UserDTO(updated.getId(), updated.getEmail(), updated.getFullName(),
                 updated.getCompany() != null ? updated.getCompany().getCompanyName() : null,
                 updated.getRole().name(), updated.getStatus().name());
+    }
+
+    public List<WarehouseEmployeeDTO> getWarehousesByStatus(WarehouseStatus status) {
+        List<Warehouse> warehouses = (status == null) ?
+                warehouseRepository.findAll() : warehouseRepository.findByStatus(status);
+
+        return warehouses.stream().map(this::mapToEmployeeDTO).toList();
+    }
+
+    @Transactional
+    public WarehouseEmployeeDTO changeWarehouseStatus(Long warehouseId, WarehouseStatus newStatus) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+        warehouse.setStatus(newStatus);
+        return mapToEmployeeDTO(warehouseRepository.save(warehouse));
+    }
+
+    private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {
+        double totalCap = 0;
+        double availableCap = 0;
+        double tempMin = Double.MAX_VALUE;
+        double tempMax = Double.MIN_VALUE;
+        double minPrice = 0.0;
+
+        List<Map<String, Object>> sections = new java.util.ArrayList<>();
+
+        if (w.getSections() != null && !w.getSections().isEmpty()) {
+            for (WarehouseSection s : w.getSections()) {
+                totalCap += s.getTotalCapacity() != null ? s.getTotalCapacity() : 0;
+                availableCap += s.getAvailableCapacity() != null ? s.getAvailableCapacity() : 0;
+                if (s.getTempMin() != null && s.getTempMin() < tempMin) tempMin = s.getTempMin();
+                if (s.getTempMax() != null && s.getTempMax() > tempMax) tempMax = s.getTempMax();
+
+                sections.add(Map.of(
+                        "id_section", s.getId(),
+                        "name", s.getLabel() != null ? s.getLabel() : "Khu " + s.getSector(),
+                        "temp_min", s.getTempMin(),
+                        "temp_max", s.getTempMax(),
+                        "total_capacity", s.getTotalCapacity()
+                ));
+            }
+        }
+
+        if (tempMin == Double.MAX_VALUE) tempMin = 0.0;
+        if (tempMax == Double.MIN_VALUE) tempMax = 0.0;
+
+        Map<String, Object> stats = Map.of(
+                "totalCapacity", totalCap,
+                "availableCapacity", availableCap,
+                "temperatureMin", tempMin,
+                "temperatureMax", tempMax,
+                "securityLevel", "high" // Hardcode tạm thời theo JSON mẫu
+        );
+
+        List<CertificationSubmitDTO> certs = w.getCertificationSubmits() != null ?
+                w.getCertificationSubmits().stream().map(c ->
+                        new CertificationSubmitDTO(c.getId(), c.getType().getLabel(), c.getLink(), c.getIsVerified())
+                ).toList() : List.of();
+
+        return new WarehouseEmployeeDTO(
+                w.getId(), w.getOwner().getId(), w.getName(), w.getLocationAddressText(),
+                w.getLocationCommune(), w.getLocationProvince(),
+                w.getStatus().name().toLowerCase(),
+                w.getOwner().getCompany() != null ? w.getOwner().getCompany().getCompanyName() : w.getOwner().getFullName(),
+                minPrice, stats, sections, certs
+        );
     }
 }

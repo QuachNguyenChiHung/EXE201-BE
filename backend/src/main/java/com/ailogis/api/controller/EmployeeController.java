@@ -1,6 +1,7 @@
 package com.ailogis.api.controller;
 
 import com.ailogis.api.dto.*;
+import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,21 +17,39 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
 
-    @GetMapping("/users")
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        return ResponseEntity.ok(employeeService.getAllUsers());
+    @GetMapping("/warehouses")
+    public ResponseEntity<List<WarehouseEmployeeDTO>> getAllWarehouses() {
+        return ResponseEntity.ok(employeeService.getWarehousesByStatus(null));
     }
 
     @GetMapping("/warehouses/pending")
-    public ResponseEntity<List<WarehouseResponseDTO>> getPendingWarehouses() {
-        return ResponseEntity.ok(employeeService.getPendingWarehouses());
+    public ResponseEntity<List<WarehouseEmployeeDTO>> getPendingWarehouses() {
+        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.PENDING));
     }
 
-    @PatchMapping("/warehouses/{id}/verify")
-    public ResponseEntity<WarehouseResponseDTO> verifyWarehouse(
-            @PathVariable Long id,
-            @RequestBody WarehouseVerifyDTO dto) {
-        return ResponseEntity.ok(employeeService.verifyWarehouse(id, dto.status()));
+    @GetMapping("/warehouses/accepted")
+    public ResponseEntity<List<WarehouseEmployeeDTO>> getAcceptedWarehouses() {
+        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.APPROVED));
+    }
+
+    @GetMapping("/warehouses/hidden")
+    public ResponseEntity<List<WarehouseEmployeeDTO>> getHiddenWarehouses() {
+        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.HIDDEN));
+    }
+
+    @PatchMapping("/warehouses/{id}/accept")
+    public ResponseEntity<WarehouseEmployeeDTO> acceptWarehouse(@PathVariable Long id) {
+        return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.APPROVED));
+    }
+
+    @PatchMapping("/warehouses/{id}/rejected")
+    public ResponseEntity<WarehouseEmployeeDTO> rejectWarehouse(@PathVariable Long id) {
+        return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.REJECTED));
+    }
+
+    @PatchMapping("/warehouses/{id}/hidden")
+    public ResponseEntity<WarehouseEmployeeDTO> hideWarehouse(@PathVariable Long id) {
+        return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.HIDDEN));
     }
 
     @GetMapping("/statistic")

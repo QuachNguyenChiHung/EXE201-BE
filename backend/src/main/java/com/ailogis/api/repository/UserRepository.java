@@ -22,4 +22,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LOWER(c.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "CAST(u.id AS string) LIKE LOWER(CONCAT('%', :keyword, '%')))")
     List<User> searchUsers(@Param("keyword") String keyword);
+
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.company WHERE u.id = :userId")
+    Optional<User> findByIdWithCompany(@Param("userId") Long userId);
 }

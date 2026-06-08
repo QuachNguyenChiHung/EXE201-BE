@@ -2,8 +2,10 @@ package com.ailogis.api.controller;
 
 import com.ailogis.api.dto.LoginRequestDTO;
 import com.ailogis.api.dto.LoginResponseDTO;
+import com.ailogis.api.dto.RegisterRequestDTO;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.security.JwtUtils;
+import com.ailogis.api.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class AuthController {
 
+    private final AuthService authService;
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
 
@@ -35,5 +38,10 @@ public class AuthController {
                 userDetails.getUsername(),
                 userDetails.getUser().getRole().name()
         ));
+    }
+
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@RequestBody RegisterRequestDTO dto) {
+        return ResponseEntity.ok(authService.registerUser(dto));
     }
 }
