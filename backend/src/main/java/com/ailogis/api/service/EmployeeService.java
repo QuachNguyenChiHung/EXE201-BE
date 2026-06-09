@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +24,7 @@ public class EmployeeService {
     private final RentalRequestRepository rentalRequestRepository;
     private final ContractRepository contractRepository;
     private final CompanyRepository companyRepository;
+    private final UserSessionRepository userSessionRepository;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -184,6 +186,12 @@ public class EmployeeService {
         }
 
         return mapToEmployeeDTO(warehouseRepository.save(warehouse));
+    }
+
+    public long getActiveUsersCount(int days) {
+        if (days <= 0) days = 1; // Mặc định ít nhất là 1 ngày
+        LocalDateTime since = LocalDateTime.now().minusDays(days);
+        return userSessionRepository.countActiveUsersSince(since);
     }
 
     private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {
