@@ -83,9 +83,11 @@ public class EmployeeService {
         );
 
         Map<String, Long> warehousesByStatus = Map.of(
-                "active", warehouseRepository.countByStatus(WarehouseStatus.APPROVED),
+                "active", warehouseRepository.countByStatus(WarehouseStatus.ACTIVE),
+                "rented", warehouseRepository.countByStatus(WarehouseStatus.RENTED),
                 "pending", warehouseRepository.countByStatus(WarehouseStatus.PENDING),
-                "inactive", warehouseRepository.countByStatus(WarehouseStatus.REJECTED)
+                "rejected", warehouseRepository.countByStatus(WarehouseStatus.REJECTED),
+                "inactive", warehouseRepository.countByStatus(WarehouseStatus.INACTIVE)
         );
 
         Map<String, Long> rentRequestsByStatus = Map.of(
@@ -175,7 +177,12 @@ public class EmployeeService {
     public WarehouseEmployeeDTO changeWarehouseStatus(Long warehouseId, WarehouseStatus newStatus) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
         warehouse.setStatus(newStatus);
+        if (newStatus == WarehouseStatus.ACTIVE && isFullyRented(warehouse)) {
+            warehouse.setStatus(WarehouseStatus.RENTED);
+        }
+
         return mapToEmployeeDTO(warehouseRepository.save(warehouse));
     }
 
@@ -228,5 +235,11 @@ public class EmployeeService {
                 w.getOwner().getCompany() != null ? w.getOwner().getCompany().getCompanyName() : w.getOwner().getFullName(),
                 minPrice, stats, sections, certs
         );
+    }
+
+    private boolean isFullyRented(Warehouse w) {
+        if (w.getSections() == null || w.getSections().isEmpty()) return false;
+        return w.getSections().stream()
+                .allMatch(s -> s.getAvailableCapacity() != null && s.getAvailableCapacity() <= 0);
     }
 }

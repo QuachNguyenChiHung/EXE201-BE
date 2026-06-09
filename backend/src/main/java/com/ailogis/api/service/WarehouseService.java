@@ -14,8 +14,8 @@ public class WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
 
-    public List<WarehouseResponseDTO> getAllApprovedWarehouses() {
-        return warehouseRepository.findByStatus(WarehouseStatus.APPROVED)
+    public List<WarehouseResponseDTO> getActiveOnlyWarehouses() {
+        return warehouseRepository.findByStatus(WarehouseStatus.ACTIVE)
                 .stream().map(this::mapToResponseDTO).toList();
     }
 
@@ -44,10 +44,33 @@ public class WarehouseService {
                         new CertificationSubmitDTO(c.getId(), c.getType().getLabel(), c.getLink(), c.getIsVerified())
                 ).toList() : List.of();
 
+        String displayStatus = calculateOperationalStatus(w);
+
         // 4. Trả về DTO (Đã fix lỗi dấu chấm phẩy và thêm certDTOs)
         return new WarehouseResponseDTO(
                 w.getId(), w.getName(), w.getDescription(), w.getLocationAddressText(),
-                w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs, w.getStatus().name()
+                w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs,
+                displayStatus
         );
+    }
+
+    private String calculateOperationalStatus(Warehouse w) {
+        // Nếu kho bị từ chối hoặc admin set Inactive
+        if (w.getStatus() == WarehouseStatus.REJECTED || w.getStatus() == WarehouseStatus.INACTIVE) {
+            return "INACTIVE";
+        }
+
+        // Kiểm tra sức chứa: Nếu tổng sức chứa khả dụng = 0 -> RENTED
+        boolean isFull = w.getSections().stream()
+                .allMatch(s -> s.getAvailableCapacity() <= 0);
+
+        if (isFull) return "RENTED";
+
+        // Nếu kho đã được duyệt và còn chỗ -> ACTIVE
+        if (w.getStatus() == WarehouseStatus.ACTIVE) { // Hoặc logic duyệt của bạn
+            return "ACTIVE";
+        }
+
+        return "PENDING";
     }
 }

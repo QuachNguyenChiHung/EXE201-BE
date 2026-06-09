@@ -108,7 +108,7 @@ public class DataInitializer implements CommandLineRunner {
                     .locationProvince("Bình Dương")
                     .locationCommune("Dĩ An")
                     .locationAddressText("Số 10, KCN Sóng Thần 1")
-                    .status(WarehouseStatus.APPROVED) // Đặt trạng thái APPROVED để hiển thị ra trang public công khai
+                    .status(WarehouseStatus.ACTIVE)
                     .isSponsor(false)
                     .sections(new ArrayList<>())
                     .images(new ArrayList<>())

@@ -15,8 +15,8 @@ public class PublicWarehouseController {
     private final WarehouseService warehouseService;
 
     @GetMapping
-    public ResponseEntity<List<WarehouseResponseDTO>> getAll() {
-        return ResponseEntity.ok(warehouseService.getAllApprovedWarehouses());
+    public ResponseEntity<List<WarehouseResponseDTO>> getActiveOnly() {
+        return ResponseEntity.ok(warehouseService.getActiveOnlyWarehouses());
     }
 
     @GetMapping("/{id}")
