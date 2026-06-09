@@ -80,4 +80,11 @@ public class EmployeeController {
         // Chỉ lấy thông tin và thống kê phục vụ kiểm tra hệ thống, không tăng lượt xem
         return ResponseEntity.ok(warehouseService.getWarehouseById(id));
     }
+
+    @PatchMapping("/certifications/{submitId}/review")
+    public ResponseEntity<CertificationSubmitDTO> reviewCertification(
+            @PathVariable Long submitId,
+            @RequestBody CertReviewDTO dto) {
+        return ResponseEntity.ok(employeeService.reviewWarehouseCertification(submitId, dto));
+    }
 }

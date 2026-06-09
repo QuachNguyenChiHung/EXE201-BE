@@ -1,10 +1,7 @@
 package com.ailogis.api.service;
 
 import com.ailogis.api.dto.*;
-import com.ailogis.api.entity.Company;
-import com.ailogis.api.entity.User;
-import com.ailogis.api.entity.Warehouse;
-import com.ailogis.api.entity.WarehouseSection;
+import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.*;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
@@ -27,6 +24,8 @@ public class EmployeeService {
     private final CompanyRepository companyRepository;
     private final UserSessionRepository userSessionRepository;
     private final WarehouseMapper warehouseMapper;
+    private final CertificationSubmitRepository certificationSubmitRepository;
+    private final CertificationTypeRepository certificationTypeRepository;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -170,6 +169,32 @@ public class EmployeeService {
         if (days <= 0) days = 1; // Mặc định ít nhất là 1 ngày
         LocalDateTime since = LocalDateTime.now().minusDays(days);
         return userSessionRepository.countActiveUsersSince(since);
+    }
+
+    @Transactional
+    public CertificationSubmitDTO reviewWarehouseCertification(Long submitId, CertReviewDTO dto) {
+        // 1. Tìm hồ sơ chứng chỉ đã nộp
+        CertificationSubmit submit = certificationSubmitRepository.findById(submitId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu yêu cầu chứng chỉ này!"));
+
+        // 2. Cập nhật trạng thái duyệt
+        submit.setIsVerified(dto.isVerified());
+
+        // 3. Nếu duyệt hợp lệ và có truyền typeId, tiến hành gán loại chứng chỉ chuẩn
+        if (Boolean.TRUE.equals(dto.isVerified()) && dto.typeId() != null) {
+            CertificationType type = certificationTypeRepository.findById(dto.typeId())
+                    .orElseThrow(() -> new RuntimeException("Loại chứng chỉ chỉ định không tồn tại trong hệ thống!"));
+            submit.setType(type);
+        }
+
+        // 4. Lưu lại và trả về DTO
+        CertificationSubmit saved = certificationSubmitRepository.save(submit);
+        return new CertificationSubmitDTO(
+                saved.getId(),
+                saved.getType() != null ? saved.getType().getLabel() : "Chưa phân loại",
+                saved.getLink(),
+                saved.getIsVerified()
+        );
     }
 
     private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {
