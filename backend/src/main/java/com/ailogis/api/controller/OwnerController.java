@@ -4,6 +4,7 @@ import com.ailogis.api.dto.*;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.FileStorageService;
 import com.ailogis.api.service.OwnerService;
+import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +20,7 @@ public class OwnerController {
 
     private final OwnerService ownerService;
     private final FileStorageService fileStorageService;
+    private final WarehouseService warehouseService;
 
     // 1. Lấy danh sách kho bãi của CHÍNH Chủ kho đang đăng nhập
     @GetMapping("/warehouses")
@@ -75,5 +77,11 @@ public class OwnerController {
         }
 
         return ResponseEntity.ok(ownerService.createWarehouse(ownerId, dto, imageUrls, certificateUrl));
+    }
+
+    @GetMapping("/warehouses/{id}")
+    public ResponseEntity<WarehouseResponseDTO> getMyWarehouseDetail(@PathVariable Long id) {
+        // Chỉ lấy thông tin và thống kê phục vụ kiểm tra hệ thống, không tăng lượt xem
+        return ResponseEntity.ok(warehouseService.getWarehouseById(id));
     }
 }

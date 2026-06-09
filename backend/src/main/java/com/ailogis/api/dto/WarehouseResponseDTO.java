@@ -1,6 +1,7 @@
 package com.ailogis.api.dto;
 
 import java.util.List;
+import java.util.Map;
 
 public record WarehouseResponseDTO(
         Long id,
@@ -12,5 +13,6 @@ public record WarehouseResponseDTO(
         List<WarehouseSectionDTO> sections,
         List<WarehouseImageDTO> images,
         List<CertificationSubmitDTO> certificates,
-        String status
+        String status,
+        Map<String, Long>viewCountByDate
 ) {}

@@ -3,6 +3,7 @@ package com.ailogis.api.controller;
 import com.ailogis.api.dto.*;
 import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.service.EmployeeService;
+import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,7 @@ import java.util.Map;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
+    private final WarehouseService warehouseService;
 
     @GetMapping("/users")
     public ResponseEntity<List<UserDTO>> getAllUsers() {
@@ -71,5 +73,11 @@ public class EmployeeController {
         response.put("message", "Số người dùng active trong " + days + " ngày qua");
 
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/warehouses/{id}")
+    public ResponseEntity<WarehouseResponseDTO> getWarehouseDetailForEmployee(@PathVariable Long id) {
+        // Chỉ lấy thông tin và thống kê phục vụ kiểm tra hệ thống, không tăng lượt xem
+        return ResponseEntity.ok(warehouseService.getWarehouseById(id));
     }
 }
