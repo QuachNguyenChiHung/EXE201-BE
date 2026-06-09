@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CertificationSubmitRepository extends JpaRepository<CertificationSubmit, Long> {
+    boolean existsByTypeId(Long typeId);
 }

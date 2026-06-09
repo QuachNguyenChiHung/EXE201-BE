@@ -14,6 +14,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -42,6 +43,15 @@ public class UserController {
             @PathVariable Long userID,
             @RequestBody UserCreateUpdateDTO dto) {
         return ResponseEntity.ok(employeeService.updateUser(userID, dto));
+    }
+
+    // BAN/UNBAN USER
+    @PatchMapping("/{userID}/status")
+    public ResponseEntity<UserDTO> updateUserStatus(
+            @PathVariable Long userID,
+            @RequestBody Map<String, String> statusMap) { // Nhận json: {"status": "INACTIVE"}
+        String newStatus = statusMap.get("status");
+        return ResponseEntity.ok(employeeService.updateUserStatus(userID, newStatus));
     }
 
     @GetMapping("/me")

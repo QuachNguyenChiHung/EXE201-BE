@@ -197,6 +197,16 @@ public class EmployeeService {
         );
     }
 
+    @Transactional
+    public UserDTO updateUserStatus(Long userId, String status) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        user.setStatus(UserStatus.valueOf(status.toUpperCase()));
+        userRepository.save(user);
+        return new UserDTO(user.getId(), user.getEmail(), user.getFullName(),
+                user.getCompany() != null ? user.getCompany().getCompanyName() : null,
+                user.getRole().name(), user.getStatus().name());
+    }
+
     private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {
         double totalCap = 0;
         double availableCap = 0;

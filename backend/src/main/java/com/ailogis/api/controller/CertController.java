@@ -44,4 +44,10 @@ public class CertController {
         String pdfUrl = certService.uploadPdf(certID, file);
         return ResponseEntity.ok(Map.of("pdfUrl", pdfUrl));
     }
+
+    @DeleteMapping("/{certID}")
+    public ResponseEntity<String> deleteCert(@PathVariable Long certID) {
+        certService.deleteCertType(certID);
+        return ResponseEntity.ok("Đã xóa chứng chỉ thành công!");
+    }
 }

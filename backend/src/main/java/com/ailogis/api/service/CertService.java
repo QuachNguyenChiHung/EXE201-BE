@@ -2,6 +2,7 @@ package com.ailogis.api.service;
 
 import com.ailogis.api.dto.CertDTO;
 import com.ailogis.api.entity.CertificationType;
+import com.ailogis.api.repository.CertificationSubmitRepository;
 import com.ailogis.api.repository.CertificationTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public class CertService {
 
     private final CertificationTypeRepository certRepository;
+    private final CertificationSubmitRepository certificationSubmitRepository;
     private final FileStorageService fileStorageService;
     private final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
@@ -82,6 +84,16 @@ public class CertService {
         certRepository.save(cert);
 
         return newPdfUrl;
+    }
+
+    @Transactional
+    public void deleteCertType(Long certID) {
+        // Kiểm tra xem có kho nào đang dùng loại chứng chỉ này không
+        boolean isUsed = certificationSubmitRepository.existsByTypeId(certID);
+        if (isUsed) {
+            throw new RuntimeException("Không thể xóa: Đang có kho sử dụng loại chứng chỉ này!");
+        }
+        certRepository.deleteById(certID);
     }
 
     // Hàm Helper chuyển Entity thành DTO
