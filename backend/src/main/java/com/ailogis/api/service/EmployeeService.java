@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class EmployeeService {
     private final WarehouseMapper warehouseMapper;
     private final CertificationSubmitRepository certificationSubmitRepository;
     private final CertificationTypeRepository certificationTypeRepository;
+    private final TransactionRepository transactionRepository;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -205,6 +207,102 @@ public class EmployeeService {
         return new UserDTO(user.getId(), user.getEmail(), user.getFullName(),
                 user.getCompany() != null ? user.getCompany().getCompanyName() : null,
                 user.getRole().name(), user.getStatus().name());
+    }
+
+    public Map<String, Object> getActiveUsersByDate(LocalDate startDate, LocalDate endDate) {
+        List<Object[]> rawStats = userSessionRepository.countActiveUsersByDateAndRole(startDate, endDate);
+        return processTimeSeriesData(rawStats, startDate, endDate, true);
+    }
+
+    public Map<String, Object> getActiveUsersByHour(LocalDate date) {
+        List<Object[]> rawStats = userSessionRepository.countActiveUsersByHourAndRoleNative(date);
+        return processTimeSeriesData(rawStats, date, date, false);
+    }
+
+    private Map<String, Object> processTimeSeriesData(List<Object[]> rawStats, LocalDate start, LocalDate end, boolean isDaily) {
+        List<String> labels = new java.util.ArrayList<>();
+        // Sinh mảng labels (các ngày hoặc các giờ 0-23)
+        if (isDaily) {
+            for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) labels.add(d.toString());
+        } else {
+            for (int i = 0; i < 24; i++) labels.add(String.valueOf(i));
+        }
+
+        Map<String, Map<String, Long>> roleDataMap = Map.of(
+                Role.RENTER.name(), new java.util.HashMap<>(),
+                Role.OWNER.name(), new java.util.HashMap<>(),
+                Role.EMPLOYEE.name(), new java.util.HashMap<>()
+        );
+
+        for (Object[] row : rawStats) {
+            String label = isDaily ? (String) row[0] : String.valueOf(((Number) row[0]).intValue());
+            String roleStr = row[1].toString();
+            Long count = ((Number) row[2]).longValue();
+
+            if (roleDataMap.containsKey(roleStr)) {
+                roleDataMap.get(roleStr).put(label, count);
+            }
+        }
+
+        List<ChartSeriesDTO> series = new java.util.ArrayList<>();
+        for (String role : roleDataMap.keySet()) {
+            List<Long> data = new java.util.ArrayList<>();
+            for (String label : labels) {
+                data.add(roleDataMap.get(role).getOrDefault(label, 0L));
+            }
+            series.add(new ChartSeriesDTO(role, data));
+        }
+
+        return Map.of(isDaily ? "dates" : "hours", labels, "series", series);
+    }
+
+    // DETAIL RENTER
+    @Transactional(readOnly = true)
+    public RenterDetailResponseDTO getRenterDetail(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
+        if (user.getRole() != Role.RENTER) throw new RuntimeException("User này không phải là RENTER!");
+
+        UserDTO userDTO = new UserDTO(user.getId(), user.getEmail(), user.getFullName(), user.getCompany() != null ? user.getCompany().getCompanyName() : null, user.getRole().name(), user.getStatus().name());
+        String aiPlan = user.getAiTier() != null ? user.getAiTier().getLabel() : "Chưa đăng ký";
+
+        // 1. Lấy Requests
+        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByRenterId(userId).stream()
+                .map(r -> new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), List.of())).toList();
+
+        // 2. Lấy Contracts (Cần thêm findByRenterId trong ContractRepository nếu chưa có)
+        // Tạm gọi repository lấy toàn bộ rồi filter (Tốt nhất bạn thêm query vào ContractRepo)
+        List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
+                .filter(c -> c.getRenter().getId().equals(userId))
+                .map(c -> new ContractResponseDTO(c.getId(), c.getRequest().getId(), c.getRequest().getWarehouse().getName(), c.getRenter().getFullName(), c.getRequest().getOfferedPrice() != null ? c.getRequest().getOfferedPrice().longValue() : 0L, c.getStartAt(), c.getStatus().name())).toList();
+
+        double totalSpending = 0;
+        List<Transaction> transactions = transactionRepository.findByBuyerIdAndStatus(userId, "COMPLETED");
+        for(Transaction t : transactions) {
+            if(t.getSubscription() != null && t.getSubscription().getPrice() != null) totalSpending += t.getSubscription().getPrice();
+            if(t.getSponsor() != null && t.getSponsor().getPricingPerMonth() != null) totalSpending += t.getSponsor().getPricingPerMonth();
+        }
+
+        return new RenterDetailResponseDTO(userDTO, aiPlan, requests, contracts, totalSpending);
+    }
+
+    // DETAIL OWNER
+    @Transactional(readOnly = true)
+    public OwnerDetailResponseDTO getOwnerDetail(Long userId) {
+        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
+        if (user.getRole() != Role.OWNER) throw new RuntimeException("User này không phải là OWNER!");
+
+        UserDTO userDTO = new UserDTO(user.getId(), user.getEmail(), user.getFullName(), user.getCompany() != null ? user.getCompany().getCompanyName() : null, user.getRole().name(), user.getStatus().name());
+
+        List<WarehouseResponseDTO> warehouses = warehouseRepository.findByOwnerId(userId).stream().map(warehouseMapper::toWarehouseResponseDTO).toList();
+
+        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByWarehouseOwnerId(userId).stream()
+                .map(r -> new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), List.of())).toList();
+
+        List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
+                .filter(c -> c.getOwner().getId().equals(userId))
+                .map(c -> new ContractResponseDTO(c.getId(), c.getRequest().getId(), c.getRequest().getWarehouse().getName(), c.getRenter().getFullName(), c.getRequest().getOfferedPrice() != null ? c.getRequest().getOfferedPrice().longValue() : 0L, c.getStartAt(), c.getStatus().name())).toList();
+
+        return new OwnerDetailResponseDTO(userDTO, warehouses, requests, contracts);
     }
 
     private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {

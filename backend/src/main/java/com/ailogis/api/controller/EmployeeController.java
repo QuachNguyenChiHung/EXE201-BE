@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,5 +87,35 @@ public class EmployeeController {
             @PathVariable Long submitId,
             @RequestBody CertReviewDTO dto) {
         return ResponseEntity.ok(employeeService.reviewWarehouseCertification(submitId, dto));
+    }
+
+    // Thống kê theo Role qua các ngày
+    @GetMapping("/statistics/active-users/by-date")
+    public ResponseEntity<Map<String, Object>> getActiveUsersByDate(
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        return ResponseEntity.ok(employeeService.getActiveUsersByDate(start, end));
+    }
+
+    // Thống kê theo giờ trong 1 ngày
+    @GetMapping("/statistics/active-users/by-hour")
+    public ResponseEntity<Map<String, Object>> getActiveUsersByHour(
+            @RequestParam(required = false) String date) {
+        LocalDate queryDate = (date != null) ? LocalDate.parse(date) : LocalDate.now();
+        return ResponseEntity.ok(employeeService.getActiveUsersByHour(queryDate));
+    }
+
+    // Chi tiết RENTER
+    @GetMapping("/renters/{userId}/detail")
+    public ResponseEntity<RenterDetailResponseDTO> getRenterDetail(@PathVariable Long userId) {
+        return ResponseEntity.ok(employeeService.getRenterDetail(userId));
+    }
+
+    // Chi tiết OWNER
+    @GetMapping("/owners/{userId}/detail")
+    public ResponseEntity<OwnerDetailResponseDTO> getOwnerDetail(@PathVariable Long userId) {
+        return ResponseEntity.ok(employeeService.getOwnerDetail(userId));
     }
 }
