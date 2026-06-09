@@ -4,6 +4,7 @@ import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.RequestStatus;
 import com.ailogis.api.enums.WarehouseStatus;
+import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,10 +21,12 @@ public class OwnerService {
     private final WarehouseRepository warehouseRepository;
     private final RentalRequestRepository requestRepository;
     private final CertificationTypeRepository certificationTypeRepository;
+    private final WarehouseMapper warehouseMapper;
 
     public List<WarehouseResponseDTO> getMyWarehouses(Long ownerId) {
         return warehouseRepository.findByOwnerId(ownerId).stream()
-                .map(this::mapToWarehouseDTO).toList();
+                .map(warehouseMapper::toWarehouseResponseDTO)
+                .toList();
     }
 
     public List<RentRequestResponseDTO> getRequestsForMyWarehouses(Long ownerId) {
@@ -44,23 +47,6 @@ public class OwnerService {
 
         request.setStatus(newStatus);
         return mapToRequestDTO(requestRepository.save(request));
-    }
-
-    private WarehouseResponseDTO mapToWarehouseDTO(Warehouse w) {
-        List<WarehouseSectionDTO> sectionDTOs = w.getSections().stream().map(s ->
-                new WarehouseSectionDTO(s.getSector(), s.getTotalCapacity(), s.getTempMin(), s.getTempMax(), s.getHumidity(), s.getHasCertification(),
-                        s.getPriceTiers().stream().map(p -> new PriceTierDTO(p.getLabel(), p.getValue(), p.getUnit(), p.getAreaUnit())).toList()
-                )).toList();
-
-        List<WarehouseImageDTO> imageDTOs = w.getImages() != null ?
-                w.getImages().stream().map(i -> new WarehouseImageDTO(i.getId(), i.getImageUrl(), i.getIsThumbnail())).toList() : List.of();
-
-        List<CertificationSubmitDTO> certDTOs = w.getCertificationSubmits() != null ?
-                w.getCertificationSubmits().stream().map(c ->
-                        new CertificationSubmitDTO(c.getId(), c.getType().getLabel(), c.getLink(), c.getIsVerified())
-                ).toList() : List.of();
-
-        return new WarehouseResponseDTO(w.getId(), w.getName(), w.getDescription(), w.getLocationAddressText(), w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs, w.getStatus().name());
     }
 
     private RentRequestResponseDTO mapToRequestDTO(RentalRequest r) {
@@ -147,6 +133,6 @@ public class OwnerService {
                     .build());
         }
 
-        return mapToWarehouseDTO(warehouseRepository.save(warehouse));
+        return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
     }
 }

@@ -6,6 +6,7 @@ import com.ailogis.api.entity.User;
 import com.ailogis.api.entity.Warehouse;
 import com.ailogis.api.entity.WarehouseSection;
 import com.ailogis.api.enums.*;
+import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class EmployeeService {
     private final ContractRepository contractRepository;
     private final CompanyRepository companyRepository;
     private final UserSessionRepository userSessionRepository;
+    private final WarehouseMapper warehouseMapper;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -37,7 +39,8 @@ public class EmployeeService {
 
     public List<WarehouseResponseDTO> getPendingWarehouses() {
         return warehouseRepository.findByStatus(WarehouseStatus.PENDING).stream()
-                .map(this::mapToWarehouseDTO).toList();
+                .map(warehouseMapper::toWarehouseResponseDTO)
+                .toList();
     }
 
     @Transactional
@@ -47,32 +50,7 @@ public class EmployeeService {
 
         warehouse.setStatus(newStatus);
         Warehouse updated = warehouseRepository.save(warehouse);
-        return mapToWarehouseDTO(updated);
-    }
-
-    private WarehouseResponseDTO mapToWarehouseDTO(Warehouse w) {
-        // 1. Map danh sách các phòng (có check null)
-        List<WarehouseSectionDTO> sectionDTOs = w.getSections() != null ?
-                w.getSections().stream().map(s -> new WarehouseSectionDTO(
-                        s.getSector(), s.getTotalCapacity(), s.getTempMin(), s.getTempMax(), s.getHumidity(), s.getHasCertification(),
-                        s.getPriceTiers() != null ? s.getPriceTiers().stream().map(p -> new PriceTierDTO(p.getLabel(), p.getValue(), p.getUnit(), p.getAreaUnit())).toList() : List.of()
-                )).toList() : List.of();
-
-        // 2. Map danh sách ảnh (có check null an toàn)
-        List<WarehouseImageDTO> imageDTOs = w.getImages() != null ?
-                w.getImages().stream().map(i -> new WarehouseImageDTO(i.getId(), i.getImageUrl(), i.getIsThumbnail())).toList() : List.of();
-
-        // 3. BỔ SUNG: Map danh sách chứng chỉ PDF
-        List<CertificationSubmitDTO> certDTOs = w.getCertificationSubmits() != null ?
-                w.getCertificationSubmits().stream().map(c ->
-                        new CertificationSubmitDTO(c.getId(), c.getType().getLabel(), c.getLink(), c.getIsVerified())
-                ).toList() : List.of();
-
-        // 4. Trả về DTO (Đã truyền đủ certDTOs vào constructor)
-        return new WarehouseResponseDTO(
-                w.getId(), w.getName(), w.getDescription(), w.getLocationAddressText(),
-                w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs, w.getStatus().name()
-        );
+            return warehouseMapper.toWarehouseResponseDTO(updated);
     }
 
     public StatisticResponseDTO getGlobalStatistics() {
