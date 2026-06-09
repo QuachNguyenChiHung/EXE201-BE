@@ -17,6 +17,11 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
 
+    @GetMapping("/users")
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        return ResponseEntity.ok(employeeService.getAllUsers());
+    }
+
     @GetMapping("/warehouses")
     public ResponseEntity<List<WarehouseEmployeeDTO>> getAllWarehouses() {
         return ResponseEntity.ok(employeeService.getWarehousesByStatus(null));
@@ -27,29 +32,14 @@ public class EmployeeController {
         return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.PENDING));
     }
 
-    @GetMapping("/warehouses/accepted")
-    public ResponseEntity<List<WarehouseEmployeeDTO>> getAcceptedWarehouses() {
-        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.APPROVED));
-    }
-
-    @GetMapping("/warehouses/hidden")
-    public ResponseEntity<List<WarehouseEmployeeDTO>> getHiddenWarehouses() {
-        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.HIDDEN));
-    }
-
     @PatchMapping("/warehouses/{id}/accept")
     public ResponseEntity<WarehouseEmployeeDTO> acceptWarehouse(@PathVariable Long id) {
-        return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.APPROVED));
+        return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.ACTIVE));
     }
 
     @PatchMapping("/warehouses/{id}/rejected")
     public ResponseEntity<WarehouseEmployeeDTO> rejectWarehouse(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.REJECTED));
-    }
-
-    @PatchMapping("/warehouses/{id}/hidden")
-    public ResponseEntity<WarehouseEmployeeDTO> hideWarehouse(@PathVariable Long id) {
-        return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.HIDDEN));
     }
 
     @GetMapping("/statistic")
