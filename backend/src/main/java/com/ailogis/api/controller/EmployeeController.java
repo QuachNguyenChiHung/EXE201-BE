@@ -76,6 +76,14 @@ public class EmployeeController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/users/{userId}/activity-stats")
+    public ResponseEntity<Map<String, Object>> getUserActivityStats(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = "7") int days) {
+
+        return ResponseEntity.ok(employeeService.getUserActivityStats(userId, days));
+    }
+
     @GetMapping("/warehouses/{id}")
     public ResponseEntity<WarehouseResponseDTO> getWarehouseDetailForEmployee(@PathVariable Long id) {
         // Chỉ lấy thông tin và thống kê phục vụ kiểm tra hệ thống, không tăng lượt xem

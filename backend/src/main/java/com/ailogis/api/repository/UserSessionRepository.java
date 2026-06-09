@@ -33,4 +33,10 @@ public interface UserSessionRepository extends JpaRepository<UserSession, Long> 
             "WHERE s.logindate = :date " +
             "GROUP BY hr, u.role ORDER BY hr", nativeQuery = true)
     List<Object[]> countActiveUsersByHourAndRoleNative(@Param("date") java.time.LocalDate date);
+
+    @Query("SELECT CAST(us.loginDate AS string), COUNT(us) " +
+            "FROM UserSession us " +
+            "WHERE us.user.id = :userId AND us.loginDate >= :startDate " +
+            "GROUP BY us.loginDate ORDER BY us.loginDate")
+    List<Object[]> countLoginsByDateForUser(@Param("userId") Long userId, @Param("startDate") java.time.LocalDate startDate);
 }

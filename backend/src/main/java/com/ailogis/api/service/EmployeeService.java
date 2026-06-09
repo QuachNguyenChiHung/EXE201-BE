@@ -305,6 +305,46 @@ public class EmployeeService {
         return new OwnerDetailResponseDTO(userDTO, warehouses, requests, contracts);
     }
 
+
+    public Map<String, Object> getUserActivityStats(Long userId, int days) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+
+        if (days <= 0) days = 7; // Mặc định 7 ngày
+        java.time.LocalDate endDate = java.time.LocalDate.now();
+        java.time.LocalDate startDate = endDate.minusDays(days - 1);
+
+        List<Object[]> rawStats = userSessionRepository.countLoginsByDateForUser(userId, startDate);
+
+        Map<String, Long> statsMap = new java.util.HashMap<>();
+        long totalLogins = 0;
+        for (Object[] row : rawStats) {
+            String dateStr = (String) row[0];
+            Long count = ((Number) row[1]).longValue();
+            statsMap.put(dateStr, count);
+            totalLogins += count;
+        }
+
+        List<String> dates = new java.util.ArrayList<>();
+        List<Long> loginCounts = new java.util.ArrayList<>();
+
+        for (java.time.LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+            String dateStr = date.toString();
+            dates.add(dateStr);
+            loginCounts.add(statsMap.getOrDefault(dateStr, 0L));
+        }
+
+        return Map.of(
+                "userId", userId,
+                "fullName", user.getFullName(),
+                "role", user.getRole().name(),
+                "days", days,
+                "totalLoginsInPeriod", totalLogins,
+                "dates", dates,
+                "activityTrend", loginCounts
+        );
+    }
+
     private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {
         double totalCap = 0;
         double availableCap = 0;
