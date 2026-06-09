@@ -24,6 +24,19 @@ public class AuthService {
             throw new RuntimeException("Email này đã được sử dụng!");
         }
 
+        // 1. Kiểm tra tính hợp lệ của Role
+        Role requestedRole;
+        try {
+            requestedRole = Role.valueOf(dto.role().toUpperCase());
+        } catch (Exception e) {
+            throw new RuntimeException("Vai trò (Role) không hợp lệ!");
+        }
+
+        // 2. Chặn đứng hành vi tạo tài khoản nội bộ (EMPLOYEE) từ bên ngoài
+        if (requestedRole == Role.EMPLOYEE) {
+            throw new RuntimeException("Cảnh báo bảo mật: Không được phép đăng ký tài khoản Quản trị viên qua cổng public!");
+        }
+
         Company company = null;
         if (dto.companyName() != null && !dto.companyName().isEmpty()) {
             company = Company.builder()
@@ -38,7 +51,7 @@ public class AuthService {
                 .password(dto.password())
                 .fullName(dto.fullName())
                 .phone(dto.phone())
-                .role(Role.valueOf(dto.role().toUpperCase()))
+                .role(requestedRole) // Sử dụng biến đã được verify
                 .status(UserStatus.ACTIVE)
                 .company(company)
                 .build();

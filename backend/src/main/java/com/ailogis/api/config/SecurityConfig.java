@@ -33,13 +33,22 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
+                        // 1. PUBLIC API
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/warehouses/**").permitAll()
 
-                        .requestMatchers("/api/owners/**").hasRole("OWNER")
-                        .requestMatchers("/api/renters/**").hasRole("RENTER")
+                        // 2. API CÁ NHÂN
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/users/me").authenticated()
+
+                        // 3. API DÀNH RIÊNG CHO QUẢN TRỊ VIÊN (EMPLOYEE)
+                        .requestMatchers("/api/users/**").hasRole("EMPLOYEE")
                         .requestMatchers("/api/employees/**").hasRole("EMPLOYEE")
 
+                        // 4. API DÀNH RIÊNG CHO CHỦ KHO & KHÁCH THUÊ
+                        .requestMatchers("/api/owners/**").hasRole("OWNER")
+                        .requestMatchers("/api/renters/**").hasRole("RENTER")
+
+                        // 5. Bắt buộc đăng nhập cho các request còn sót lại
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
