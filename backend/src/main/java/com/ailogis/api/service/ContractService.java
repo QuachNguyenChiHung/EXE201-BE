@@ -14,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -99,6 +100,26 @@ public class ContractService {
         );
     }
 
+    public List<ContractResponseDTO> getMyContracts(CustomUserDetails userDetails) {
+        Long userId = userDetails.getUser().getId();
+        com.ailogis.api.enums.Role role = userDetails.getUser().getRole();
+
+        List<Contract> contracts;
+
+        // 1. Nếu là Employee -> Có quyền xem TẤT CẢ hợp đồng trong hệ thống
+        if (role == com.ailogis.api.enums.Role.EMPLOYEE) {
+            contracts = contractRepository.findAll();
+        } else {
+            // 2. Nếu là Owner/Renter -> Dùng chung đúng 1 câu lệnh SQL gộp điều kiện OR
+            contracts = contractRepository.findByOwnerIdOrRenterId(userId);
+        }
+
+        // 3. Map chung sang DTO và trả về
+        return contracts.stream()
+                .map(this::mapToResponseDTO)
+                .toList();
+    }
+
     public ContractResponseDTO getContractDetail(Long id, CustomUserDetails userDetails) {
         Contract contract = contractRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng này!"));
@@ -128,5 +149,14 @@ public class ContractService {
         if (currentUserId.equals(ownerId) || currentUserId.equals(renterId)) return;
 
         throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền truy cập vào dữ liệu này!");
+    }
+
+    private ContractResponseDTO mapToResponseDTO(Contract c) {
+        return new ContractResponseDTO(
+                c.getId(), c.getRequest().getId(), c.getRequest().getWarehouse().getName(),
+                c.getRenter().getFullName(),
+                c.getRequest().getOfferedPrice() != null ? c.getRequest().getOfferedPrice().longValue() : 0L,
+                c.getStartAt(), c.getStatus().name()
+        );
     }
 }

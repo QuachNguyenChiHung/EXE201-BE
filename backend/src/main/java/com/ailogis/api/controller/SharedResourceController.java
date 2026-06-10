@@ -10,6 +10,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api")
 @CrossOrigin(origins = "*")
@@ -33,5 +35,11 @@ public class SharedResourceController {
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(contractService.getContractDetail(id, userDetails));
+    }
+
+    @GetMapping("/contracts")
+    public ResponseEntity<List<ContractResponseDTO>> getMyContracts(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(contractService.getMyContracts(userDetails));
     }
 }

@@ -63,6 +63,25 @@ public class RentalRequestService {
         return new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), detailDTOs);
     }
 
+    @Transactional
+    public RentRequestResponseDTO cancelRequestByRenter(Long renterId, Long requestId, String reason) {
+        RentalRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê!"));
+
+        if (!request.getRenter().getId().equals(renterId)) {
+            throw new RuntimeException("Bạn không có quyền thao tác!");
+        }
+
+        if (request.getStatus() != com.ailogis.api.enums.RequestStatus.PENDING) {
+            throw new RuntimeException("Chỉ có thể hủy yêu cầu khi đang chờ duyệt!");
+        }
+
+        request.setStatus(com.ailogis.api.enums.RequestStatus.REJECTED);
+        request.setRenterRejectionReason(reason != null ? reason : "Người thuê tự hủy");
+
+        return mapToResponseDTO(requestRepository.save(request));
+    }
+
     // Kiểm tra xem có phải là Employee hoặc Owner/Renter liên quan đến Data
     public RentRequestResponseDTO getRequestDetail(Long id, CustomUserDetails userDetails) {
         RentalRequest request = requestRepository.findById(id)

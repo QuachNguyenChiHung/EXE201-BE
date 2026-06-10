@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/renters")
@@ -32,5 +33,14 @@ public class RenterController {
 
         Long renterId = userDetails.getUser().getId();
         return ResponseEntity.ok(requestService.getRequestsByRenter(renterId));
+    }
+
+    @PatchMapping("/requests/{id}/cancel")
+    public ResponseEntity<RentRequestResponseDTO> cancelRequest(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(requestService.cancelRequestByRenter(userDetails.getUser().getId(), id, reason));
     }
 }
