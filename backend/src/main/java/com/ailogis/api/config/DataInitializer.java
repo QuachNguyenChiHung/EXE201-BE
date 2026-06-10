@@ -97,6 +97,15 @@ public class DataInitializer implements CommandLineRunner {
         sec1.setPriceTiers(List.of(PriceTier.builder().section(sec1).label("Gói lưu trữ theo tháng").value(260000.0).unit("VND").areaUnit("m3").build()));
         wh1.getSections().add(sec1);
         wh1.getImages().add(WarehouseImage.builder().warehouse(wh1).imageUrl("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/images/07c00336-f2b5-4528-84c1-d082a9805f19.jpg").isThumbnail(true).displayOrder(0).build());
+
+        // Submit chứng chỉ ISO 9001 cho Kho 1
+        wh1.getCertificationSubmits().add(CertificationSubmit.builder()
+                .warehouse(wh1)
+                .type(iso9001)
+                .link("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/ISO+9001_2015.pdf")
+                .isVerified(true)
+                .build());
+
         wh1 = warehouseRepository.save(wh1);
 
         // KHO SỐ 2
@@ -108,6 +117,15 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseSection sec2 = WarehouseSection.builder().warehouse(wh2).sector(1).totalCapacity(800.0).availableCapacity(500.0).tempMin(2.0).tempMax(8.0).humidity(85.0).hasCertification(false).build();
         sec2.setPriceTiers(List.of(PriceTier.builder().section(sec2).label("Thuê bao nguyên khu (Tuần)").value(5000000.0).unit("VND").areaUnit("sector").build()));
         wh2.getSections().add(sec2);
+
+        // Submit chứng chỉ HACCP cho Kho 2
+        wh2.getCertificationSubmits().add(CertificationSubmit.builder()
+                .warehouse(wh2)
+                .type(haccp)
+                .link("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/HACCP.pdf")
+                .isVerified(true)
+                .build());
+
         wh2 = warehouseRepository.save(wh2);
 
         // KHO SỐ 3
@@ -119,6 +137,22 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseSection sec3 = WarehouseSection.builder().warehouse(wh3).sector(1).totalCapacity(300.0).availableCapacity(100.0).tempMin(-80.0).tempMax(-20.0).humidity(40.0).hasCertification(true).build();
         sec3.setPriceTiers(List.of(PriceTier.builder().section(sec3).label("Lưu trữ theo Pallet/Tháng").value(800000.0).unit("VND").areaUnit("pallet").build()));
         wh3.getSections().add(sec3);
+
+        // Submit chứng chỉ HACCP và ISO 9001 cho Kho 3 - Chưa xác minh
+        wh3.getCertificationSubmits().add(CertificationSubmit.builder()
+                .warehouse(wh3)
+                .type(haccp)
+                .link("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/HACCP.pdf")
+                .isVerified(false)
+                .build());
+
+        wh3.getCertificationSubmits().add(CertificationSubmit.builder()
+                .warehouse(wh3)
+                .type(iso9001)
+                .link("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/ISO+9001_2015.pdf")
+                .isVerified(false)
+                .build());
+
         wh3 = warehouseRepository.save(wh3);
 
         // =================================================================
