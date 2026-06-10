@@ -49,6 +49,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/renters/**").hasRole("RENTER")
 
                         // 5. Bắt buộc đăng nhập cho các request còn sót lại
+                        .requestMatchers("/api/requests/**").authenticated()
+                        .requestMatchers("/api/contracts/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

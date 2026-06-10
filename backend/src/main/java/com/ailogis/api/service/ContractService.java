@@ -5,9 +5,11 @@ import com.ailogis.api.dto.ContractResponseDTO;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.ContractStatus;
 import com.ailogis.api.enums.RequestStatus;
+import com.ailogis.api.enums.Role;
 import com.ailogis.api.repository.ContractRepository;
 import com.ailogis.api.repository.RentalRequestRepository;
 import com.ailogis.api.repository.WarehouseSectionRepository;
+import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,5 +97,36 @@ public class ContractService {
                 contract.getStartAt(),
                 updated.getStatus().name()
         );
+    }
+
+    public ContractResponseDTO getContractDetail(Long id, CustomUserDetails userDetails) {
+        Contract contract = contractRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng này!"));
+
+        Long renterId = contract.getRenter().getId();
+        Long ownerId = contract.getOwner().getId();
+
+        verifyAccess(userDetails, ownerId, renterId);
+
+        return new ContractResponseDTO(
+                contract.getId(),
+                contract.getRequest().getId(),
+                contract.getRequest().getWarehouse().getName(),
+                contract.getRenter().getFullName(),
+                contract.getRequest().getOfferedPrice() != null ? contract.getRequest().getOfferedPrice().longValue() : 0L,
+                contract.getStartAt(),
+                contract.getStatus().name()
+        );
+    }
+
+    private void verifyAccess(CustomUserDetails userDetails, Long ownerId, Long renterId) {
+        Long currentUserId = userDetails.getUser().getId();
+        Role role = userDetails.getUser().getRole();
+
+        if (role == Role.EMPLOYEE) return;
+
+        if (currentUserId.equals(ownerId) || currentUserId.equals(renterId)) return;
+
+        throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền truy cập vào dữ liệu này!");
     }
 }

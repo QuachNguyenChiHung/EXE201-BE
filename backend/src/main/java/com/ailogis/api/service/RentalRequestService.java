@@ -3,7 +3,9 @@ package com.ailogis.api.service;
 import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.RequestStatus;
+import com.ailogis.api.enums.Role;
 import com.ailogis.api.repository.*;
+import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,5 +61,32 @@ public class RentalRequestService {
         ).toList();
 
         return new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), detailDTOs);
+    }
+
+    // Kiểm tra xem có phải là Employee hoặc Owner/Renter liên quan đến Data
+    public RentRequestResponseDTO getRequestDetail(Long id, CustomUserDetails userDetails) {
+        RentalRequest request = requestRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê này!"));
+
+        Long renterId = request.getRenter().getId();
+        Long ownerId = request.getWarehouse().getOwner().getId();
+
+        verifyAccess(userDetails, ownerId, renterId);
+
+        return mapToResponseDTO(request);
+    }
+
+    private void verifyAccess(CustomUserDetails userDetails, Long ownerId, Long renterId) {
+        Long currentUserId = userDetails.getUser().getId();
+        Role role = userDetails.getUser().getRole();
+
+        // 1. Employee được xem mọi thứ
+        if (role == Role.EMPLOYEE) return;
+
+        // 2. Owner hoặc Renter liên quan trực tiếp đến Data này mới được xem
+        if (currentUserId.equals(ownerId) || currentUserId.equals(renterId)) return;
+
+        // 3. Các trường hợp còn lại sẽ bị chặn tại đây (Chống IDOR)
+        throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền truy cập vào dữ liệu này!");
     }
 }
