@@ -136,7 +136,7 @@ public class DataInitializer implements CommandLineRunner {
             // Đính kèm dữ liệu ảnh URL đại diện trên đám mây S3
             WarehouseImage sampleImage = WarehouseImage.builder()
                     .warehouse(warehouse)
-                    .imageUrl("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/images/sample-warehouse.jpg")
+                    .imageUrl("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/images/07c00336-f2b5-4528-84c1-d082a9805f19.jpg")
                     .isThumbnail(true)
                     .displayOrder(0)
                     .build();
