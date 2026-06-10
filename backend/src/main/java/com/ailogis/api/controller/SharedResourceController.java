@@ -5,12 +5,14 @@ import com.ailogis.api.dto.RentRequestResponseDTO;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.ContractService;
 import com.ailogis.api.service.RentalRequestService;
+import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
@@ -20,6 +22,7 @@ public class SharedResourceController {
 
     private final RentalRequestService requestService;
     private final ContractService contractService;
+    private final WarehouseService warehouseService;
 
     // View Chi tiết Request (Áp dụng verify)
         @GetMapping("/requests/{id}")
@@ -41,5 +44,15 @@ public class SharedResourceController {
     public ResponseEntity<List<ContractResponseDTO>> getMyContracts(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(contractService.getMyContracts(userDetails));
+    }
+
+    // Lấy thống kê lượt xem của 1 kho bãi
+    @GetMapping("/warehouses/{id}/view-stats")
+    public ResponseEntity<Map<String, Object>> getWarehouseViewStats(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "7") int days,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        return ResponseEntity.ok(warehouseService.getWarehouseViewStats(id, days, userDetails));
     }
 }

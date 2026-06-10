@@ -13,4 +13,11 @@ public interface WarehouseViewRepository extends JpaRepository<WarehouseView, Lo
 
     @Query("SELECT CAST(wv.viewDate AS string), COUNT(wv) FROM WarehouseView wv WHERE wv.warehouse.id = :warehouseId GROUP BY wv.viewDate")
     List<Object[]> countViewsByDateForWarehouse(@Param("warehouseId") Long warehouseId);
+
+    // Nhóm lượt view theo ngày của 1 kho cụ thể
+    @Query("SELECT CAST(wv.viewDate AS string), COUNT(wv) " +
+            "FROM WarehouseView wv " +
+            "WHERE wv.warehouse.id = :warehouseId AND wv.viewDate >= :startDate " +
+            "GROUP BY wv.viewDate ORDER BY wv.viewDate")
+    List<Object[]> countViewsByDateForWarehouse(@Param("warehouseId") Long warehouseId, @Param("startDate") java.time.LocalDate startDate);
 }
