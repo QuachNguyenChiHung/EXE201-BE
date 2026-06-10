@@ -42,8 +42,9 @@ public class SharedResourceController {
 
     @GetMapping("/contracts")
     public ResponseEntity<List<ContractResponseDTO>> getMyContracts(
+            @RequestParam(required = false) String status,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(contractService.getMyContracts(userDetails));
+        return ResponseEntity.ok(contractService.getMyContracts(userDetails, status));
     }
 
     // Lấy thống kê lượt xem của 1 kho bãi

@@ -12,7 +12,12 @@ import java.util.List;
 @Repository
 public interface ContractRepository extends JpaRepository<Contract, Long> {
     long countByStatus(ContractStatus status);
-    // Tìm các hợp đồng mà User này tham gia với tư cách là Owner HOẶC Renter
-    @Query("SELECT c FROM Contract c WHERE c.owner.id = :userId OR c.renter.id = :userId")
-    List<Contract> findByOwnerIdOrRenterId(@Param("userId") Long userId);
+
+    // Cho Employee
+    @Query("SELECT c FROM Contract c WHERE (:status IS NULL OR c.status = :status)")
+    List<Contract> findAllWithFilter(@Param("status") ContractStatus status);
+
+    // Cho Owner/Renter
+    @Query("SELECT c FROM Contract c WHERE (c.owner.id = :userId OR c.renter.id = :userId) AND (:status IS NULL OR c.status = :status)")
+    List<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId, @Param("status") ContractStatus status);
 }

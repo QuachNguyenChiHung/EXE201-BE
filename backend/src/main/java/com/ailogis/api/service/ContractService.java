@@ -100,21 +100,27 @@ public class ContractService {
         );
     }
 
-    public List<ContractResponseDTO> getMyContracts(CustomUserDetails userDetails) {
+    public List<ContractResponseDTO> getMyContracts(CustomUserDetails userDetails, String statusStr) {
         Long userId = userDetails.getUser().getId();
         com.ailogis.api.enums.Role role = userDetails.getUser().getRole();
 
-        List<Contract> contracts;
-
-        // 1. Nếu là Employee -> Có quyền xem TẤT CẢ hợp đồng trong hệ thống
-        if (role == com.ailogis.api.enums.Role.EMPLOYEE) {
-            contracts = contractRepository.findAll();
-        } else {
-            // 2. Nếu là Owner/Renter -> Dùng chung đúng 1 câu lệnh SQL gộp điều kiện OR
-            contracts = contractRepository.findByOwnerIdOrRenterId(userId);
+        ContractStatus statusEnum = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                statusEnum = ContractStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái hợp đồng không hợp lệ!");
+            }
         }
 
-        // 3. Map chung sang DTO và trả về
+        List<Contract> contracts;
+
+        if (role == com.ailogis.api.enums.Role.EMPLOYEE) {
+            contracts = contractRepository.findAllWithFilter(statusEnum);
+        } else {
+            contracts = contractRepository.findByOwnerIdOrRenterIdWithFilter(userId, statusEnum);
+        }
+
         return contracts.stream()
                 .map(this::mapToResponseDTO)
                 .toList();
