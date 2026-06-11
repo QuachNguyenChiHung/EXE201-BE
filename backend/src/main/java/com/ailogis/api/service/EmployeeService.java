@@ -3,6 +3,7 @@ package com.ailogis.api.service;
 import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.*;
+import com.ailogis.api.mapper.ContractMapper;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class EmployeeService {
     private final CertificationSubmitRepository certificationSubmitRepository;
     private final CertificationTypeRepository certificationTypeRepository;
     private final TransactionRepository transactionRepository;
+    private final ContractMapper contractMapper;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -269,11 +271,10 @@ public class EmployeeService {
         List<RentRequestResponseDTO> requests = rentalRequestRepository.findByRenterId(userId).stream()
                 .map(r -> new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), List.of())).toList();
 
-        // 2. Lấy Contracts (Cần thêm findByRenterId trong ContractRepository nếu chưa có)
-        // Tạm gọi repository lấy toàn bộ rồi filter (Tốt nhất bạn thêm query vào ContractRepo)
+        // 2. Lấy Contracts
         List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
                 .filter(c -> c.getRenter().getId().equals(userId))
-                .map(c -> new ContractResponseDTO(c.getId(), c.getRequest().getId(), c.getRequest().getWarehouse().getName(), c.getRenter().getFullName(), c.getRequest().getOfferedPrice() != null ? c.getRequest().getOfferedPrice().longValue() : 0L, c.getStartAt(), c.getStatus().name())).toList();
+                .map(contractMapper::toContractResponseDTO).toList();
 
         double totalSpending = 0;
         List<Transaction> transactions = transactionRepository.findByBuyerIdAndStatus(userId, "COMPLETED");
@@ -300,7 +301,7 @@ public class EmployeeService {
 
         List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
                 .filter(c -> c.getOwner().getId().equals(userId))
-                .map(c -> new ContractResponseDTO(c.getId(), c.getRequest().getId(), c.getRequest().getWarehouse().getName(), c.getRenter().getFullName(), c.getRequest().getOfferedPrice() != null ? c.getRequest().getOfferedPrice().longValue() : 0L, c.getStartAt(), c.getStatus().name())).toList();
+                .map(contractMapper::toContractResponseDTO).toList();
 
         return new OwnerDetailResponseDTO(userDTO, warehouses, requests, contracts);
     }

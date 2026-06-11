@@ -6,6 +6,7 @@ import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.ContractStatus;
 import com.ailogis.api.enums.RequestStatus;
 import com.ailogis.api.enums.Role;
+import com.ailogis.api.mapper.ContractMapper;
 import com.ailogis.api.repository.ContractRepository;
 import com.ailogis.api.repository.RentalRequestRepository;
 import com.ailogis.api.repository.WarehouseSectionRepository;
@@ -13,6 +14,7 @@ import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
 import java.util.List;
 
@@ -23,6 +25,7 @@ public class ContractService {
     private final ContractRepository contractRepository;
     private final RentalRequestRepository requestRepository;
     private final WarehouseSectionRepository sectionRepository;
+    private final ContractMapper contractMapper;
 
     @Transactional
     public ContractResponseDTO createContract(Long ownerId, ContractCreateDTO dto) {
@@ -51,20 +54,27 @@ public class ContractService {
 
         // Lưu bản chụp Snapshot thông tin pháp lý bất biến vào hợp đồng
         Contract contract = Contract.builder()
-                .owner(owner).renter(renter).request(request)
-                .cargoDescription(request.getCargoDescription()).startAt(LocalDate.now()).endAt(LocalDate.now().plusMonths(request.getDuration()))
+                .owner(owner)
+                .renter(renter)
+                .request(request)
+                .cargoDescription(request.getCargoDescription())
+                .startAt(LocalDate.now())
+                .endAt(LocalDate.now().plusMonths(request.getDuration()))
                 .ownerLegalName(owner.getCompany() != null ? owner.getCompany().getCompanyName() : owner.getFullName())
                 .ownerTaxCode(owner.getCompany() != null ? owner.getCompany().getCompanyTaxCode() : "N/A")
-                .ownerEmail(owner.getEmail()).ownerPhone(owner.getPhone())
+                .ownerEmail(owner.getEmail())
+                .ownerPhone(owner.getPhone())
                 .renterLegalName(renter.getCompany() != null ? renter.getCompany().getCompanyName() : renter.getFullName())
                 .renterTaxCode(renter.getCompany() != null ? renter.getCompany().getCompanyTaxCode() : "N/A")
-                .renterEmail(renter.getEmail()).renterPhone(renter.getPhone())
-                .status(ContractStatus.ACTIVE).build();
+                .renterEmail(renter.getEmail())
+                .renterPhone(renter.getPhone())
+                .status(ContractStatus.ACTIVE)
+                .build();
 
         Contract saved = contractRepository.save(contract);
-        return new ContractResponseDTO(saved.getId(), request.getId(), request.getWarehouse().getName(), renter.getFullName(), dto.totalPrice(), LocalDate.now(), saved.getStatus().name());
-    }
 
+        return contractMapper.toContractResponseDTO(saved);
+    }
 
     // Logic hoàn trả diện tích khi Hợp đồng Hủy hoặc Kết thúc
     @Transactional
@@ -74,6 +84,14 @@ public class ContractService {
 
         if (!contract.getOwner().getId().equals(ownerId)) {
             throw new RuntimeException("Không có quyền thao tác!");
+        }
+
+        if (contract.getStatus() == newStatus) {
+            return mapToResponseDTO(contract);
+        }
+
+        if (contract.getStatus() == ContractStatus.CANCELED || contract.getStatus() == ContractStatus.COMPLETED) {
+            throw new RuntimeException("Hợp đồng đã kết thúc hoặc bị hủy, không thể thay đổi trạng thái!");
         }
 
         if (newStatus == ContractStatus.CANCELED || newStatus == ContractStatus.COMPLETED) {
@@ -89,20 +107,12 @@ public class ContractService {
         contract.setStatus(newStatus);
         Contract updated = contractRepository.save(contract);
 
-        return new ContractResponseDTO(
-                updated.getId(),
-                contract.getRequest().getId(),
-                contract.getRequest().getWarehouse().getName(),
-                contract.getRenter().getFullName(),
-                0L,
-                contract.getStartAt(),
-                updated.getStatus().name()
-        );
+        return contractMapper.toContractResponseDTO(updated);
     }
 
     public List<ContractResponseDTO> getMyContracts(CustomUserDetails userDetails, String statusStr) {
         Long userId = userDetails.getUser().getId();
-        com.ailogis.api.enums.Role role = userDetails.getUser().getRole();
+        Role role = userDetails.getUser().getRole();
 
         ContractStatus statusEnum = null;
         if (statusStr != null && !statusStr.isBlank()) {
@@ -115,14 +125,14 @@ public class ContractService {
 
         List<Contract> contracts;
 
-        if (role == com.ailogis.api.enums.Role.EMPLOYEE) {
+        if (role == Role.EMPLOYEE) {
             contracts = contractRepository.findAllWithFilter(statusEnum);
         } else {
             contracts = contractRepository.findByOwnerIdOrRenterIdWithFilter(userId, statusEnum);
         }
 
         return contracts.stream()
-                .map(this::mapToResponseDTO)
+                .map(contractMapper::toContractResponseDTO)
                 .toList();
     }
 
@@ -135,15 +145,7 @@ public class ContractService {
 
         verifyAccess(userDetails, ownerId, renterId);
 
-        return new ContractResponseDTO(
-                contract.getId(),
-                contract.getRequest().getId(),
-                contract.getRequest().getWarehouse().getName(),
-                contract.getRenter().getFullName(),
-                contract.getRequest().getOfferedPrice() != null ? contract.getRequest().getOfferedPrice().longValue() : 0L,
-                contract.getStartAt(),
-                contract.getStatus().name()
-        );
+        return mapToResponseDTO(contract);
     }
 
     private void verifyAccess(CustomUserDetails userDetails, Long ownerId, Long renterId) {
@@ -159,10 +161,31 @@ public class ContractService {
 
     private ContractResponseDTO mapToResponseDTO(Contract c) {
         return new ContractResponseDTO(
-                c.getId(), c.getRequest().getId(), c.getRequest().getWarehouse().getName(),
-                c.getRenter().getFullName(),
-                c.getRequest().getOfferedPrice() != null ? c.getRequest().getOfferedPrice().longValue() : 0L,
-                c.getStartAt(), c.getStatus().name()
+                c.getId(),
+                c.getRequest() != null ? c.getRequest().getId() : null,
+                (c.getRequest() != null && c.getRequest().getWarehouse() != null) ? c.getRequest().getWarehouse().getName() : "N/A",
+                c.getCargoDescription(),
+                c.getStartAt(),
+                c.getEndAt(),
+                c.getPaymentTerm(),
+                c.getPenaltyClause(),
+                c.getSpecialTerm(),
+                c.getCancelReason(),
+
+                c.getOwnerLegalName(),
+                c.getOwnerTaxCode(),
+                c.getOwnerEmail(),
+                c.getOwnerPhone(),
+                c.getOwnerAddress(),
+
+                c.getRenterLegalName(),
+                c.getRenterTaxCode(),
+                c.getRenterEmail(),
+                c.getRenterPhone(),
+                c.getRenterAddress(),
+
+                (c.getRequest() != null && c.getRequest().getOfferedPrice() != null) ? c.getRequest().getOfferedPrice().longValue() : 0L,
+                c.getStatus() != null ? c.getStatus().name() : null
         );
     }
 }
