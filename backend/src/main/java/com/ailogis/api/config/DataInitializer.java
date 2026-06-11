@@ -195,24 +195,32 @@ public class DataInitializer implements CommandLineRunner {
         AiSubscriptionTier aiProEntity = aiTierRepository.findById(aiProDto.id()).get();
         AiSubscriptionTier aiBasicEntity = aiTierRepository.findById(aiBasicDto.id()).get();
         SponsorTier sponsorGoldEntity = sponsorTierRepository.findById(sponsorGoldDto.id()).get();
+        SponsorTier sponsorSilverEntity = sponsorTierRepository.findById(sponsorSilverDto.id()).get();
 
         // Renter 1 (Khách Thuê 1) mua gói AI Pro
         renter1.setAiTier(aiProEntity);
         userRepository.save(renter1);
 
-        // Renter 2 mua gói AI Basic
+        // Renter 2 & 3 mua gói AI Basic
         renter2.setAiTier(aiBasicEntity);
         userRepository.save(renter2);
 
-        // Kho số 1 mua gói Tài trợ Vàng
+        renter3.setAiTier(aiBasicEntity);
+        userRepository.save(renter3);
+
+        // Kho số 1 & 3 mua gói Tài trợ Vàng
         wh1Entity.setIsSponsor(true);
         wh1Entity.setSponsorType(sponsorGoldEntity);
         warehouseRepository.save(wh1Entity);
 
+        wh3Entity.setIsSponsor(true);
+        wh3Entity.setSponsorType(sponsorGoldEntity);
+        warehouseRepository.save(wh3Entity);
+
         // Kho số 2 mua gói Tài trợ Bạc
-        wh1Entity.setIsSponsor(true);
-        wh1Entity.setSponsorType(sponsorGoldEntity);
-        warehouseRepository.save(wh1Entity);
+        wh2Entity.setIsSponsor(true);
+        wh2Entity.setSponsorType(sponsorSilverEntity);
+        warehouseRepository.save(wh2Entity);
 
         log.info("✅ Init Data Hoàn tất! Tất cả kho bãi, hợp đồng đều ở trạng thái ACTIVE/APPROVED sẵn sàng test.");
     }
