@@ -266,7 +266,14 @@ public class EmployeeService {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
         if (user.getRole() != Role.RENTER) throw new RuntimeException("User này không phải là RENTER!");
 
-        UserDTO userDTO = new UserDTO(user.getId(), user.getEmail(), user.getFullName(), user.getCompany() != null ? user.getCompany().getCompanyName() : null, user.getRole().name(), user.getStatus().name());
+        CompanyResponseDTO companyDTO = user.getCompany() != null ?
+                new CompanyResponseDTO(user.getCompany().getId(), user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
+
+        UserProfileDTO userProfile = new UserProfileDTO(
+                user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
+                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(), companyDTO
+        );
+
         String aiPlan = user.getAiTier() != null ? user.getAiTier().getLabel() : "Chưa đăng ký";
 
         // 1. Lấy Requests
@@ -285,7 +292,7 @@ public class EmployeeService {
             if(t.getSponsor() != null && t.getSponsor().getPricingPerMonth() != null) totalSpending += t.getSponsor().getPricingPerMonth();
         }
 
-        return new RenterDetailResponseDTO(userDTO, aiPlan, requests, contracts, totalSpending);
+        return new RenterDetailResponseDTO(userProfile, aiPlan, requests, contracts, totalSpending);
     }
 
     // DETAIL OWNER
@@ -294,7 +301,13 @@ public class EmployeeService {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
         if (user.getRole() != Role.OWNER) throw new RuntimeException("User này không phải là OWNER!");
 
-        UserDTO userDTO = new UserDTO(user.getId(), user.getEmail(), user.getFullName(), user.getCompany() != null ? user.getCompany().getCompanyName() : null, user.getRole().name(), user.getStatus().name());
+        CompanyResponseDTO companyDTO = user.getCompany() != null ?
+                new CompanyResponseDTO(user.getCompany().getId(), user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
+
+        UserProfileDTO userProfile = new UserProfileDTO(
+                user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
+                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(), companyDTO
+        );
 
         List<WarehouseResponseDTO> warehouses = warehouseRepository.findByOwnerId(userId).stream().map(warehouseMapper::toWarehouseResponseDTO).toList();
 
@@ -305,7 +318,7 @@ public class EmployeeService {
                 .filter(c -> c.getOwner().getId().equals(userId))
                 .map(contractMapper::toContractResponseDTO).toList();
 
-        return new OwnerDetailResponseDTO(userDTO, warehouses, requests, contracts);
+        return new OwnerDetailResponseDTO(userProfile, warehouses, requests, contracts);
     }
 
 
