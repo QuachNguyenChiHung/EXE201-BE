@@ -126,4 +126,48 @@ public class EmployeeController {
     public ResponseEntity<OwnerDetailResponseDTO> getOwnerDetail(@PathVariable Long userId) {
         return ResponseEntity.ok(employeeService.getOwnerDetail(userId));
     }
+
+    // AI SUBSCRIPTION TIER
+    @GetMapping("/ai-tiers")
+    public ResponseEntity<List<AiTierDTO>> getAllAiTiers() {
+        return ResponseEntity.ok(employeeService.getAllAiTiers());
+    }
+
+    @PostMapping("/ai-tiers")
+    public ResponseEntity<AiTierDTO> createAiTier(@RequestBody AiTierDTO dto) {
+        return ResponseEntity.ok(employeeService.createAiTier(dto));
+    }
+
+    @PutMapping("/ai-tiers/{id}")
+    public ResponseEntity<AiTierDTO> updateAiTier(@PathVariable Long id, @RequestBody AiTierDTO dto) {
+        return ResponseEntity.ok(employeeService.updateAiTier(id, dto));
+    }
+
+    @DeleteMapping("/ai-tiers/{id}")
+    public ResponseEntity<String> deleteAiTier(@PathVariable Long id) {
+        employeeService.deleteAiTier(id);
+        return ResponseEntity.ok("Xóa gói AI thành công!");
+    }
+
+    // SPONSOR TIER
+    @GetMapping("/sponsor-tiers")
+    public ResponseEntity<List<SponsorTierDTO>> getAllSponsorTiers() {
+        return ResponseEntity.ok(employeeService.getAllSponsorTiers());
+    }
+
+    @PostMapping("/sponsor-tiers")
+    public ResponseEntity<SponsorTierDTO> createSponsorTier(@RequestBody SponsorTierDTO dto) {
+        return ResponseEntity.ok(employeeService.createSponsorTier(dto));
+    }
+
+    @PutMapping("/sponsor-tiers/{id}")
+    public ResponseEntity<SponsorTierDTO> updateSponsorTier(@PathVariable Long id, @RequestBody SponsorTierDTO dto) {
+        return ResponseEntity.ok(employeeService.updateSponsorTier(id, dto));
+    }
+
+    @DeleteMapping("/sponsor-tiers/{id}")
+    public ResponseEntity<String> deleteSponsorTier(@PathVariable Long id) {
+        employeeService.deleteSponsorTier(id);
+        return ResponseEntity.ok("Xóa gói Tài trợ thành công!");
+    }
 }

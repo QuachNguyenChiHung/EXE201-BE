@@ -25,4 +25,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.company WHERE u.id = :userId")
     Optional<User> findByIdWithCompany(@Param("userId") Long userId);
+
+    long countByAiTierId(Long aiTierId);
 }

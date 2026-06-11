@@ -15,4 +15,6 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     List<Warehouse> findByOwnerId(Long ownerId);
 
     long countByStatus(WarehouseStatus status);
+
+    long countBySponsorTypeId(Long sponsorTypeId);
 }

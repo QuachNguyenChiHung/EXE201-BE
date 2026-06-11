@@ -28,6 +28,8 @@ public class DataInitializer implements CommandLineRunner {
     private final CertificationTypeRepository certificationTypeRepository;
     private final UserSessionRepository sessionRepository;
     private final ContractRepository contractRepository;
+    private final AiSubscriptionTierRepository aiTierRepository;
+    private final SponsorTierRepository sponsorTierRepository;
 
     private final AuthService authService;
     private final EmployeeService employeeService;
@@ -172,6 +174,45 @@ public class DataInitializer implements CommandLineRunner {
             }
         }
         sessionRepository.saveAll(sessions);
+
+        // =================================================================
+        // 6. KHỞI TẠO CÁC GÓI AI & SPONSOR
+        // =================================================================
+
+        // 1. Tạo gói AI
+        AiTierDTO aiBasicDto = employeeService.createAiTier(new AiTierDTO(
+                null, "Gói AI Basic", "Hỗ trợ tra cứu nhanh", 50000, 20000, 199000.0, "VND", null));
+        AiTierDTO aiProDto = employeeService.createAiTier(new AiTierDTO(
+                null, "Gói AI Pro", "Tối ưu hóa RAG chuyên sâu", 200000, 100000, 499000.0, "VND", null));
+
+        // 2. Tạo gói Tài trợ (Sponsor)
+        SponsorTierDTO sponsorGoldDto = employeeService.createSponsorTier(new SponsorTierDTO(
+                null, 1, 1000000.0, 10000000.0, "Tài trợ Vàng (Top 1)", null));
+        SponsorTierDTO sponsorSilverDto = employeeService.createSponsorTier(new SponsorTierDTO(
+                null, 2, 500000.0, 5000000.0, "Tài trợ Bạc (Top 2)", null));
+
+        // GÁN GÓI CHO NGƯỜI DÙNG VÀ KHO BÃI
+        AiSubscriptionTier aiProEntity = aiTierRepository.findById(aiProDto.id()).get();
+        AiSubscriptionTier aiBasicEntity = aiTierRepository.findById(aiBasicDto.id()).get();
+        SponsorTier sponsorGoldEntity = sponsorTierRepository.findById(sponsorGoldDto.id()).get();
+
+        // Renter 1 (Khách Thuê 1) mua gói AI Pro
+        renter1.setAiTier(aiProEntity);
+        userRepository.save(renter1);
+
+        // Renter 2 mua gói AI Basic
+        renter2.setAiTier(aiBasicEntity);
+        userRepository.save(renter2);
+
+        // Kho số 1 mua gói Tài trợ Vàng
+        wh1Entity.setIsSponsor(true);
+        wh1Entity.setSponsorType(sponsorGoldEntity);
+        warehouseRepository.save(wh1Entity);
+
+        // Kho số 2 mua gói Tài trợ Bạc
+        wh1Entity.setIsSponsor(true);
+        wh1Entity.setSponsorType(sponsorGoldEntity);
+        warehouseRepository.save(wh1Entity);
 
         log.info("✅ Init Data Hoàn tất! Tất cả kho bãi, hợp đồng đều ở trạng thái ACTIVE/APPROVED sẵn sàng test.");
     }

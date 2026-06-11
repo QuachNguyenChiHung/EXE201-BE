@@ -30,6 +30,8 @@ public class EmployeeService {
     private final CertificationTypeRepository certificationTypeRepository;
     private final TransactionRepository transactionRepository;
     private final ContractMapper contractMapper;
+    private final AiSubscriptionTierRepository aiTierRepository;
+    private final SponsorTierRepository sponsorTierRepository;
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
@@ -344,6 +346,99 @@ public class EmployeeService {
                 "dates", dates,
                 "activityTrend", loginCounts
         );
+    }
+
+    // AI SUBSCRIPTION TIER
+    public List<AiTierDTO> getAllAiTiers() {
+        return aiTierRepository.findAll().stream().map(tier -> {
+            long count = userRepository.countByAiTierId(tier.getId());
+            return new AiTierDTO(tier.getId(), tier.getLabel(), tier.getDescription(),
+                    tier.getTokenInput(), tier.getTokenOutput(), tier.getPrice(), tier.getUnit(), count);
+        }).toList();
+    }
+
+    @Transactional
+    public AiTierDTO createAiTier(AiTierDTO dto) {
+        AiSubscriptionTier tier = AiSubscriptionTier.builder()
+                .label(dto.label()).description(dto.description())
+                .tokenInput(dto.tokenInput()).tokenOutput(dto.tokenOutput())
+                .price(dto.price()).unit(dto.unit())
+                .createdAt(LocalDate.now()).updatedAt(LocalDate.now())
+                .build();
+        AiSubscriptionTier saved = aiTierRepository.save(tier);
+        return new AiTierDTO(saved.getId(), saved.getLabel(), saved.getDescription(), saved.getTokenInput(), saved.getTokenOutput(), saved.getPrice(), saved.getUnit(), 0L);
+    }
+
+    @Transactional
+    public AiTierDTO updateAiTier(Long id, AiTierDTO dto) {
+        AiSubscriptionTier tier = aiTierRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy gói AI này!"));
+
+        if (dto.label() != null) tier.setLabel(dto.label());
+        if (dto.description() != null) tier.setDescription(dto.description());
+        if (dto.tokenInput() != null) tier.setTokenInput(dto.tokenInput());
+        if (dto.tokenOutput() != null) tier.setTokenOutput(dto.tokenOutput());
+        if (dto.price() != null) tier.setPrice(dto.price());
+        if (dto.unit() != null) tier.setUnit(dto.unit());
+        tier.setUpdatedAt(LocalDate.now());
+
+        AiSubscriptionTier updated = aiTierRepository.save(tier);
+        long count = userRepository.countByAiTierId(id);
+        return new AiTierDTO(updated.getId(), updated.getLabel(), updated.getDescription(), updated.getTokenInput(), updated.getTokenOutput(), updated.getPrice(), updated.getUnit(), count);
+    }
+
+    @Transactional
+    public void deleteAiTier(Long id) {
+        long count = userRepository.countByAiTierId(id);
+        if (count > 0) {
+            throw new RuntimeException("Không thể xóa! Đang có " + count + " người dùng sử dụng gói AI này.");
+        }
+        aiTierRepository.deleteById(id);
+    }
+
+    // SPONSOR TIER
+    public List<SponsorTierDTO> getAllSponsorTiers() {
+        return sponsorTierRepository.findAll().stream().map(tier -> {
+            long count = warehouseRepository.countBySponsorTypeId(tier.getId());
+            return new SponsorTierDTO(tier.getId(), tier.getPriorityLevel(), tier.getPricingPerMonth(),
+                    tier.getYearPackSale(), tier.getLabel(), count);
+        }).toList();
+    }
+
+    @Transactional
+    public SponsorTierDTO createSponsorTier(SponsorTierDTO dto) {
+        SponsorTier tier = SponsorTier.builder()
+                .label(dto.label()).priorityLevel(dto.priorityLevel())
+                .pricingPerMonth(dto.pricingPerMonth()).yearPackSale(dto.yearPackSale())
+                .updatedAt(LocalDate.now())
+                .build();
+        SponsorTier saved = sponsorTierRepository.save(tier);
+        return new SponsorTierDTO(saved.getId(), saved.getPriorityLevel(), saved.getPricingPerMonth(), saved.getYearPackSale(), saved.getLabel(), 0L);
+    }
+
+    @Transactional
+    public SponsorTierDTO updateSponsorTier(Long id, SponsorTierDTO dto) {
+        SponsorTier tier = sponsorTierRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy gói Tài trợ này!"));
+
+        if (dto.label() != null) tier.setLabel(dto.label());
+        if (dto.priorityLevel() != null) tier.setPriorityLevel(dto.priorityLevel());
+        if (dto.pricingPerMonth() != null) tier.setPricingPerMonth(dto.pricingPerMonth());
+        if (dto.yearPackSale() != null) tier.setYearPackSale(dto.yearPackSale());
+        tier.setUpdatedAt(LocalDate.now());
+
+        SponsorTier updated = sponsorTierRepository.save(tier);
+        long count = warehouseRepository.countBySponsorTypeId(id);
+        return new SponsorTierDTO(updated.getId(), updated.getPriorityLevel(), updated.getPricingPerMonth(), updated.getYearPackSale(), updated.getLabel(), count);
+    }
+
+    @Transactional
+    public void deleteSponsorTier(Long id) {
+        long count = warehouseRepository.countBySponsorTypeId(id);
+        if (count > 0) {
+            throw new RuntimeException("Không thể xóa! Đang có " + count + " kho bãi sử dụng gói Tài trợ này.");
+        }
+        sponsorTierRepository.deleteById(id);
     }
 
     private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {
