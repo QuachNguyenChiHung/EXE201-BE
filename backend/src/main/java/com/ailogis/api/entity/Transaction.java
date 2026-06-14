@@ -2,7 +2,7 @@ package com.ailogis.api.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "transactions")
@@ -30,6 +30,12 @@ public class Transaction {
     private String status;
     private String type;
 
-    private LocalDate createdAt;
-    private LocalDate invoiceDate;
+    private LocalDateTime createdAt;
+    private LocalDateTime invoiceDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_warehouse")
+    private Warehouse warehouse;
+
+    private Double amount;
 }

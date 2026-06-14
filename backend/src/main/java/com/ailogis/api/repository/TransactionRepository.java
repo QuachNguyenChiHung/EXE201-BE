@@ -13,4 +13,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     @Query("SELECT SUM(t.sponsor.pricingPerMonth) FROM Transaction t WHERE t.buyer.id = :buyerId AND t.status = 'COMPLETED' AND t.invoiceDate >= :startDate AND t.invoiceDate <= :endDate")
     Double sumSponsorBillingByDateRange(@Param("buyerId") Long buyerId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    List<Transaction> findByStatus(String status);
 }

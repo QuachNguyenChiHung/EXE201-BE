@@ -8,11 +8,13 @@ import com.ailogis.api.enums.VerifyStatus;
 import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +30,8 @@ public class OwnerService {
     private final TransactionRepository transactionRepository;
     private final ContractRepository contractRepository;
     private final ReviewRepository reviewRepository;
+    private final SponsorTierRepository sponsorTierRepository;
+    private final PaymentService paymentService;
 
     public List<WarehouseResponseDTO> getMyWarehouses(Long ownerId) {
         return warehouseRepository.findByOwnerId(ownerId).stream()
@@ -393,5 +397,38 @@ public class OwnerService {
         }
 
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+    }
+
+    // Trong OwnerService.java (Nhớ Inject thêm PaymentService)
+    @Transactional
+    public PaymentResponseDTO buySponsorTier(Long ownerId, Long warehouseId, BuySponsorRequestDTO dto, HttpServletRequest request) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền thao tác trên kho bãi này!");
+        }
+
+        SponsorTier sponsorTier = sponsorTierRepository.findById(dto.sponsorTierId())
+                .orElseThrow(() -> new RuntimeException("Gói tài trợ không tồn tại!"));
+
+        // Tạo Transaction nháp (PENDING)
+        Transaction transaction = Transaction.builder()
+                .buyer(warehouse.getOwner())
+                .warehouse(warehouse) // Lưu thông tin kho bãi cần nâng cấp
+                .sponsor(sponsorTier)
+                .amount(sponsorTier.getPricingPerMonth())
+                .type("SPONSOR_SUBSCRIPTION")
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .invoiceDate(LocalDateTime.now())
+                .build();
+
+        Transaction savedTx = transactionRepository.save(transaction);
+
+        // Sinh link VNPay
+        String paymentUrl = paymentService.createVNPayUrl(savedTx, request);
+
+        return new PaymentResponseDTO(paymentUrl);
     }
 }

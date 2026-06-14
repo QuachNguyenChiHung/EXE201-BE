@@ -126,4 +126,15 @@ public class OwnerController {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto));
     }
+
+    @PostMapping("/warehouses/{id}/sponsor")
+    public ResponseEntity<PaymentResponseDTO> buySponsorTier(
+            @PathVariable Long id,
+            @RequestBody BuySponsorRequestDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            jakarta.servlet.http.HttpServletRequest request) {
+
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.buySponsorTier(ownerId, id, dto, request));
+    }
 }
