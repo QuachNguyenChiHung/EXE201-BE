@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -20,4 +21,9 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     // Cho Owner/Renter
     @Query("SELECT c FROM Contract c WHERE (c.owner.id = :userId OR c.renter.id = :userId) AND (:status IS NULL OR c.status = :status)")
     List<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId, @Param("status") ContractStatus status);
+
+    long countByOwnerIdAndStatus(Long ownerId, ContractStatus status);
+
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.owner.id = :ownerId AND c.status = 'ACTIVE' AND c.endAt <= :dateLimit")
+    long countEndingContracts(@Param("ownerId") Long ownerId, @Param("dateLimit") LocalDate dateLimit);
 }

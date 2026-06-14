@@ -84,4 +84,12 @@ public class OwnerController {
         // Chỉ lấy thông tin và thống kê phục vụ kiểm tra hệ thống, không tăng lượt xem
         return ResponseEntity.ok(warehouseService.getWarehouseById(id));
     }
+
+    @GetMapping("/statistics")
+    public ResponseEntity<OwnerStatisticResponseDTO> getOwnerStatistics(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.getOwnerStatistics(ownerId));
+    }
 }

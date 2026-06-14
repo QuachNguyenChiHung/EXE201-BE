@@ -2,6 +2,7 @@ package com.ailogis.api.service;
 
 import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
+import com.ailogis.api.enums.ContractStatus;
 import com.ailogis.api.enums.RequestStatus;
 import com.ailogis.api.enums.VerifyStatus;
 import com.ailogis.api.enums.WarehouseStatus;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +25,8 @@ public class OwnerService {
     private final RentalRequestRepository requestRepository;
     private final CertificationTypeRepository certificationTypeRepository;
     private final WarehouseMapper warehouseMapper;
+    private final TransactionRepository transactionRepository;
+    private final ContractRepository contractRepository;
 
     public List<WarehouseResponseDTO> getMyWarehouses(Long ownerId) {
         return warehouseRepository.findByOwnerId(ownerId).stream()
@@ -148,5 +152,61 @@ public class OwnerService {
         }
 
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+    }
+
+    public OwnerStatisticResponseDTO getOwnerStatistics(Long ownerId) {
+        // 1. Thống kê Kho bãi & Sức chứa
+        List<Warehouse> warehouses = warehouseRepository.findByOwnerId(ownerId);
+        long totalWarehouses = warehouses.size();
+
+        double totalCapacity = 0.0;
+        double totalAvailable = 0.0;
+
+        for (Warehouse w : warehouses) {
+            for (WarehouseSection s : w.getSections()) {
+                totalCapacity += s.getTotalCapacity() != null ? s.getTotalCapacity() : 0;
+                totalAvailable += s.getAvailableCapacity() != null ? s.getAvailableCapacity() : 0;
+            }
+        }
+
+        // Tỷ lệ lấp đầy = (Tổng chứa - Trống) / Tổng chứa * 100
+        double occupancyRate = 0.0;
+        if (totalCapacity > 0) {
+            occupancyRate = ((totalCapacity - totalAvailable) / totalCapacity) * 100.0;
+        }
+
+        // 2. Thống kê Request (Chỉ đếm các Request Pending tạo/cập nhật trong 30 ngày gần đây)
+        LocalDate thirtyDaysAgo = LocalDate.now().minusDays(30);
+        long pendingRequests = requestRepository.countPendingRequestsByOwner(ownerId, thirtyDaysAgo);
+
+        // 3. Thống kê Contract
+        long activeContracts = contractRepository.countByOwnerIdAndStatus(
+                ownerId,
+                ContractStatus.ACTIVE
+        );
+
+        LocalDate thirtyDaysFromNow = LocalDate.now().plusDays(30);
+        long endingContracts = contractRepository.countEndingContracts(ownerId, thirtyDaysFromNow);
+
+        // 4. Thống kê Billing (Tổng tiền mua Sponsor trong tháng hiện tại)
+        LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+        LocalDate endOfMonth = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+
+        Double billing = transactionRepository.sumSponsorBillingByDateRange(
+                ownerId,
+                startOfMonth,
+                endOfMonth
+        );
+
+        return new OwnerStatisticResponseDTO(
+                totalWarehouses,
+                totalCapacity,
+                totalAvailable,
+                Math.round(occupancyRate * 100.0) / 100.0,
+                pendingRequests,
+                activeContracts,
+                billing != null ? billing : 0.0,
+                endingContracts
+        );
     }
 }
