@@ -281,7 +281,7 @@ public class EmployeeService {
         String aiPlan = user.getAiTier() != null ? user.getAiTier().getLabel() : "Chưa đăng ký";
 
         // 1. Lấy Requests
-        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByRenterId(userId).stream()
+        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByRenterIdWithFilter(userId, null).stream()
                 .map(r -> new RentRequestResponseDTO(
                         r.getId(),
                         r.getWarehouse().getName(),
@@ -328,7 +328,7 @@ public class EmployeeService {
 
         List<WarehouseResponseDTO> warehouses = warehouseRepository.findByOwnerId(userId).stream().map(warehouseMapper::toWarehouseResponseDTO).toList();
 
-        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByWarehouseOwnerId(userId).stream()
+        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByWarehouseOwnerIdWithFilter(userId, null).stream()
                 .map(r -> new RentRequestResponseDTO(
                         r.getId(),
                         r.getWarehouse().getName(),

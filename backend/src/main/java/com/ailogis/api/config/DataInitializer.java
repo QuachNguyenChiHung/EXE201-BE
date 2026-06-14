@@ -133,7 +133,7 @@ public class DataInitializer implements CommandLineRunner {
                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 500.0, "m3"))); // Thuê 500 m3
 
         RentRequestResponseDTO req1Res = rentalRequestService.createRequest(renter1.getId(), req1Dto);
-        ownerService.updateRequestStatus(owner1.getId(), req1Res.id(), RequestStatus.APPROVED);
+        ownerService.updateRequestStatus(owner1.getId(), req1Res.id(), new RequestStatusUpdateDTO(RequestStatus.APPROVED, null, null, "Đồng ý cho thuê giá gốc"));
 
         ContractResponseDTO c1Res = contractService.createContract(owner1.getId(), new ContractCreateDTO(req1Res.id(), (long) (500.0 * 260000.0 * 6)));
 
@@ -144,7 +144,7 @@ public class DataInitializer implements CommandLineRunner {
                 List.of(new RentRequestDetailCreateDTO(sec2Id, pt2Id, 1.0, "sector"))); // Thuê 1 sector
 
         RentRequestResponseDTO req2Res = rentalRequestService.createRequest(renter2.getId(), req2Dto);
-        ownerService.updateRequestStatus(owner2.getId(), req2Res.id(), RequestStatus.APPROVED);
+        ownerService.updateRequestStatus(owner2.getId(), req2Res.id(), new RequestStatusUpdateDTO(RequestStatus.APPROVED, null, null, "Kho lạnh Tân Bình xác nhận yêu cầu."));
 
         // Renter 3 gửi yêu cầu thuê Kho 1 nhưng Owner chưa duyệt
         RentRequestCreateDTO req3Dto = new RentRequestCreateDTO(wh1Entity.getId(), "Thịt bò Kobe nhập khẩu đông lạnh", null, 3, "Tháng",

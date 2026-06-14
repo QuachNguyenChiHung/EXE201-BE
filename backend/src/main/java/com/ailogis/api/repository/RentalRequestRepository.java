@@ -11,8 +11,12 @@ import java.time.LocalDate;
 import java.util.List;
 @Repository
 public interface RentalRequestRepository extends JpaRepository<RentalRequest, Long> {
-    List<RentalRequest> findByRenterId(Long renterId);
-    List<RentalRequest> findByWarehouseOwnerId(Long ownerId);
+    @Query("SELECT r FROM RentalRequest r WHERE r.renter.id = :renterId AND (:status IS NULL OR r.status = :status)")
+    List<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId, @Param("status") RequestStatus status);
+
+    @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.owner.id = :ownerId AND (:status IS NULL OR r.status = :status)")
+    List<RentalRequest> findByWarehouseOwnerIdWithFilter(@Param("ownerId") Long ownerId, @Param("status") RequestStatus status);
+
     long countByStatus(RequestStatus status);
 
     @Query("SELECT COUNT(r) FROM RentalRequest r WHERE r.warehouse.owner.id = :ownerId AND r.status = 'PENDING' AND r.updatedAt >= :dateLimit")

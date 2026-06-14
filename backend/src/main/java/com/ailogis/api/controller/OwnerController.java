@@ -34,10 +34,11 @@ public class OwnerController {
     // 2. Xem các đơn yêu cầu thuê gửi tới các kho của mình
     @GetMapping("/requests")
     public ResponseEntity<List<RentRequestResponseDTO>> getIncomingRequests(
+            @RequestParam(required = false) String status,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.getRequestsForMyWarehouses(ownerId));
+        return ResponseEntity.ok(ownerService.getRequestsForMyWarehouses(ownerId, status));
     }
 
     // 3. Duyệt hoặc từ chối đơn thuê
@@ -48,7 +49,7 @@ public class OwnerController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.updateRequestStatus(ownerId, requestId, dto.status()));
+        return ResponseEntity.ok(ownerService.updateRequestStatus(ownerId, requestId, dto));
     }
 
     // 4. Tạo kho bãi mới gắn thẳng vào ID của Chủ kho đang đăng nhập

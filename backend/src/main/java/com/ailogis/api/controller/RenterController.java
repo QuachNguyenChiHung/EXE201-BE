@@ -29,10 +29,11 @@ public class RenterController {
 
     @GetMapping("/requests")
     public ResponseEntity<List<RentRequestResponseDTO>> getMyRequests(
+            @RequestParam(required = false) String status,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long renterId = userDetails.getUser().getId();
-        return ResponseEntity.ok(requestService.getRequestsByRenter(renterId));
+        return ResponseEntity.ok(requestService.getRequestsByRenter(renterId, status));
     }
 
     @PatchMapping("/requests/{id}/cancel")

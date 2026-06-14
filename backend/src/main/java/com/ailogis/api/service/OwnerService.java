@@ -35,15 +35,22 @@ public class OwnerService {
                 .toList();
     }
 
-    public List<RentRequestResponseDTO> getRequestsForMyWarehouses(Long ownerId) {
-        return requestRepository.findAll().stream()
-                .filter(req -> req.getWarehouse().getOwner().getId().equals(ownerId))
+    public List<RentRequestResponseDTO> getRequestsForMyWarehouses(Long ownerId, String statusStr) {
+        com.ailogis.api.enums.RequestStatus statusEnum = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                statusEnum = com.ailogis.api.enums.RequestStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái Request không hợp lệ!");
+            }
+        }
+        return requestRepository.findByWarehouseOwnerIdWithFilter(ownerId, statusEnum).stream()
                 .map(this::mapToRequestDTO)
                 .toList();
     }
 
     @Transactional
-    public RentRequestResponseDTO updateRequestStatus(Long ownerId, Long requestId, RequestStatus newStatus) {
+    public RentRequestResponseDTO updateRequestStatus(Long ownerId, Long requestId, RequestStatusUpdateDTO dto) {
         RentalRequest request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê này"));
 
@@ -51,7 +58,26 @@ public class OwnerService {
             throw new RuntimeException("Bạn không có quyền thao tác trên yêu cầu của kho này!");
         }
 
-        request.setStatus(newStatus);
+        // Cập nhật trạng thái
+        if (dto.status() != null) {
+            request.setStatus(dto.status());
+        }
+
+        // Cập nhật lý do từ chối
+        if (dto.status() == RequestStatus.REJECTED && dto.rejectionReason() != null) {
+            request.setRejectionReason(dto.rejectionReason());
+        }
+
+        // Cập nhật giá thương lượng
+        if (dto.offeredPrice() != null) {
+            request.setOfferedPrice(dto.offeredPrice());
+        }
+
+        // Lời nhắn của Owner
+        if (dto.ownerNote() != null) {
+            request.setOwnerNote(dto.ownerNote());
+        }
+
         return mapToRequestDTO(requestRepository.save(request));
     }
 

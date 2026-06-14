@@ -51,8 +51,16 @@ public class RentalRequestService {
         return mapToResponseDTO(requestRepository.save(request));
     }
 
-    public List<RentRequestResponseDTO> getRequestsByRenter(Long renterId) {
-        return requestRepository.findByRenterId(renterId).stream().map(this::mapToResponseDTO).toList();
+    public List<RentRequestResponseDTO> getRequestsByRenter(Long renterId, String statusStr) {
+        com.ailogis.api.enums.RequestStatus statusEnum = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                statusEnum = com.ailogis.api.enums.RequestStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái Request không hợp lệ!");
+            }
+        }
+        return requestRepository.findByRenterIdWithFilter(renterId, statusEnum).stream().map(this::mapToResponseDTO).toList();
     }
 
     private RentRequestResponseDTO mapToResponseDTO(RentalRequest r) {
