@@ -92,4 +92,12 @@ public class OwnerController {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.getOwnerStatistics(ownerId));
     }
+
+    @GetMapping("/warehouses/{id}/ratings")
+    public ResponseEntity<WarehouseRatingResponseDTO> getMyWarehouseRatings(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.getWarehouseRatings(ownerId, id));
+    }
 }

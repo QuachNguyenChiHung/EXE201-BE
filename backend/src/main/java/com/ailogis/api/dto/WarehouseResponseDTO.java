@@ -14,5 +14,6 @@ public record WarehouseResponseDTO(
         List<WarehouseImageDTO> images,
         List<CertificationSubmitDTO> certificates,
         String status,
-        Map<String, Long>viewCountByDate
+        Map<String, Long>viewCountByDate,
+        Long pendingRequestCount
 ) {}

@@ -27,6 +27,7 @@ public class OwnerService {
     private final WarehouseMapper warehouseMapper;
     private final TransactionRepository transactionRepository;
     private final ContractRepository contractRepository;
+    private final ReviewRepository reviewRepository;
 
     public List<WarehouseResponseDTO> getMyWarehouses(Long ownerId) {
         return warehouseRepository.findByOwnerId(ownerId).stream()
@@ -207,6 +208,32 @@ public class OwnerService {
                 activeContracts,
                 billing != null ? billing : 0.0,
                 endingContracts
+        );
+    }
+
+    public WarehouseRatingResponseDTO getWarehouseRatings(Long ownerId, Long warehouseId) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền xem thống kê đánh giá của kho này!");
+        }
+
+        List<Review> reviews = reviewRepository.findByWarehouseId(warehouseId);
+
+        double avg = reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
+
+        List<ReviewResponseDTO> dtos = reviews.stream().map(r -> new ReviewResponseDTO(
+                r.getId(),
+                r.getUser() != null ? r.getUser().getFullName() : "Khách hàng ẩn danh",
+                r.getRating(),
+                r.getComment()
+        )).toList();
+
+        return new WarehouseRatingResponseDTO(
+                Math.round(avg * 10.0) / 10.0,
+                reviews.size(),
+                dtos
         );
     }
 }

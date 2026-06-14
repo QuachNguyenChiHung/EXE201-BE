@@ -26,4 +26,7 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     @Query("SELECT COUNT(c) FROM Contract c WHERE c.owner.id = :ownerId AND c.status = 'ACTIVE' AND c.endAt <= :dateLimit")
     long countEndingContracts(@Param("ownerId") Long ownerId, @Param("dateLimit") LocalDate dateLimit);
+
+    @Query("SELECT SUM(d.rentedArea) FROM Contract c JOIN c.request r JOIN r.details d WHERE d.section.id = :sectionId AND c.status = 'ACTIVE'")
+    Double sumActiveRentedAreaBySection(@Param("sectionId") Long sectionId);
 }
