@@ -179,27 +179,31 @@ public class EmployeeService {
 
     @Transactional
     public CertificationSubmitDTO reviewWarehouseCertification(Long submitId, CertReviewDTO dto) {
-        // 1. Tìm hồ sơ chứng chỉ đã nộp
         CertificationSubmit submit = certificationSubmitRepository.findById(submitId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dữ liệu yêu cầu chứng chỉ này!"));
 
-        // 2. Cập nhật trạng thái duyệt
-        submit.setIsVerified(dto.isVerified());
+        VerifyStatus newStatus = com.ailogis.api.enums.VerifyStatus.valueOf(dto.status().toUpperCase());
+        submit.setStatus(newStatus);
 
-        // 3. Nếu duyệt hợp lệ và có truyền typeId, tiến hành gán loại chứng chỉ chuẩn
-        if (Boolean.TRUE.equals(dto.isVerified()) && dto.typeId() != null) {
-            CertificationType type = certificationTypeRepository.findById(dto.typeId())
-                    .orElseThrow(() -> new RuntimeException("Loại chứng chỉ chỉ định không tồn tại trong hệ thống!"));
-            submit.setType(type);
+        if (newStatus == com.ailogis.api.enums.VerifyStatus.REJECTED) {
+            submit.setRejectReason(dto.rejectReason());
+        } else if (newStatus == com.ailogis.api.enums.VerifyStatus.VERIFIED) {
+            submit.setRejectReason(null);
+            // Chỉ yêu cầu typeId khi duyệt thành công
+            if (dto.typeId() != null) {
+                CertificationType type = certificationTypeRepository.findById(dto.typeId())
+                        .orElseThrow(() -> new RuntimeException("Loại chứng chỉ không tồn tại!"));
+                submit.setType(type);
+            }
         }
 
-        // 4. Lưu lại và trả về DTO
         CertificationSubmit saved = certificationSubmitRepository.save(submit);
         return new CertificationSubmitDTO(
                 saved.getId(),
                 saved.getType() != null ? saved.getType().getLabel() : "Chưa phân loại",
                 saved.getLink(),
-                saved.getIsVerified()
+                saved.getStatus().name(),
+                saved.getRejectReason()
         );
     }
 
@@ -278,7 +282,20 @@ public class EmployeeService {
 
         // 1. Lấy Requests
         List<RentRequestResponseDTO> requests = rentalRequestRepository.findByRenterId(userId).stream()
-                .map(r -> new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), List.of())).toList();
+                .map(r -> new RentRequestResponseDTO(
+                        r.getId(),
+                        r.getWarehouse().getName(),
+                        r.getCargoDescription(),
+                        r.getDuration(),
+                        r.getDurationUnit(),
+                        r.getStatus().name(),
+                        r.getOtherDetail(),
+                        r.getRenterRejectionReason(),
+                        r.getRejectionReason(),
+                        r.getOfferedPrice(),
+                        r.getOwnerNote(),
+                        List.of()
+                )).toList();
 
         // 2. Lấy Contracts
         List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
@@ -312,7 +329,20 @@ public class EmployeeService {
         List<WarehouseResponseDTO> warehouses = warehouseRepository.findByOwnerId(userId).stream().map(warehouseMapper::toWarehouseResponseDTO).toList();
 
         List<RentRequestResponseDTO> requests = rentalRequestRepository.findByWarehouseOwnerId(userId).stream()
-                .map(r -> new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), List.of())).toList();
+                .map(r -> new RentRequestResponseDTO(
+                        r.getId(),
+                        r.getWarehouse().getName(),
+                        r.getCargoDescription(),
+                        r.getDuration(),
+                        r.getDurationUnit(),
+                        r.getStatus().name(),
+                        r.getOtherDetail(),
+                        r.getRenterRejectionReason(),
+                        r.getRejectionReason(),
+                        r.getOfferedPrice(),
+                        r.getOwnerNote(),
+                        List.of()
+                )).toList();
 
         List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
                 .filter(c -> c.getOwner().getId().equals(userId))
@@ -493,7 +523,13 @@ public class EmployeeService {
 
         List<CertificationSubmitDTO> certs = w.getCertificationSubmits() != null ?
                 w.getCertificationSubmits().stream().map(c ->
-                        new CertificationSubmitDTO(c.getId(), c.getType().getLabel(), c.getLink(), c.getIsVerified())
+                        new CertificationSubmitDTO(
+                                c.getId(),
+                                c.getType() != null ? c.getType().getLabel() : "Chưa phân loại",
+                                c.getLink(),
+                                c.getStatus() != null ? c.getStatus().name() : "PENDING",
+                                c.getRejectReason()
+                        )
                 ).toList() : List.of();
 
         return new WarehouseEmployeeDTO(

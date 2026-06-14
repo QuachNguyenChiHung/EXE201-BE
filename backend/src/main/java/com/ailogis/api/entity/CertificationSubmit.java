@@ -1,5 +1,6 @@
 package com.ailogis.api.entity;
 
+import com.ailogis.api.enums.VerifyStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,5 +25,11 @@ public class CertificationSubmit {
     private CertificationType type;
 
     private String link; // URL file PDF
-    private Boolean isVerified;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private VerifyStatus status = VerifyStatus.PENDING;
+
+    @Column(columnDefinition = "TEXT")
+    private String rejectReason;
 }

@@ -3,6 +3,7 @@ package com.ailogis.api.config;
 import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.RequestStatus;
+import com.ailogis.api.enums.VerifyStatus;
 import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.repository.*;
 import com.ailogis.api.service.*;
@@ -107,17 +108,17 @@ public class DataInitializer implements CommandLineRunner {
 
         // Nạp thủ công link chứng nhận vì luồng DTO chưa support trực tiếp nhiều file PDF
         Warehouse wh1Entity = warehouseRepository.findById(wh1Res.id()).get();
-        wh1Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh1Entity).type(iso9001).link(HACCP_link).isVerified(true).build());
+        wh1Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh1Entity).type(iso9001).link(HACCP_link).status(VerifyStatus.VERIFIED).build());
         wh1Entity.setIsSponsor(true);
         warehouseRepository.save(wh1Entity);
 
         Warehouse wh2Entity = warehouseRepository.findById(wh2Res.id()).get();
-        wh2Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh2Entity).type(haccp).link(ISO9001_link).isVerified(true).build());
+        wh2Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh2Entity).type(haccp).link(ISO9001_link).status(VerifyStatus.VERIFIED).build());
         warehouseRepository.save(wh2Entity);
 
         Warehouse wh3Entity = warehouseRepository.findById(wh3Res.id()).get();
-        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(haccp).link(HACCP_link).isVerified(false).build());
-        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(haccp).link(ISO9001_link).isVerified(true).build());
+        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(haccp).link(HACCP_link).status(VerifyStatus.REJECTED).rejectReason("Đã hêt hạn").build());
+        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(haccp).link(ISO9001_link).status(VerifyStatus.PENDING).build());
         warehouseRepository.save(wh2Entity);
 
         // =================================================================

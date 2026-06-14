@@ -9,5 +9,11 @@ public record RentRequestResponseDTO(
         Integer duration,
         String durationUnit,
         String status,
+        String otherDetail,
+        String renterRejectionReason,
+        String rejectionReason,
+        Double offeredPrice,
+        String ownerNote,
+
         List<RentRequestDetailResponseDTO> details
 ) {}

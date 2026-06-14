@@ -25,7 +25,7 @@ public class SharedResourceController {
     private final WarehouseService warehouseService;
 
     // View Chi tiết Request (Áp dụng verify)
-        @GetMapping("/requests/{id}")
+    @GetMapping("/requests/{id}")
     public ResponseEntity<RentRequestResponseDTO> getRequestDetail(
             @PathVariable Long id,
             @AuthenticationPrincipal CustomUserDetails userDetails) {

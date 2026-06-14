@@ -3,6 +3,7 @@ package com.ailogis.api.service;
 import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.RequestStatus;
+import com.ailogis.api.enums.VerifyStatus;
 import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
@@ -53,7 +54,20 @@ public class OwnerService {
         List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().map(d ->
                 new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit())
         ).toList();
-        return new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(), detailDTOs);
+        return new RentRequestResponseDTO(
+                r.getId(),
+                r.getWarehouse().getName(),
+                r.getCargoDescription(),
+                r.getDuration(),
+                r.getDurationUnit(),
+                r.getStatus().name(),
+                r.getOtherDetail(),
+                r.getRenterRejectionReason(),
+                r.getRejectionReason(),
+                r.getOfferedPrice(),
+                r.getOwnerNote(),
+                detailDTOs
+        );
     }
 
     @Transactional
@@ -129,7 +143,7 @@ public class OwnerService {
                     .warehouse(warehouse)
                     .type(type)
                     .link(certificateUrl)
-                    .isVerified(false)
+                    .status(VerifyStatus.PENDING)
                     .build());
         }
 

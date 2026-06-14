@@ -33,7 +33,13 @@ public class WarehouseMapper {
         // 3. Map Certifications
         List<CertificationSubmitDTO> certDTOs = w.getCertificationSubmits() != null ?
                 w.getCertificationSubmits().stream().map(c ->
-                        new CertificationSubmitDTO(c.getId(), c.getType() != null ? c.getType().getLabel() : "Chưa phân loại", c.getLink(), c.getIsVerified())
+                        new CertificationSubmitDTO(
+                                c.getId(),
+                                c.getType() != null ? c.getType().getLabel() : "Chưa phân loại",
+                                c.getLink(),
+                                c.getStatus() != null ? c.getStatus().name() : "PENDING",
+                                c.getRejectReason()
+                        )
                 ).toList() : List.of();
 
         // 4. Lấy thống kê lượt xem từ Repository

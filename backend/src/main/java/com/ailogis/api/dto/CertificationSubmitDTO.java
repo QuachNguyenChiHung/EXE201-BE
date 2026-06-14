@@ -4,5 +4,6 @@ public record CertificationSubmitDTO(
         Long id,
         String label,
         String link,
-        Boolean isVerified
+        String status,
+        String rejectReason
 ) {}
