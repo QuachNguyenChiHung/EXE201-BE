@@ -117,4 +117,13 @@ public class OwnerController {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.reactivateWarehouse(ownerId, id));
     }
+
+    @PutMapping("/warehouses/{id}")
+    public ResponseEntity<WarehouseResponseDTO> updateWarehouse(
+            @PathVariable Long id,
+            @RequestBody WarehouseUpdateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto));
+    }
 }

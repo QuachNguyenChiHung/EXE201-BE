@@ -312,4 +312,86 @@ public class OwnerService {
 
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
     }
+
+    @Transactional
+    public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền thao tác trên kho này!");
+        }
+
+        // 1. Cập nhật thông tin cơ bản
+        if (dto.name() != null) warehouse.setName(dto.name());
+        if (dto.description() != null) warehouse.setDescription(dto.description());
+        if (dto.locationAddressText() != null) warehouse.setLocationAddressText(dto.locationAddressText());
+        if (dto.locationProvince() != null) warehouse.setLocationProvince(dto.locationProvince());
+        if (dto.locationCommune() != null) warehouse.setLocationCommune(dto.locationCommune());
+
+        // 2. Cập nhật Sections và PriceTiers
+        if (dto.sections() != null && !dto.sections().isEmpty()) {
+            for (WarehouseSectionUpdateDTO secDto : dto.sections()) {
+                WarehouseSection section;
+
+                if (secDto.id() != null) {
+                    // Trạng thái Update phòng cũ
+                    section = warehouse.getSections().stream()
+                            .filter(s -> s.getId().equals(secDto.id()))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("Không tìm thấy phân khu với ID: " + secDto.id()));
+
+                    if (secDto.totalCapacity() != null) section.setTotalCapacity(secDto.totalCapacity());
+                    if (secDto.tempMin() != null) section.setTempMin(secDto.tempMin());
+                    if (secDto.tempMax() != null) section.setTempMax(secDto.tempMax());
+                    if (secDto.humidity() != null) section.setHumidity(secDto.humidity());
+                    if (secDto.hasCertification() != null) section.setHasCertification(secDto.hasCertification());
+
+                    // Price tier versioning
+                    if (secDto.priceTiers() != null && !secDto.priceTiers().isEmpty()) {
+                        // Ẩn (Vô hiệu hóa) toàn bộ giá cũ đang active của phòng này
+                        section.getPriceTiers().forEach(pt -> pt.setIsActive(false));
+
+                        // Thêm danh sách giá mới vào
+                        List<PriceTier> newTiers = secDto.priceTiers().stream().map(ptDto ->
+                                PriceTier.builder()
+                                        .section(section)
+                                        .label(ptDto.label())
+                                        .value(ptDto.value())
+                                        .unit(ptDto.unit())
+                                        .areaUnit(ptDto.areaUnit())
+                                        .isActive(true) // Giá mới được active
+                                        .build()
+                        ).toList();
+                        section.getPriceTiers().addAll(newTiers);
+                    }
+                } else {
+                    // Trạng thái Thêm phòng hoàn toàn mới
+                    section = WarehouseSection.builder()
+                            .warehouse(warehouse)
+                            .sector(secDto.sector())
+                            .totalCapacity(secDto.totalCapacity())
+                            .availableCapacity(secDto.totalCapacity())
+                            .tempMin(secDto.tempMin())
+                            .tempMax(secDto.tempMax())
+                            .humidity(secDto.humidity())
+                            .hasCertification(secDto.hasCertification())
+                            .priceTiers(new java.util.ArrayList<>())
+                            .build();
+
+                    if (secDto.priceTiers() != null) {
+                        List<PriceTier> newTiers = secDto.priceTiers().stream().map(ptDto ->
+                                PriceTier.builder()
+                                        .section(section).label(ptDto.label()).value(ptDto.value())
+                                        .unit(ptDto.unit()).areaUnit(ptDto.areaUnit()).isActive(true).build()
+                        ).toList();
+                        section.getPriceTiers().addAll(newTiers);
+                    }
+                    warehouse.getSections().add(section);
+                }
+            }
+        }
+
+        return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+    }
 }
