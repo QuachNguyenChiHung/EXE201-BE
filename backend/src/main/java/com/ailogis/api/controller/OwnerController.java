@@ -109,4 +109,12 @@ public class OwnerController {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.deleteWarehouse(ownerId, id));
     }
+
+    @PatchMapping("/warehouses/{id}/active")
+    public ResponseEntity<WarehouseResponseDTO> reactivateWarehouse(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.reactivateWarehouse(ownerId, id));
+    }
 }

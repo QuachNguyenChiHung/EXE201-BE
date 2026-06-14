@@ -289,4 +289,27 @@ public class OwnerService {
 
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
     }
+
+    @Transactional
+    public WarehouseResponseDTO reactivateWarehouse(Long ownerId, Long warehouseId) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền thao tác trên kho bãi này!");
+        }
+
+        if (warehouse.getStatus() != com.ailogis.api.enums.WarehouseStatus.INACTIVE) {
+            throw new RuntimeException("Kho bãi này không ở trạng thái ngừng hoạt động, không thể kích hoạt lại!");
+        }
+
+        // Kiểm tra xem kho có đang bị full bởi các hợp đồng cũ không
+        boolean isFull = warehouse.getSections() != null && !warehouse.getSections().isEmpty() &&
+                warehouse.getSections().stream().allMatch(s -> s.getAvailableCapacity() != null && s.getAvailableCapacity() <= 0);
+
+        // Nếu full thì chuyển sang RENTED, nếu còn trống thì ACTIVE
+        warehouse.setStatus(isFull ? com.ailogis.api.enums.WarehouseStatus.RENTED : com.ailogis.api.enums.WarehouseStatus.ACTIVE);
+
+        return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+    }
 }
