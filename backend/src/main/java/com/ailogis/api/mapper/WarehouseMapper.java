@@ -41,7 +41,9 @@ public class WarehouseMapper {
                     s.getTempMax(),
                     s.getHumidity(),
                     s.getHasCertification(),
-                    s.getPriceTiers() != null ? s.getPriceTiers().stream().map(p -> new PriceTierDTO(p.getLabel(), p.getValue(), p.getUnit(), p.getAreaUnit())).toList() : List.of()
+                    s.getPriceTiers() != null ? s.getPriceTiers().stream()
+                            .filter(p -> p.getIsActive() == null || p.getIsActive())
+                            .map(p -> new PriceTierDTO(p.getLabel(), p.getValue(), p.getUnit(), p.getAreaUnit())).toList() : List.of()
             );
         }).toList() : List.of();
 

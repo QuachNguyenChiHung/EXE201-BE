@@ -23,4 +23,6 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
     long countPendingRequestsByOwner(@Param("ownerId") Long ownerId, @Param("dateLimit") LocalDate dateLimit);
 
     long countByWarehouseIdAndStatus(Long warehouseId, RequestStatus status);
+
+    List<RentalRequest> findByWarehouseIdAndStatus(Long warehouseId, RequestStatus status);
 }

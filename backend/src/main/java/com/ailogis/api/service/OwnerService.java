@@ -262,4 +262,31 @@ public class OwnerService {
                 dtos
         );
     }
+
+    @Transactional
+    public WarehouseResponseDTO deleteWarehouse(Long ownerId, Long warehouseId) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền thao tác trên kho bãi này!");
+        }
+
+        if (warehouse.getStatus() == WarehouseStatus.INACTIVE) {
+            throw new RuntimeException("Kho bãi này đã ở trạng thái ngừng hoạt động từ trước!");
+        }
+
+        warehouse.setStatus(WarehouseStatus.INACTIVE);
+
+        List<RentalRequest> pendingRequests = requestRepository.findByWarehouseIdAndStatus(warehouseId, RequestStatus.PENDING);
+        for (RentalRequest req : pendingRequests) {
+            req.setStatus(RequestStatus.REJECTED);
+            req.setRejectionReason("Hệ thống tự động hủy: Kho bãi đã ngừng hoạt động hoặc bị chủ kho gỡ bỏ.");
+        }
+        if (!pendingRequests.isEmpty()) {
+            requestRepository.saveAll(pendingRequests);
+        }
+
+        return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+    }
 }

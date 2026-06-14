@@ -23,4 +23,7 @@ public class PriceTier {
     private Double value; // VD: 200000
     private String unit; // VD: "VND"
     private String areaUnit; // VD: "m3", "tấn"
+
+    @Builder.Default
+    private Boolean isActive = true;
 }

@@ -26,6 +26,11 @@ public class RentalRequestService {
         User renter = userRepository.findById(renterId).orElseThrow(() -> new RuntimeException("Renter không tồn tại"));
         Warehouse warehouse = warehouseRepository.findById(dto.warehouseId()).orElseThrow(() -> new RuntimeException("Kho không tồn tại"));
 
+        if (warehouse.getStatus() == com.ailogis.api.enums.WarehouseStatus.INACTIVE ||
+                warehouse.getStatus() == com.ailogis.api.enums.WarehouseStatus.REJECTED) {
+            throw new RuntimeException("Kho bãi này hiện không hoạt động, không thể tạo yêu cầu thuê mới!");
+        }
+
         RentalRequest request = RentalRequest.builder()
                 .renter(renter).warehouse(warehouse).cargoDescription(dto.cargoDescription())
                 .otherDetail(dto.otherDetail()).duration(dto.duration()).durationUnit(dto.durationUnit())
