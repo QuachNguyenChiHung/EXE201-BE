@@ -83,7 +83,9 @@ public class EmployeeService {
 
         Map<String, Long> contractsByStatus = Map.of(
                 "active", contractRepository.countByStatus(ContractStatus.ACTIVE),
-                "ended", contractRepository.countByStatus(ContractStatus.COMPLETED)
+                "ended", contractRepository.countByStatus(ContractStatus.COMPLETED),
+                "pending", contractRepository.countByStatus(ContractStatus.PENDING),
+                "canceled", contractRepository.countByStatus(ContractStatus.CANCELED)
         );
 
         return new StatisticResponseDTO(totalUsers, usersByRole, warehousesByStatus, rentRequestsByStatus, contractsByStatus);

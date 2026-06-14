@@ -19,10 +19,14 @@ public class Contract {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_owner", nullable = false)
     private User owner;
+    @Builder.Default
+    private Boolean ownerSigned = false; // Xác nhận đã chủ kho đã xem và đồng ý với hợp đồng
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_renter", nullable = false)
     private User renter;
+    @Builder.Default
+    private Boolean renterSigned = false; // Xác nhận đã khách thuê đã xem và đồng ý với hợp đồng
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_rent_request", nullable = false, unique = true)
@@ -60,5 +64,8 @@ public class Contract {
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
-    private ContractStatus status = ContractStatus.ACTIVE;
+    private ContractStatus status = ContractStatus.PENDING;
+
+    @Column(name = "parent_contract_id")
+    private Long parentContractId; // Trỏ về ID của hợp đồng cũ nếu đây là bản sửa đổi (Amendment)
 }

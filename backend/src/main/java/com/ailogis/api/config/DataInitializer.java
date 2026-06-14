@@ -156,10 +156,16 @@ public class DataInitializer implements CommandLineRunner {
         // Fake lùi ngày ký hợp đồng vào quá khứ để test biểu đồ/thống kê
         Contract contract1 = contractRepository.findById(c1Res.id()).get();
         contract1.setStartAt(LocalDate.now().minusDays(15));
+        contract1.setStatus(com.ailogis.api.enums.ContractStatus.ACTIVE);
+        contract1.setOwnerSigned(true);
+        contract1.setRenterSigned(true);
         contractRepository.save(contract1);
 
         Contract contract2 = contractRepository.findById(c2Res.id()).get();
         contract2.setStartAt(LocalDate.now().minusDays(5));
+        contract2.setStatus(com.ailogis.api.enums.ContractStatus.ACTIVE);
+        contract2.setOwnerSigned(true);
+        contract2.setRenterSigned(true);
         contractRepository.save(contract2);
 
         // =================================================================
