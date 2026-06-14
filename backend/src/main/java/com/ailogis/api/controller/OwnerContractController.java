@@ -1,5 +1,6 @@
 package com.ailogis.api.controller;
 
+import com.ailogis.api.dto.ContractAmendDTO;
 import com.ailogis.api.dto.ContractCreateDTO;
 import com.ailogis.api.dto.ContractResponseDTO;
 import com.ailogis.api.security.CustomUserDetails;
@@ -34,5 +35,15 @@ public class OwnerContractController {
 
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(contractService.updateContractStatus(ownerId, contractId, status));
+    }
+
+    @PostMapping("/{id}/amend")
+    public ResponseEntity<ContractResponseDTO> amendContract(
+            @PathVariable Long id,
+            @RequestBody ContractAmendDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(contractService.amendContract(ownerId, id, dto));
     }
 }

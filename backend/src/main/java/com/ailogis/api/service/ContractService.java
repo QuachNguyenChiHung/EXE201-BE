@@ -1,5 +1,6 @@
 package com.ailogis.api.service;
 
+import com.ailogis.api.dto.ContractAmendDTO;
 import com.ailogis.api.dto.ContractCreateDTO;
 import com.ailogis.api.dto.ContractResponseDTO;
 import com.ailogis.api.entity.*;
@@ -68,6 +69,8 @@ public class ContractService {
                 .renterTaxCode(renter.getCompany() != null ? renter.getCompany().getCompanyTaxCode() : "N/A")
                 .renterEmail(renter.getEmail())
                 .renterPhone(renter.getPhone())
+                .ownerSigned(true)
+                .renterSigned(false)
                 .status(ContractStatus.ACTIVE)
                 .build();
 
@@ -87,19 +90,26 @@ public class ContractService {
         }
 
         if (contract.getStatus() == newStatus) {
-            return mapToResponseDTO(contract);
+            return contractMapper.toContractResponseDTO(contract);
         }
 
         if (contract.getStatus() == ContractStatus.CANCELED || contract.getStatus() == ContractStatus.COMPLETED) {
             throw new RuntimeException("Hợp đồng đã kết thúc hoặc bị hủy, không thể thay đổi trạng thái!");
         }
 
-        if (newStatus == ContractStatus.CANCELED || newStatus == ContractStatus.COMPLETED) {
-            if (contract.getStatus() == ContractStatus.ACTIVE) {
-                for (RentRequestDetail detail : contract.getRequest().getDetails()) {
-                    WarehouseSection section = detail.getSection();
-                    section.setAvailableCapacity(section.getAvailableCapacity() + detail.getRentedArea());
-                    sectionRepository.save(section);
+        // BẢO VỆ DỮ LIỆU: Nếu đổi sang ACTIVE, phải đảm bảo cả 2 bên đã ký (Từ PENDING -> ACTIVE)
+        if (newStatus == ContractStatus.ACTIVE) {
+            if (!contract.getOwnerSigned() || !contract.getRenterSigned()) {
+                throw new RuntimeException("Không thể kích hoạt hợp đồng khi chưa có đủ chữ ký xác nhận của cả Chủ kho và Khách thuê!");
+            }
+
+            // Tự động hủy hợp đồng gốc nếu đây là bản phụ lục sửa đổi (Amendment)
+            if (contract.getParentContractId() != null) {
+                Contract parentContract = contractRepository.findById(contract.getParentContractId()).orElse(null);
+                if (parentContract != null && parentContract.getStatus() == ContractStatus.ACTIVE) {
+                    parentContract.setStatus(ContractStatus.CANCELED);
+                    parentContract.setCancelReason("Bị thay thế bởi phụ lục hợp đồng (Amendment) ID: " + contract.getId());
+                    contractRepository.save(parentContract);
                 }
             }
         }
@@ -146,6 +156,106 @@ public class ContractService {
         verifyAccess(userDetails, ownerId, renterId);
 
         return mapToResponseDTO(contract);
+    }
+
+    @Transactional
+    public ContractResponseDTO amendContract(Long ownerId, Long oldContractId, ContractAmendDTO dto) {
+        Contract oldContract = contractRepository.findById(oldContractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng cũ!"));
+
+        if (!oldContract.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Bạn không có quyền sửa đổi hợp đồng này!");
+        }
+
+        if (oldContract.getStatus() != com.ailogis.api.enums.ContractStatus.ACTIVE) {
+            throw new RuntimeException("Chỉ có thể tạo phụ lục/sửa đổi cho hợp đồng đang ở trạng thái ACTIVE!");
+        }
+
+        // Tạo hợp đồng mới (Bản sao kế thừa bản cũ)
+        Contract newContract = Contract.builder()
+                .request(oldContract.getRequest())
+                .owner(oldContract.getOwner())
+                .renter(oldContract.getRenter())
+                .cargoDescription(oldContract.getCargoDescription())
+
+                // Cập nhật các trường nếu Owner có truyền lên, không thì giữ nguyên bản cũ
+                .startAt(dto.startAt() != null ? dto.startAt() : oldContract.getStartAt())
+                .endAt(dto.endAt() != null ? dto.endAt() : oldContract.getEndAt())
+                .paymentTerm(dto.paymentTerm() != null ? dto.paymentTerm() : oldContract.getPaymentTerm())
+                .penaltyClause(dto.penaltyClause() != null ? dto.penaltyClause() : oldContract.getPenaltyClause())
+                .specialTerm(dto.specialTerm() != null ? dto.specialTerm() : oldContract.getSpecialTerm())
+
+                // Lấy lại các data từ hợp đồng cũ
+                .ownerLegalName(oldContract.getOwnerLegalName())
+                .ownerTaxCode(oldContract.getOwnerTaxCode())
+                .ownerEmail(oldContract.getOwnerEmail())
+                .ownerPhone(oldContract.getOwnerPhone())
+                .ownerAddress(oldContract.getOwnerAddress())
+                .renterLegalName(oldContract.getRenterLegalName())
+                .renterTaxCode(oldContract.getRenterTaxCode())
+                .renterEmail(oldContract.getRenterEmail())
+                .renterPhone(oldContract.getRenterPhone())
+                .renterAddress(oldContract.getRenterAddress())
+
+                .ownerSigned(true)
+                .renterSigned(false)
+
+                // Set trạng thái chờ Renter đồng ý
+                .status(ContractStatus.PENDING)
+                .parentContractId(oldContract.getId())
+                .build();
+
+        return contractMapper.toContractResponseDTO(contractRepository.save(newContract));
+    }
+
+    @Transactional
+    public ContractResponseDTO signContract(Long renterId, Long contractId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        if (!contract.getRenter().getId().equals(renterId)) {
+            throw new RuntimeException("Lỗi bảo mật: Chỉ Khách thuê của hợp đồng này mới có quyền ký xác nhận!");
+        }
+
+        if (contract.getStatus() != ContractStatus.PENDING) {
+            throw new RuntimeException("Chỉ có thể ký xác nhận khi hợp đồng đang ở trạng thái PENDING!");
+        }
+
+        contract.setRenterSigned(true);
+
+        if (contract.getOwnerSigned() && contract.getRenterSigned()) {
+            contract.setStatus(ContractStatus.ACTIVE);
+
+            if (contract.getParentContractId() != null) {
+                Contract parentContract = contractRepository.findById(contract.getParentContractId()).orElse(null);
+                if (parentContract != null && parentContract.getStatus() == ContractStatus.ACTIVE) {
+                    parentContract.setStatus(ContractStatus.CANCELED);
+                    parentContract.setCancelReason("Bị thay thế bởi phụ lục hợp đồng (Amendment) ID: " + contract.getId());
+                    contractRepository.save(parentContract);
+                }
+            }
+        }
+
+        return contractMapper.toContractResponseDTO(contractRepository.save(contract));
+    }
+
+    @Transactional
+    public ContractResponseDTO rejectContract(Long renterId, Long contractId, String reason) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        if (!contract.getRenter().getId().equals(renterId)) {
+            throw new RuntimeException("Lỗi bảo mật: Chỉ Khách thuê của hợp đồng này mới có quyền từ chối!");
+        }
+
+        if (contract.getStatus() != ContractStatus.PENDING) {
+            throw new RuntimeException("Chỉ có thể từ chối khi hợp đồng đang ở trạng thái chờ ký (PENDING)!");
+        }
+
+        contract.setStatus(ContractStatus.CANCELED);
+        contract.setCancelReason(reason != null ? "Khách thuê từ chối ký: " + reason : "Khách thuê không đồng ý với các điều khoản trong hợp đồng.");
+
+        return contractMapper.toContractResponseDTO(contractRepository.save(contract));
     }
 
     private void verifyAccess(CustomUserDetails userDetails, Long ownerId, Long renterId) {

@@ -28,8 +28,8 @@ public class Contract {
     @Builder.Default
     private Boolean renterSigned = false; // Xác nhận đã khách thuê đã xem và đồng ý với hợp đồng
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_rent_request", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_rent_request", nullable = false)
     private RentalRequest request;
 
     private String cargoDescription;
