@@ -31,6 +31,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ContractRepository contractRepository;
     private final AiSubscriptionTierRepository aiTierRepository;
     private final SponsorTierRepository sponsorTierRepository;
+    private final ReviewRepository reviewRepository;
 
     private final AuthService authService;
     private final EmployeeService employeeService;
@@ -90,19 +91,19 @@ public class DataInitializer implements CommandLineRunner {
 
         // KHO 1: Kho Sóng Thần
         WarehouseCreateDTO wh1Dto = new WarehouseCreateDTO("Tổng kho Lạnh Quốc tế Sóng Thần", "Hệ thống kho vận đạt tiêu chuẩn ISO ứng dụng công nghệ giám sát nhiệt độ tự động.", "Số 10, KCN Sóng Thần 1", "Bình Dương", "Dĩ An", null, null, null,
-                List.of(new WarehouseSectionDTO(1, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO("Gói lưu trữ theo tháng", 260000.0, "VND", "m3")))));
+                List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO("Gói lưu trữ theo tháng", 260000.0, "VND", "m3")))));
         WarehouseResponseDTO wh1Res = ownerService.createWarehouse(owner1.getId(), wh1Dto, List.of("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/images/07c00336-f2b5-4528-84c1-d082a9805f19.jpg"), null);
         employeeService.verifyWarehouse(wh1Res.id(), WarehouseStatus.ACTIVE);
 
         // KHO 2: Kho Tân Bình
         WarehouseCreateDTO wh2Dto = new WarehouseCreateDTO("Kho mát Nông sản Tân Bình", "Chuyên lưu trữ rau củ quả tươi sống, vị trí ngay sát trung tâm TPHCM, thuận tiện giao hàng nội thành.", "KCN Tân Bình, Lô B2", "Hồ Chí Minh", "Tân Bình", null, null, null,
-                List.of(new WarehouseSectionDTO(1, 800.0, 2.0, 8.0, 85.0, false, List.of(new PriceTierDTO("Thuê bao nguyên khu (Tuần)", 5000000.0, "VND", "sector")))));
+                List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false, List.of(new PriceTierDTO("Thuê bao nguyên khu (Tuần)", 5000000.0, "VND", "sector")))));
         WarehouseResponseDTO wh2Res = ownerService.createWarehouse(owner2.getId(), wh2Dto, new ArrayList<>(), null);
         employeeService.verifyWarehouse(wh2Res.id(), WarehouseStatus.ACTIVE);
 
         // KHO 3: Kho Quận 9
         WarehouseCreateDTO wh3Dto = new WarehouseCreateDTO("Kho lạnh Y tế & Dược phẩm Quận 9", "Kho chuyên dụng chuẩn GSP lưu trữ Vắc xin và Sinh phẩm y tế.", "Khu Công Nghệ Cao, Đường D1", "Hồ Chí Minh", "Quận 9", null, null, null,
-                List.of(new WarehouseSectionDTO(1, 300.0, -80.0, -20.0, 40.0, true, List.of(new PriceTierDTO("Lưu trữ theo Pallet/Tháng", 800000.0, "VND", "pallet")))));
+                List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true, List.of(new PriceTierDTO("Lưu trữ theo Pallet/Tháng", 800000.0, "VND", "pallet")))));
         WarehouseResponseDTO wh3Res = ownerService.createWarehouse(owner3.getId(), wh3Dto, new ArrayList<>(), null);
         employeeService.verifyWarehouse(wh3Res.id(), WarehouseStatus.ACTIVE);
 
@@ -144,6 +145,11 @@ public class DataInitializer implements CommandLineRunner {
 
         RentRequestResponseDTO req2Res = rentalRequestService.createRequest(renter2.getId(), req2Dto);
         ownerService.updateRequestStatus(owner2.getId(), req2Res.id(), RequestStatus.APPROVED);
+
+        // Renter 3 gửi yêu cầu thuê Kho 1 nhưng Owner chưa duyệt
+        RentRequestCreateDTO req3Dto = new RentRequestCreateDTO(wh1Entity.getId(), "Thịt bò Kobe nhập khẩu đông lạnh", null, 3, "Tháng",
+                List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 200.0, "m3")));
+        rentalRequestService.createRequest(renter3.getId(), req3Dto);
 
         ContractResponseDTO c2Res = contractService.createContract(owner2.getId(), new ContractCreateDTO(req2Res.id(), (long) 5000000.0 * 2));
 
@@ -222,6 +228,17 @@ public class DataInitializer implements CommandLineRunner {
         wh2Entity.setIsSponsor(true);
         wh2Entity.setSponsorType(sponsorSilverEntity);
         warehouseRepository.save(wh2Entity);
+
+        // =================================================================
+        // 7. KHỞI TẠO ĐÁNH GIÁ (RATINGS & REVIEWS)
+        // =================================================================
+        List<Review> reviews = List.of(
+                Review.builder().user(renter1).warehouse(wh1Entity).rating(5).comment("Kho rất hiện đại, nhiệt độ duy trì cực kỳ ổn định. Tôi rất yên tâm khi lưu trữ hải sản ở đây.").build(),
+                Review.builder().user(renter2).warehouse(wh1Entity).rating(4).comment("Dịch vụ tốt, bảo vệ nhiệt tình nhưng thủ tục giấy tờ xuất nhập lúc 2h sáng hơi chậm một chút.").build(),
+                Review.builder().user(renter3).warehouse(wh2Entity).rating(5).comment("Vị trí ngay sát trung tâm, xe tải ra vào lấy nông sản cực kỳ thuận tiện. Tuyệt vời!").build(),
+                Review.builder().user(renter1).warehouse(wh3Entity).rating(4).comment("Kho y tế chuẩn GSP, quy trình kiểm soát vi sinh rất khắt khe và an toàn.").build()
+        );
+        reviewRepository.saveAll(reviews);
 
         log.info("✅ Init Data Hoàn tất! Tất cả kho bãi, hợp đồng đều ở trạng thái ACTIVE/APPROVED sẵn sàng test.");
     }
