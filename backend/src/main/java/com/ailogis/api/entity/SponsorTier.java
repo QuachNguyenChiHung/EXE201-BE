@@ -20,4 +20,7 @@ public class SponsorTier {
     private Double yearPackSale;
     private String label;
     private LocalDate updatedAt;
+
+    @Builder.Default
+    private Boolean isActive = true;
 }

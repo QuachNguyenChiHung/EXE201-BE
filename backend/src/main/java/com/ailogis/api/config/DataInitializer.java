@@ -200,9 +200,9 @@ public class DataInitializer implements CommandLineRunner {
 
         // 2. Tạo gói Tài trợ (Sponsor)
         SponsorTierDTO sponsorGoldDto = employeeService.createSponsorTier(new SponsorTierDTO(
-                null, 1, 1000000.0, 10000000.0, "Tài trợ Vàng (Top 1)", null));
+                null, 1, 1000000.0, 10000000.0, "Tài trợ Vàng (Top 1)", null,  true));
         SponsorTierDTO sponsorSilverDto = employeeService.createSponsorTier(new SponsorTierDTO(
-                null, 2, 500000.0, 5000000.0, "Tài trợ Bạc (Top 2)", null));
+                null, 2, 500000.0, 5000000.0, "Tài trợ Bạc (Top 2)", null, true));
 
         // GÁN GÓI CHO NGƯỜI DÙNG VÀ KHO BÃI
         AiSubscriptionTier aiProEntity = aiTierRepository.findById(aiProDto.id()).get();

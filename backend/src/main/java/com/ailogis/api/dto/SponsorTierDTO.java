@@ -6,5 +6,6 @@ public record SponsorTierDTO(
         Double pricingPerMonth,
         Double yearPackSale,
         String label,
-        Long activeWarehousesCount // Thống kê số lượng kho bãi đang chạy gói tài trợ này
+        Long activeWarehousesCount, // Thống kê số lượng kho bãi đang chạy gói tài trợ này
+        Boolean isActive
 ) {}

@@ -195,8 +195,12 @@ public class OwnerService {
 
         for (Warehouse w : warehouses) {
             for (WarehouseSection s : w.getSections()) {
-                totalCapacity += s.getTotalCapacity() != null ? s.getTotalCapacity() : 0;
-                totalAvailable += s.getAvailableCapacity() != null ? s.getAvailableCapacity() : 0;
+                double cap = s.getTotalCapacity() != null ? s.getTotalCapacity() : 0.0;
+                totalCapacity += cap;
+
+                Double activeRented = contractRepository.sumActiveRentedAreaBySection(s.getId());
+                double rented = activeRented != null ? activeRented : 0.0;
+                totalAvailable += Math.max(0.0, cap - rented);
             }
         }
 
@@ -318,12 +322,17 @@ public class OwnerService {
     }
 
     @Transactional
-    public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto) {
+    public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto, Boolean force) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
         if (!warehouse.getOwner().getId().equals(ownerId)) {
             throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền thao tác trên kho này!");
+        }
+
+        List<Contract> activeContracts = contractRepository.findByWarehouseIdWithFilter(warehouseId, ContractStatus.ACTIVE);
+        if (!activeContracts.isEmpty() && (force == null || !force)) {
+            throw new RuntimeException("Cảnh báo: Kho bãi này đang có " + activeContracts.size() + " hợp đồng vận hành. Việc thay đổi cấu trúc hoặc giá tiền có thể ảnh hưởng đến trải nghiệm của khách thuê. Vui lòng gửi lại Request kèm theo tham số ?force=true để xác nhận cập nhật.");
         }
 
         // 1. Cập nhật thông tin cơ bản
@@ -490,5 +499,13 @@ public class OwnerService {
                                 contractRepository.getStatus() != null ? contractRepository.getStatus().name() : null
                         ) : null)
                 .toList();
+    }
+
+    public List<SponsorTierDTO> getSponsorTiersForOwner(Long ownerId) {
+        return sponsorTierRepository.findActiveAndPurchasedByOwner(ownerId).stream().map(tier -> {
+            long count = warehouseRepository.countBySponsorTypeId(tier.getId());
+            return new SponsorTierDTO(tier.getId(), tier.getPriorityLevel(), tier.getPricingPerMonth(),
+                    tier.getYearPackSale(), tier.getLabel(), count, tier.getIsActive());
+        }).toList();
     }
 }

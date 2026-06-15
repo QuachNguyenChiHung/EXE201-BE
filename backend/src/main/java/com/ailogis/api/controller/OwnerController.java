@@ -122,9 +122,10 @@ public class OwnerController {
     public ResponseEntity<WarehouseResponseDTO> updateWarehouse(
             @PathVariable Long id,
             @RequestBody WarehouseUpdateDTO dto,
+            @RequestParam(required = false) Boolean force,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto));
+        return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto, force));
     }
 
     @PostMapping("/warehouses/{id}/sponsor")
@@ -158,5 +159,12 @@ public class OwnerController {
 
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.getWarehouseContracts(ownerId, warehouseId, status));
+    }
+
+    @GetMapping("/sponsor-tiers")
+    public ResponseEntity<List<SponsorTierDTO>> getActiveSponsorTiers(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.getSponsorTiersForOwner(ownerId));
     }
 }

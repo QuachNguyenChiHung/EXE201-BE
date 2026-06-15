@@ -446,7 +446,7 @@ public class EmployeeService {
         return sponsorTierRepository.findAll().stream().map(tier -> {
             long count = warehouseRepository.countBySponsorTypeId(tier.getId());
             return new SponsorTierDTO(tier.getId(), tier.getPriorityLevel(), tier.getPricingPerMonth(),
-                    tier.getYearPackSale(), tier.getLabel(), count);
+                    tier.getYearPackSale(), tier.getLabel(), count, tier.getIsActive());
         }).toList();
     }
 
@@ -458,7 +458,7 @@ public class EmployeeService {
                 .updatedAt(LocalDate.now())
                 .build();
         SponsorTier saved = sponsorTierRepository.save(tier);
-        return new SponsorTierDTO(saved.getId(), saved.getPriorityLevel(), saved.getPricingPerMonth(), saved.getYearPackSale(), saved.getLabel(), 0L);
+        return new SponsorTierDTO(saved.getId(), saved.getPriorityLevel(), saved.getPricingPerMonth(), saved.getYearPackSale(), saved.getLabel(), 0L, tier.getIsActive());
     }
 
     @Transactional
@@ -474,7 +474,7 @@ public class EmployeeService {
 
         SponsorTier updated = sponsorTierRepository.save(tier);
         long count = warehouseRepository.countBySponsorTypeId(id);
-        return new SponsorTierDTO(updated.getId(), updated.getPriorityLevel(), updated.getPricingPerMonth(), updated.getYearPackSale(), updated.getLabel(), count);
+        return new SponsorTierDTO(updated.getId(), updated.getPriorityLevel(), updated.getPricingPerMonth(), updated.getYearPackSale(), updated.getLabel(), count, tier.getIsActive());
     }
 
     @Transactional
