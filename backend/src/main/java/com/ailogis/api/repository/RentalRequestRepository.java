@@ -33,4 +33,10 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
 
     @Query("SELECT r FROM RentalRequest r WHERE r.renter.id = :renterId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
     Page<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId, @Param("status") RequestStatus status, Pageable pageable);
+
+    long countByRenterId(Long renterId);
+
+    // Đếm các đơn bị Owner đổi giá (offeredPrice != null) và đang chờ Renter phản hồi
+    @Query("SELECT COUNT(r) FROM RentalRequest r WHERE r.renter.id = :renterId AND r.status = 'PENDING' AND r.offeredPrice IS NOT NULL")
+    long countOwnerUpdatedRequests(@Param("renterId") Long renterId);
 }

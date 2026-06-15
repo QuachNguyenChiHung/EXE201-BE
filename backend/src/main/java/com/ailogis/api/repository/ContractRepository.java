@@ -40,4 +40,14 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     @Query("SELECT c FROM Contract c WHERE (c.owner.id = :userId OR c.renter.id = :userId) AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
     Page<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId, @Param("status") ContractStatus status, Pageable pageable);
+
+    long countByRenterIdAndStatus(Long renterId, com.ailogis.api.enums.ContractStatus status);
+
+    // Đếm số lượng kho bãi KHÁC NHAU mà Renter đang thuê
+    @Query("SELECT COUNT(DISTINCT c.request.warehouse.id) FROM Contract c WHERE c.renter.id = :renterId AND c.status = 'ACTIVE'")
+    long countDistinctWarehousesByRenterId(@Param("renterId") Long renterId);
+
+    // Đếm số hợp đồng sắp hết hạn trong X ngày tới
+    @Query("SELECT COUNT(c) FROM Contract c WHERE c.renter.id = :renterId AND c.status = 'ACTIVE' AND c.endAt <= :targetDate")
+    long countExpiringContracts(@Param("renterId") Long renterId, @Param("targetDate") LocalDate targetDate);
 }

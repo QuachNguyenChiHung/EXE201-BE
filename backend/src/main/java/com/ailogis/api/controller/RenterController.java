@@ -1,11 +1,11 @@
 package com.ailogis.api.controller;
 
-import com.ailogis.api.dto.ContractResponseDTO;
-import com.ailogis.api.dto.RentRequestCreateDTO;
-import com.ailogis.api.dto.RentRequestResponseDTO;
+import com.ailogis.api.dto.*;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.ContractService;
 import com.ailogis.api.service.RentalRequestService;
+import com.ailogis.api.service.RenterService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +23,7 @@ import java.util.Map;
 public class RenterController {
     private final RentalRequestService requestService;
     private final ContractService contractService;
+    private final RenterService renterService;
 
     @PostMapping("/requests")
     public ResponseEntity<RentRequestResponseDTO> createRequest(
@@ -73,5 +74,27 @@ public class RenterController {
         String reason = body != null ? body.get("reason") : null;
 
         return ResponseEntity.ok(contractService.rejectContract(renterId, id, reason));
+    }
+
+    @GetMapping("/statistics")
+    public ResponseEntity<RenterStatisticResponseDTO> getDashboardStatistics(
+            @RequestParam(defaultValue = "30") int expireDays,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long renterId = userDetails.getUser().getId();
+        return ResponseEntity.ok(renterService.getRenterStatistics(renterId, expireDays));
+    }
+
+    @GetMapping("/ai-tiers")
+    public ResponseEntity<List<AiTierDTO>> getAiTiers() {
+        return ResponseEntity.ok(renterService.getActiveAiTiers());
+    }
+
+    @PostMapping("/ai-tiers/{id}/pay")
+    public ResponseEntity<PaymentResponseDTO> processPaymentForAI(
+            @PathVariable Long id,
+            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long renterId = userDetails.getUser().getId();
+        return ResponseEntity.ok(renterService.buyAiSubscription(renterId, id, request));
     }
 }
