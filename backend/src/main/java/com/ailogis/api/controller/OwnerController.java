@@ -137,4 +137,26 @@ public class OwnerController {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.buySponsorTier(ownerId, id, dto, request));
     }
+
+    // Lấy danh sách yêu cầu thuê của riêng 1 kho bãi
+    @GetMapping("/warehouses/{warehouseId}/requests")
+    public ResponseEntity<List<RentRequestResponseDTO>> getWarehouseRentRequests(
+            @PathVariable Long warehouseId,
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.getWarehouseRentRequests(ownerId, warehouseId, status));
+    }
+
+    // Lấy danh sách hợp đồng của riêng 1 kho bãi
+    @GetMapping("/warehouses/{warehouseId}/contracts")
+    public ResponseEntity<List<ContractResponseDTO>> getWarehouseContracts(
+            @PathVariable Long warehouseId,
+            @RequestParam(required = false) String status,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.getWarehouseContracts(ownerId, warehouseId, status));
+    }
 }

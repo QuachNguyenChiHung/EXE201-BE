@@ -25,4 +25,7 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
     long countByWarehouseIdAndStatus(Long warehouseId, RequestStatus status);
 
     List<RentalRequest> findByWarehouseIdAndStatus(Long warehouseId, RequestStatus status);
+
+    @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.id = :warehouseId AND (:status IS NULL OR r.status = :status) ORDER BY r.id DESC")
+    List<RentalRequest> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") RequestStatus status);
 }

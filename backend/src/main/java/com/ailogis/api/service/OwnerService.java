@@ -431,4 +431,64 @@ public class OwnerService {
 
         return new PaymentResponseDTO(paymentUrl);
     }
+
+    public List<RentRequestResponseDTO> getWarehouseRentRequests(Long ownerId, Long warehouseId, String statusStr) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền xem dữ liệu của kho bãi này!");
+        }
+
+        RequestStatus statusEnum = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                statusEnum = RequestStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái Request không hợp lệ!");
+            }
+        }
+
+        return requestRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum).stream()
+                .map(this::mapToRequestDTO)
+                .toList();
+    }
+
+    public List<ContractResponseDTO> getWarehouseContracts(Long ownerId, Long warehouseId, String statusStr) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền xem dữ liệu của kho bãi này!");
+        }
+
+        ContractStatus statusEnum = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                statusEnum = ContractStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái hợp đồng không hợp lệ!");
+            }
+        }
+
+        return contractRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum).stream()
+                .map(contractRepository -> contractRepository != null ?
+                        new ContractResponseDTO(
+                                contractRepository.getId(),
+                                contractRepository.getRequest() != null ? contractRepository.getRequest().getId() : null,
+                                warehouse.getName(),
+                                contractRepository.getCargoDescription(),
+                                contractRepository.getStartAt(),
+                                contractRepository.getEndAt(),
+                                contractRepository.getPaymentTerm(),
+                                contractRepository.getPenaltyClause(),
+                                contractRepository.getSpecialTerm(),
+                                contractRepository.getCancelReason(),
+                                contractRepository.getOwnerLegalName(), contractRepository.getOwnerTaxCode(), contractRepository.getOwnerEmail(), contractRepository.getOwnerPhone(), contractRepository.getOwnerAddress(),
+                                contractRepository.getRenterLegalName(), contractRepository.getRenterTaxCode(), contractRepository.getRenterEmail(), contractRepository.getRenterPhone(), contractRepository.getRenterAddress(),
+                                (contractRepository.getRequest() != null && contractRepository.getRequest().getOfferedPrice() != null) ? contractRepository.getRequest().getOfferedPrice().longValue() : 0L,
+                                contractRepository.getStatus() != null ? contractRepository.getStatus().name() : null
+                        ) : null)
+                .toList();
+    }
 }
