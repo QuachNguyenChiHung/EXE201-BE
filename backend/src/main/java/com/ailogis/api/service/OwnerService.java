@@ -220,8 +220,8 @@ public class OwnerService {
         long endingContracts = contractRepository.countEndingContracts(ownerId, thirtyDaysFromNow);
 
         // 4. Thống kê Billing (Tổng tiền mua Sponsor trong tháng hiện tại)
-        LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
-        LocalDate endOfMonth = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
+        LocalDateTime startOfMonth = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime endOfMonth = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth()).atTime(23, 59, 59);
 
         Double billing = transactionRepository.sumSponsorBillingByDateRange(
                 ownerId,
