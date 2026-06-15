@@ -13,6 +13,8 @@ import com.ailogis.api.repository.RentalRequestRepository;
 import com.ailogis.api.repository.WarehouseSectionRepository;
 import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -120,30 +122,21 @@ public class ContractService {
         return contractMapper.toContractResponseDTO(updated);
     }
 
-    public List<ContractResponseDTO> getMyContracts(CustomUserDetails userDetails, String statusStr) {
+    public Page<ContractResponseDTO> getMyContracts(CustomUserDetails userDetails, String statusStr, Pageable pageable) {
         Long userId = userDetails.getUser().getId();
         Role role = userDetails.getUser().getRole();
-
         ContractStatus statusEnum = null;
         if (statusStr != null && !statusStr.isBlank()) {
-            try {
-                statusEnum = ContractStatus.valueOf(statusStr.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Trạng thái hợp đồng không hợp lệ!");
-            }
+            statusEnum = ContractStatus.valueOf(statusStr.toUpperCase());
         }
 
-        List<Contract> contracts;
-
+        Page<Contract> contracts;
         if (role == Role.EMPLOYEE) {
-            contracts = contractRepository.findAllWithFilter(statusEnum);
+            contracts = contractRepository.findAllWithFilter(statusEnum, pageable);
         } else {
-            contracts = contractRepository.findByOwnerIdOrRenterIdWithFilter(userId, statusEnum);
+            contracts = contractRepository.findByOwnerIdOrRenterIdWithFilter(userId, statusEnum, pageable);
         }
-
-        return contracts.stream()
-                .map(contractMapper::toContractResponseDTO)
-                .toList();
+        return contracts.map(contractMapper::toContractResponseDTO);
     }
 
     public ContractResponseDTO getContractDetail(Long id, CustomUserDetails userDetails) {

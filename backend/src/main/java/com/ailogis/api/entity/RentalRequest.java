@@ -47,6 +47,10 @@ public class RentalRequest {
     // Mức giá mới mà Owner đề xuất lại cho Renter nếu không đồng ý với giá gốc
     private Double offeredPrice;
 
+    // Mức giá mà Renter mong muốn lúc mới tạo đơn
+    @Column(name = "renter_offered_price")
+    private Double renterOfferedPrice;
+
     // Đơn vị tính cho mức giá đề xuất (VD: "VND/m3", "VND/Tấn")
     private String unit;
 

@@ -295,6 +295,7 @@ public class EmployeeService {
                         r.getRenterRejectionReason(),
                         r.getRejectionReason(),
                         r.getOfferedPrice(),
+                        r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
                         List.of()
                 )).toList();
@@ -342,6 +343,7 @@ public class EmployeeService {
                         r.getRenterRejectionReason(),
                         r.getRejectionReason(),
                         r.getOfferedPrice(),
+                        r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
                         List.of()
                 )).toList();

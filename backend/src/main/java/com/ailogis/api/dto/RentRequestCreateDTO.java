@@ -8,5 +8,6 @@ public record RentRequestCreateDTO(
         String otherDetail,
         Integer duration,
         String durationUnit,
+        Double renterOfferedPrice,
         List<RentRequestDetailCreateDTO> details // Thuê nhiều phòng cùng lúc
 ) {}

@@ -132,10 +132,11 @@ public class DataInitializer implements CommandLineRunner {
         // 4. KHỞI TẠO REQUEST & CONTRACTS
         // =================================================================
 
-        // HỢP ĐỒNG 1: Renter 1 thuê Kho 1
+        // HỢP ĐỒNG 1: Renter 1 thuê Kho 1 (Tổng giá gốc: 500m3 * 260k = 130tr/tháng), Renter trả giá còn 125tr
         Long sec1Id = wh1Entity.getSections().get(0).getId();
         Long pt1Id = wh1Entity.getSections().get(0).getPriceTiers().get(0).getId();
         RentRequestCreateDTO req1Dto = new RentRequestCreateDTO(wh1Entity.getId(), "Hải sản cá ngừ đại dương xuất khẩu", null, 6, "Tháng",
+                125000000.0,
                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 500.0, "m3"))); // Thuê 500 m3
 
         RentRequestResponseDTO req1Res = rentalRequestService.createRequest(renter1.getId(), req1Dto);
@@ -143,17 +144,19 @@ public class DataInitializer implements CommandLineRunner {
 
         ContractResponseDTO c1Res = contractService.createContract(owner1.getId(), new ContractCreateDTO(req1Res.id(), (long) (500.0 * 260000.0 * 6)));
 
-        // HỢP ĐỒNG 2: Renter 2 thuê Kho 2
+        // HỢP ĐỒNG 2: Renter 2 thuê Kho 2 (Tổng giá gốc: 1 sector * 5tr = 5tr/tuần), Renter trả giá còn 4.8tr
         Long sec2Id = wh2Entity.getSections().get(0).getId();
         Long pt2Id = wh2Entity.getSections().get(0).getPriceTiers().get(0).getId();
         RentRequestCreateDTO req2Dto = new RentRequestCreateDTO(wh2Entity.getId(), "Rau củ Đà Lạt nhập kho chờ phân phối", null, 2, "Tuần",
+                4800000.0,
                 List.of(new RentRequestDetailCreateDTO(sec2Id, pt2Id, 1.0, "sector"))); // Thuê 1 sector
 
         RentRequestResponseDTO req2Res = rentalRequestService.createRequest(renter2.getId(), req2Dto);
         ownerService.updateRequestStatus(owner2.getId(), req2Res.id(), new RequestStatusUpdateDTO(RequestStatus.APPROVED, null, null, "Kho lạnh Tân Bình xác nhận yêu cầu."));
 
-        // Renter 3 gửi yêu cầu thuê Kho 1 nhưng Owner chưa duyệt
+        // Renter 3 gửi yêu cầu thuê Kho 1 nhưng Owner chưa duyệt (Tổng giá gốc: 200m3 * 260k = 52tr/tháng), Renter trả giá 50tr
         RentRequestCreateDTO req3Dto = new RentRequestCreateDTO(wh1Entity.getId(), "Thịt bò Kobe nhập khẩu đông lạnh", null, 3, "Tháng",
+                50000000.0,
                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 200.0, "m3")));
         rentalRequestService.createRequest(renter3.getId(), req3Dto);
 

@@ -100,6 +100,7 @@ public class OwnerService {
                 r.getRenterRejectionReason(),
                 r.getRejectionReason(),
                 r.getOfferedPrice(),
+                r.getRenterOfferedPrice(),
                 r.getOwnerNote(),
                 detailDTOs
         );

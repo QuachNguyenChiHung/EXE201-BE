@@ -7,6 +7,9 @@ import com.ailogis.api.service.ContractService;
 import com.ailogis.api.service.RentalRequestService;
 import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -41,10 +44,14 @@ public class SharedResourceController {
     }
 
     @GetMapping("/contracts")
-    public ResponseEntity<List<ContractResponseDTO>> getMyContracts(
+    public ResponseEntity<Page<ContractResponseDTO>> getMyContracts(
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(contractService.getMyContracts(userDetails, status));
+
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(contractService.getMyContracts(userDetails, status, pageable));
     }
 
     // Lấy thống kê lượt xem của 1 kho bãi

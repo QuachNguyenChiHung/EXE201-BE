@@ -7,6 +7,9 @@ import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.ContractService;
 import com.ailogis.api.service.RentalRequestService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -31,12 +34,15 @@ public class RenterController {
     }
 
     @GetMapping("/requests")
-    public ResponseEntity<List<RentRequestResponseDTO>> getMyRequests(
+    public ResponseEntity<Page<RentRequestResponseDTO>> getMyRequests(
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long renterId = userDetails.getUser().getId();
-        return ResponseEntity.ok(requestService.getRequestsByRenter(renterId, status));
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(requestService.getRequestsByRenter(renterId, status, pageable));
     }
 
     @PatchMapping("/requests/{id}/cancel")

@@ -2,6 +2,8 @@ package com.ailogis.api.repository;
 
 import com.ailogis.api.entity.Contract;
 import com.ailogis.api.enums.ContractStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,4 +34,10 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     @Query("SELECT c FROM Contract c WHERE c.request.warehouse.id = :warehouseId AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
     List<Contract> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") ContractStatus status);
+
+    @Query("SELECT c FROM Contract c WHERE (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
+    Page<Contract> findAllWithFilter(@Param("status") ContractStatus status, Pageable pageable);
+
+    @Query("SELECT c FROM Contract c WHERE (c.owner.id = :userId OR c.renter.id = :userId) AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
+    Page<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId, @Param("status") ContractStatus status, Pageable pageable);
 }

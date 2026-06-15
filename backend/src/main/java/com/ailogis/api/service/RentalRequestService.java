@@ -7,6 +7,8 @@ import com.ailogis.api.enums.Role;
 import com.ailogis.api.repository.*;
 import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -34,6 +36,7 @@ public class RentalRequestService {
         RentalRequest request = RentalRequest.builder()
                 .renter(renter).warehouse(warehouse).cargoDescription(dto.cargoDescription())
                 .otherDetail(dto.otherDetail()).duration(dto.duration()).durationUnit(dto.durationUnit())
+                .renterOfferedPrice(dto.renterOfferedPrice())
                 .status(RequestStatus.PENDING).build();
 
         List<RentRequestDetail> details = dto.details().stream().map(dDto -> {
@@ -56,16 +59,12 @@ public class RentalRequestService {
         return mapToResponseDTO(requestRepository.save(request));
     }
 
-    public List<RentRequestResponseDTO> getRequestsByRenter(Long renterId, String statusStr) {
+    public Page<RentRequestResponseDTO> getRequestsByRenter(Long renterId, String statusStr, Pageable pageable) {
         com.ailogis.api.enums.RequestStatus statusEnum = null;
         if (statusStr != null && !statusStr.isBlank()) {
-            try {
-                statusEnum = com.ailogis.api.enums.RequestStatus.valueOf(statusStr.toUpperCase());
-            } catch (IllegalArgumentException e) {
-                throw new RuntimeException("Trạng thái Request không hợp lệ!");
-            }
+            statusEnum = com.ailogis.api.enums.RequestStatus.valueOf(statusStr.toUpperCase());
         }
-        return requestRepository.findByRenterIdWithFilter(renterId, statusEnum).stream().map(this::mapToResponseDTO).toList();
+        return requestRepository.findByRenterIdWithFilter(renterId, statusEnum, pageable).map(this::mapToResponseDTO);
     }
 
     private RentRequestResponseDTO mapToResponseDTO(RentalRequest r) {
@@ -74,7 +73,7 @@ public class RentalRequestService {
         ).toList();
 
         return new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(),
-                r.getOtherDetail(), r.getRenterRejectionReason(), r.getRejectionReason(), r.getOfferedPrice(), r.getOwnerNote(), detailDTOs);
+                r.getOtherDetail(), r.getRenterRejectionReason(), r.getRejectionReason(), r.getOfferedPrice(), r.getRenterOfferedPrice(), r.getOwnerNote(), detailDTOs);
     }
 
     @Transactional

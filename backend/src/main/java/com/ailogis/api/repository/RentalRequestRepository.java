@@ -2,6 +2,8 @@ package com.ailogis.api.repository;
 
 import com.ailogis.api.entity.RentalRequest;
 import com.ailogis.api.enums.RequestStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,4 +30,7 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
 
     @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.id = :warehouseId AND (:status IS NULL OR r.status = :status) ORDER BY r.id DESC")
     List<RentalRequest> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") RequestStatus status);
+
+    @Query("SELECT r FROM RentalRequest r WHERE r.renter.id = :renterId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
+    Page<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId, @Param("status") RequestStatus status, Pageable pageable);
 }
