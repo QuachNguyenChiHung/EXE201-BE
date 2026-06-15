@@ -118,11 +118,14 @@ public class OwnerService {
                 .locationAddressText(dto.locationAddressText())
                 .locationProvince(dto.locationProvince())
                 .locationCommune(dto.locationCommune())
+                .locationLong(dto.locationLong())
+                .locationLat(dto.locationLat())
+                .locationPostalCode(dto.locationPostalCode())
                 .status(WarehouseStatus.PENDING)
                 .isSponsor(false)
-                .sections(new ArrayList<>())
-                .images(new ArrayList<>())
-                .certificationSubmits(new ArrayList<>())
+                .sections(new java.util.ArrayList<>())
+                .images(new java.util.ArrayList<>())
+                .certificationSubmits(new java.util.ArrayList<>())
                 .build();
 
         // Map Sections & PriceTiers
@@ -341,6 +344,8 @@ public class OwnerService {
         if (dto.locationAddressText() != null) warehouse.setLocationAddressText(dto.locationAddressText());
         if (dto.locationProvince() != null) warehouse.setLocationProvince(dto.locationProvince());
         if (dto.locationCommune() != null) warehouse.setLocationCommune(dto.locationCommune());
+        if (dto.locationLong() != null) warehouse.setLocationLong(dto.locationLong());
+        if (dto.locationLat() != null) warehouse.setLocationLat(dto.locationLat());
 
         // 2. Cập nhật Sections và PriceTiers
         if (dto.sections() != null && !dto.sections().isEmpty()) {

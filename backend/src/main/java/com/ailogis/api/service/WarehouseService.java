@@ -99,4 +99,14 @@ public class WarehouseService {
                 "viewTrend", viewTrend
         );
     }
+
+    public WarehouseLocationDTO getWarehouseLocation(Long id) {
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        return new WarehouseLocationDTO(
+                warehouse.getLocationLong(),
+                warehouse.getLocationLat()
+        );
+    }
 }

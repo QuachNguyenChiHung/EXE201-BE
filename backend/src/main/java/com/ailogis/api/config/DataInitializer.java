@@ -89,20 +89,26 @@ public class DataInitializer implements CommandLineRunner {
         // 3. KHỞI TẠO WAREHOUSES
         // =================================================================
 
-        // KHO 1: Kho Sóng Thần
-        WarehouseCreateDTO wh1Dto = new WarehouseCreateDTO("Tổng kho Lạnh Quốc tế Sóng Thần", "Hệ thống kho vận đạt tiêu chuẩn ISO ứng dụng công nghệ giám sát nhiệt độ tự động.", "Số 10, KCN Sóng Thần 1", "Bình Dương", "Dĩ An", null, null, null,
+        // KHO 1: Kho Sóng Thần (Tọa độ giả lập Dĩ An, Bình Dương)
+        WarehouseCreateDTO wh1Dto = new WarehouseCreateDTO(
+                "Tổng kho Lạnh Quốc tế Sóng Thần", "Hệ thống kho vận đạt tiêu chuẩn ISO ứng dụng công nghệ giám sát nhiệt độ tự động.", "Số 10, KCN Sóng Thần 1", "Bình Dương", "Dĩ An",
+                106.7725, 10.9024, "75000", // locationLong, locationLat, locationPostalCode
                 List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO("Gói lưu trữ theo tháng", 260000.0, "VND", "m3")))));
         WarehouseResponseDTO wh1Res = ownerService.createWarehouse(owner1.getId(), wh1Dto, List.of("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/images/07c00336-f2b5-4528-84c1-d082a9805f19.jpg"), null);
         employeeService.verifyWarehouse(wh1Res.id(), WarehouseStatus.ACTIVE);
 
-        // KHO 2: Kho Tân Bình
-        WarehouseCreateDTO wh2Dto = new WarehouseCreateDTO("Kho mát Nông sản Tân Bình", "Chuyên lưu trữ rau củ quả tươi sống, vị trí ngay sát trung tâm TPHCM, thuận tiện giao hàng nội thành.", "KCN Tân Bình, Lô B2", "Hồ Chí Minh", "Tân Bình", null, null, null,
+        // KHO 2: Kho Tân Bình (Tọa độ giả lập KCN Tân Bình, TP.HCM)
+        WarehouseCreateDTO wh2Dto = new WarehouseCreateDTO(
+                "Kho mát Nông sản Tân Bình", "Chuyên lưu trữ rau củ quả tươi sống, vị trí ngay sát trung tâm TPHCM, thuận tiện giao hàng nội thành.", "KCN Tân Bình, Lô B2", "Hồ Chí Minh", "Tân Bình",
+                106.6358, 10.8038, "70000", // locationLong, locationLat, locationPostalCode
                 List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false, List.of(new PriceTierDTO("Thuê bao nguyên khu (Tuần)", 5000000.0, "VND", "sector")))));
         WarehouseResponseDTO wh2Res = ownerService.createWarehouse(owner2.getId(), wh2Dto, new ArrayList<>(), null);
         employeeService.verifyWarehouse(wh2Res.id(), WarehouseStatus.ACTIVE);
 
-        // KHO 3: Kho Quận 9
-        WarehouseCreateDTO wh3Dto = new WarehouseCreateDTO("Kho lạnh Y tế & Dược phẩm Quận 9", "Kho chuyên dụng chuẩn GSP lưu trữ Vắc xin và Sinh phẩm y tế.", "Khu Công Nghệ Cao, Đường D1", "Hồ Chí Minh", "Quận 9", null, null, null,
+        // KHO 3: Kho Quận 9 (Tọa độ giả lập Khu Công Nghệ Cao Quận 9, TP.HCM)
+        WarehouseCreateDTO wh3Dto = new WarehouseCreateDTO(
+                "Kho lạnh Y tế & Dược phẩm Quận 9", "Kho chuyên dụng chuẩn GSP lưu trữ Vắc xin và Sinh phẩm y tế.", "Khu Công Nghệ Cao, Đường D1", "Hồ Chí Minh", "Quận 9",
+                106.8029, 10.8491, "70000", // locationLong, locationLat, locationPostalCode
                 List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true, List.of(new PriceTierDTO("Lưu trữ theo Pallet/Tháng", 800000.0, "VND", "pallet")))));
         WarehouseResponseDTO wh3Res = ownerService.createWarehouse(owner3.getId(), wh3Dto, new ArrayList<>(), null);
         employeeService.verifyWarehouse(wh3Res.id(), WarehouseStatus.ACTIVE);
@@ -118,9 +124,9 @@ public class DataInitializer implements CommandLineRunner {
         warehouseRepository.save(wh2Entity);
 
         Warehouse wh3Entity = warehouseRepository.findById(wh3Res.id()).get();
-        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(haccp).link(HACCP_link).status(VerifyStatus.REJECTED).rejectReason("Đã hêt hạn").build());
-        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(haccp).link(ISO9001_link).status(VerifyStatus.PENDING).build());
-        warehouseRepository.save(wh2Entity);
+        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(haccp).link(HACCP_link).status(VerifyStatus.REJECTED).rejectReason("Đã hết hạn").build());
+        wh3Entity.getCertificationSubmits().add(CertificationSubmit.builder().warehouse(wh3Entity).type(iso9001).link(ISO9001_link).status(VerifyStatus.PENDING).build());
+        warehouseRepository.save(wh3Entity);
 
         // =================================================================
         // 4. KHỞI TẠO REQUEST & CONTRACTS

@@ -8,5 +8,7 @@ public record WarehouseUpdateDTO(
         String locationAddressText,
         String locationProvince,
         String locationCommune,
+        Double locationLong,
+        Double locationLat,
         List<WarehouseSectionUpdateDTO> sections
 ) {}
