@@ -26,23 +26,27 @@ public class EmployeeController {
 
     @GetMapping("/users")
     public ResponseEntity<Page<UserDTO>> getAllUsers(
+            @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(employeeService.searchUsers(null, PageRequest.of(page, size)));
+        return ResponseEntity.ok(employeeService.searchUsers(null, role, PageRequest.of(page, size)));
     }
 
     @GetMapping("/warehouses")
     public ResponseEntity<Page<WarehouseEmployeeDTO>> getAllWarehouses(
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(employeeService.getWarehousesByStatus(null, PageRequest.of(page, size)));
-    }
 
-    @GetMapping("/warehouses/pending")
-    public ResponseEntity<Page<WarehouseEmployeeDTO>> getPendingWarehouses(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.PENDING, PageRequest.of(page, size)));
+        WarehouseStatus statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                statusEnum = WarehouseStatus.valueOf(status.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái kho bãi không hợp lệ!");
+            }
+        }
+        return ResponseEntity.ok(employeeService.getWarehousesByStatus(statusEnum, PageRequest.of(page, size)));
     }
 
     @PatchMapping("/warehouses/{id}/accept")

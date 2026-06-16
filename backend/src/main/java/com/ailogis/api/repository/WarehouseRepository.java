@@ -53,4 +53,8 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     // Lấy danh sách các tỉnh/thành phố KHÔNG TRÙNG LẶP từ các kho bãi đang hoạt động
     @Query("SELECT DISTINCT w.locationProvince FROM Warehouse w WHERE w.locationProvince IS NOT NULL AND w.status IN ('ACTIVE', 'RENTED')")
     List<String> findDistinctProvinces();
+
+    // Lấy danh sách kho của Owner có hỗ trợ lọc Status và Phân trang
+    @Query("SELECT w FROM Warehouse w WHERE w.owner.id = :ownerId AND (:status IS NULL OR w.status = :status) ORDER BY w.id DESC")
+    Page<Warehouse> findByOwnerIdWithFilterPaged(@Param("ownerId") Long ownerId, @Param("status") WarehouseStatus status, Pageable pageable);
 }

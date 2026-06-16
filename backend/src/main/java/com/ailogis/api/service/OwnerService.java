@@ -37,8 +37,17 @@ public class OwnerService {
     private final PaymentService paymentService;
     private final ContractMapper contractMapper;
 
-    public Page<WarehouseResponseDTO> getMyWarehouses(Long ownerId, Pageable pageable) {
-        return warehouseRepository.findByOwnerId(ownerId, pageable)
+    public Page<WarehouseResponseDTO> getMyWarehouses(Long ownerId, String statusStr, Pageable pageable) {
+        WarehouseStatus statusEnum = null;
+        if (statusStr != null && !statusStr.isBlank()) {
+            try {
+                statusEnum = WarehouseStatus.valueOf(statusStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Trạng thái kho bãi không hợp lệ!");
+            }
+        }
+
+        return warehouseRepository.findByOwnerIdWithFilterPaged(ownerId, statusEnum, pageable)
                 .map(warehouseMapper::toWarehouseResponseDTO);
     }
 

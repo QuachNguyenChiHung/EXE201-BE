@@ -31,9 +31,10 @@ public class UserController {
     @GetMapping
     public ResponseEntity<Page<UserDTO>> searchUsers(
             @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(employeeService.searchUsers(keyword, PageRequest.of(page, size)));
+        return ResponseEntity.ok(employeeService.searchUsers(keyword, role, PageRequest.of(page, size)));
     }
 
     // POST /api/users

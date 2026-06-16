@@ -93,8 +93,17 @@ public class EmployeeService {
         return new UserStatisticResponseDTO(usersByRole);
     }
 
-    public Page<UserDTO> searchUsers(String keyword, Pageable pageable) {
-        return userRepository.searchUsers(keyword, pageable).map(u -> new UserDTO(
+    public Page<UserDTO> searchUsers(String keyword, String roleStr, Pageable pageable) {
+        Role roleEnum = null;
+        if (roleStr != null && !roleStr.isBlank()) {
+            try {
+                roleEnum = Role.valueOf(roleStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Role tìm kiếm không hợp lệ!");
+            }
+        }
+
+        return userRepository.searchUsers(keyword, roleEnum, pageable).map(u -> new UserDTO(
                 u.getId(), u.getEmail(), u.getFullName(),
                 u.getCompany() != null ? u.getCompany().getCompanyName() : "Cá nhân",
                 u.getRole().name(), u.getStatus().name()

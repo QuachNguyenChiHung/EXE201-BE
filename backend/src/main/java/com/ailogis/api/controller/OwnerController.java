@@ -27,10 +27,12 @@ public class OwnerController {
     // 1. Lấy danh sách kho bãi của CHÍNH Chủ kho đang đăng nhập
     @GetMapping("/warehouses")
     public ResponseEntity<Page<WarehouseResponseDTO>> getMyWarehouses(
+            @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        return ResponseEntity.ok(ownerService.getMyWarehouses(userDetails.getUser().getId(), PageRequest.of(page, size)));
+
+        return ResponseEntity.ok(ownerService.getMyWarehouses(userDetails.getUser().getId(), status, PageRequest.of(page, size)));
     }
 
     // 2. Xem các đơn yêu cầu thuê gửi tới các kho của mình

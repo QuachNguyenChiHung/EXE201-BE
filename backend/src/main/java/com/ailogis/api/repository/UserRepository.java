@@ -1,6 +1,7 @@
 package com.ailogis.api.repository;
 
 import com.ailogis.api.entity.User;
+import com.ailogis.api.enums.Role;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,12 +19,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRole(com.ailogis.api.enums.Role role);
 
     @Query("SELECT u FROM User u LEFT JOIN u.company c WHERE " +
+            "(:role IS NULL OR u.role = :role) AND " +
             "(:keyword IS NULL OR :keyword = '' OR " +
             "LOWER(u.fullName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(c.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "CAST(u.id AS string) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
+    Page<User> searchUsers(@Param("keyword") String keyword, @Param("role") Role role, Pageable pageable);
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.company WHERE u.id = :userId")
     Optional<User> findByIdWithCompany(@Param("userId") Long userId);
