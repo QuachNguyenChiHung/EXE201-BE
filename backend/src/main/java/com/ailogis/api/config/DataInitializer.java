@@ -248,10 +248,16 @@ public class DataInitializer implements CommandLineRunner {
         // 7. KHỞI TẠO ĐÁNH GIÁ (RATINGS & REVIEWS)
         // =================================================================
         List<Review> reviews = List.of(
-                Review.builder().user(renter1).warehouse(wh1Entity).rating(5).comment("Kho rất hiện đại, nhiệt độ duy trì cực kỳ ổn định. Tôi rất yên tâm khi lưu trữ hải sản ở đây.").build(),
-                Review.builder().user(renter2).warehouse(wh1Entity).rating(4).comment("Dịch vụ tốt, bảo vệ nhiệt tình nhưng thủ tục giấy tờ xuất nhập lúc 2h sáng hơi chậm một chút.").build(),
-                Review.builder().user(renter3).warehouse(wh2Entity).rating(5).comment("Vị trí ngay sát trung tâm, xe tải ra vào lấy nông sản cực kỳ thuận tiện. Tuyệt vời!").build(),
-                Review.builder().user(renter1).warehouse(wh3Entity).rating(4).comment("Kho y tế chuẩn GSP, quy trình kiểm soát vi sinh rất khắt khe và an toàn.").build()
+                // Kho 1: Hạ điểm xuống (Avg: 3.5 sao)
+                Review.builder().user(renter1).warehouse(wh1Entity).rating(4).comment("Kho tạm ổn, nhưng đường vào hơi nhỏ, bãi đậu xe hay bị kẹt.").build(),
+                Review.builder().user(renter2).warehouse(wh1Entity).rating(3).comment("Dịch vụ bình thường, thỉnh thoảng nhiệt độ kho báo cáo hơi chậm.").build(),
+
+                // Kho 2: Avg: 5.0 sao
+                Review.builder().user(renter3).warehouse(wh2Entity).rating(5).comment("Vị trí ngay sát trung tâm, xe tải ra vào rất thuận tiện. Tuyệt vời!").build(),
+
+                // Kho 3: Tăng số lượng đánh giá và điểm lên tối đa để test thuật toán (Avg: 5.0 sao)
+                Review.builder().user(renter1).warehouse(wh3Entity).rating(5).comment("Kho y tế chuẩn GSP, quy trình kiểm soát vi sinh rất khắt khe và an toàn tuyệt đối.").build(),
+                Review.builder().user(renter2).warehouse(wh3Entity).rating(5).comment("Rất hài lòng với cách quản lý chuyên nghiệp, thủ tục giấy tờ cực kỳ nhanh gọn.").build()
         );
         reviewRepository.saveAll(reviews);
 

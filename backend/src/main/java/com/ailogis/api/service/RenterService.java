@@ -3,15 +3,10 @@ package com.ailogis.api.service;
 import com.ailogis.api.dto.RenterStatisticResponseDTO;
 import com.ailogis.api.dto.PaymentResponseDTO;
 import com.ailogis.api.dto.AiTierDTO;
-import com.ailogis.api.entity.User;
-import com.ailogis.api.entity.Transaction;
-import com.ailogis.api.entity.AiSubscriptionTier;
-import com.ailogis.api.repository.UserRepository;
-import com.ailogis.api.repository.ContractRepository;
-import com.ailogis.api.repository.RentalRequestRepository;
-import com.ailogis.api.repository.AiConversationRepository;
-import com.ailogis.api.repository.TransactionRepository;
-import com.ailogis.api.repository.AiSubscriptionTierRepository;
+import com.ailogis.api.dto.WarehouseResponseDTO;
+import com.ailogis.api.entity.*;
+import com.ailogis.api.mapper.WarehouseMapper;
+import com.ailogis.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +27,9 @@ public class RenterService {
     private final TransactionRepository transactionRepository;
     private final AiSubscriptionTierRepository aiTierRepository;
     private final PaymentService paymentService;
+    private final BookmarkRepository bookmarkRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final WarehouseMapper warehouseMapper;
 
     public RenterStatisticResponseDTO getRenterStatistics(Long renterId, int expireDaysAlert) {
         User renter = userRepository.findById(renterId)
@@ -86,5 +85,27 @@ public class RenterService {
         transaction = transactionRepository.save(transaction);
         String paymentUrl = paymentService.createVNPayUrl(transaction, request);
         return new PaymentResponseDTO(paymentUrl);
+    }
+
+    @Transactional
+    public String toggleBookmark(Long renterId, Long warehouseId) {
+        Optional<Bookmark> existing = bookmarkRepository.findByUserIdAndWarehouseId(renterId, warehouseId);
+        if (existing.isPresent()) {
+            bookmarkRepository.delete(existing.get());
+            return "Đã gỡ kho bãi khỏi danh sách yêu thích!";
+        } else {
+            User renter = userRepository.findById(renterId).orElseThrow();
+            Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+            bookmarkRepository.save(Bookmark.builder().user(renter).warehouse(warehouse).build());
+            return "Đã thêm kho bãi vào danh sách yêu thích!";
+        }
+    }
+
+    public List<WarehouseResponseDTO> getMyBookmarks(Long renterId) {
+        return bookmarkRepository.findByUserId(renterId).stream()
+                .map(b -> warehouseMapper.toWarehouseResponseDTO(b.getWarehouse()))
+                .toList();
     }
 }

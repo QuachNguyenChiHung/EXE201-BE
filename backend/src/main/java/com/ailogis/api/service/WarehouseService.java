@@ -10,6 +10,8 @@ import com.ailogis.api.repository.WarehouseRepository;
 import com.ailogis.api.repository.WarehouseViewRepository;
 import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -108,5 +110,19 @@ public class WarehouseService {
                 warehouse.getLocationLong(),
                 warehouse.getLocationLat()
         );
+    }
+
+    public Page<WarehouseResponseDTO> getPopularWarehouses(Pageable pageable) {
+        LocalDate thirtyDaysAgo = LocalDate.now().minusDays(30);
+        return warehouseRepository.findPopularWarehouses(thirtyDaysAgo, pageable)
+                .map(warehouseMapper::toWarehouseResponseDTO);
+    }
+
+    public Page<WarehouseResponseDTO> searchWarehouses(
+            String province, Boolean isSponsor, Double minArea, Double maxArea,
+            Double minPrice, Double maxPrice, Double minRating, Pageable pageable) {
+
+        return warehouseRepository.searchWarehouses(province, isSponsor, minArea, maxArea, minPrice, maxPrice, minRating, pageable)
+                .map(warehouseMapper::toWarehouseResponseDTO);
     }
 }

@@ -97,4 +97,17 @@ public class RenterController {
         Long renterId = userDetails.getUser().getId();
         return ResponseEntity.ok(renterService.buyAiSubscription(renterId, id, request));
     }
+
+    @PostMapping("/bookmarks/{warehouseId}")
+    public ResponseEntity<String> toggleBookmark(
+            @PathVariable Long warehouseId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(renterService.toggleBookmark(userDetails.getUser().getId(), warehouseId));
+    }
+
+    @GetMapping("/bookmarks")
+    public ResponseEntity<List<WarehouseResponseDTO>> getMyBookmarks(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(renterService.getMyBookmarks(userDetails.getUser().getId()));
+    }
 }
