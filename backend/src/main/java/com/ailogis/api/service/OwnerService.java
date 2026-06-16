@@ -93,6 +93,8 @@ public class OwnerService {
         return new RentRequestResponseDTO(
                 r.getId(),
                 r.getWarehouse().getName(),
+                r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                 r.getCargoDescription(),
                 r.getDuration(),
                 r.getDurationUnit(),

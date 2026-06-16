@@ -72,8 +72,23 @@ public class RentalRequestService {
                 new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit())
         ).toList();
 
-        return new RentRequestResponseDTO(r.getId(), r.getWarehouse().getName(), r.getCargoDescription(), r.getDuration(), r.getDurationUnit(), r.getStatus().name(),
-                r.getOtherDetail(), r.getRenterRejectionReason(), r.getRejectionReason(), r.getOfferedPrice(), r.getRenterOfferedPrice(), r.getOwnerNote(), detailDTOs);
+        return new RentRequestResponseDTO(
+                r.getId(),
+                r.getWarehouse().getName(),
+                r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
+                r.getCargoDescription(),
+                r.getDuration(),
+                r.getDurationUnit(),
+                r.getStatus().name(),
+                r.getOtherDetail(),
+                r.getRenterRejectionReason(),
+                r.getRejectionReason(),
+                r.getOfferedPrice(),
+                r.getRenterOfferedPrice(),
+                r.getOwnerNote(),
+                detailDTOs
+        );
     }
 
     @Transactional

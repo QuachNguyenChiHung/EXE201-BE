@@ -278,6 +278,8 @@ public class EmployeeService {
                 .map(r -> new RentRequestResponseDTO(
                         r.getId(),
                         r.getWarehouse().getName(),
+                        r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                        r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                         r.getCargoDescription(),
                         r.getDuration(),
                         r.getDurationUnit(),
@@ -288,7 +290,7 @@ public class EmployeeService {
                         r.getOfferedPrice(),
                         r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
-                        List.of()
+                        new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();
 
         // 2. Lấy Contracts
@@ -326,6 +328,8 @@ public class EmployeeService {
                 .map(r -> new RentRequestResponseDTO(
                         r.getId(),
                         r.getWarehouse().getName(),
+                        r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                        r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                         r.getCargoDescription(),
                         r.getDuration(),
                         r.getDurationUnit(),
@@ -336,7 +340,7 @@ public class EmployeeService {
                         r.getOfferedPrice(),
                         r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
-                        List.of()
+                        new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();
 
         List<ContractResponseDTO> contracts = contractRepository.findAll().stream()

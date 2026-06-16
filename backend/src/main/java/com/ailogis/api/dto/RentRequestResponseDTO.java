@@ -5,6 +5,8 @@ import java.util.List;
 public record RentRequestResponseDTO(
         Long id,
         String warehouseName,
+        String renterName,
+        String ownerName,
         String cargoDescription,
         Integer duration,
         String durationUnit,
