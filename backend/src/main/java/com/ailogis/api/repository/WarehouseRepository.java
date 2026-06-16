@@ -47,4 +47,8 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             @Param("minArea") Double minArea, @Param("maxArea") Double maxArea,
             @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice,
             @Param("minRating") Double minRating, Pageable pageable);
+
+    // Lấy danh sách các tỉnh/thành phố KHÔNG TRÙNG LẶP từ các kho bãi đang hoạt động
+    @Query("SELECT DISTINCT w.locationProvince FROM Warehouse w WHERE w.locationProvince IS NOT NULL AND w.status IN ('ACTIVE', 'RENTED')")
+    List<String> findDistinctProvinces();
 }

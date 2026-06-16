@@ -1,5 +1,6 @@
 package com.ailogis.api.controller;
 
+import com.ailogis.api.dto.FilterMetaResponseDTO;
 import com.ailogis.api.dto.WarehouseLocationDTO;
 import com.ailogis.api.dto.WarehouseResponseDTO;
 import com.ailogis.api.security.CustomUserDetails;
@@ -60,5 +61,10 @@ public class PublicWarehouseController {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(warehouseService.searchWarehouses(
                 province, isSponsor, minArea, maxArea, minPrice, maxPrice, minRating, pageable));
+    }
+
+    @GetMapping("/filter-meta")
+    public ResponseEntity<FilterMetaResponseDTO> getFilterMeta() {
+        return ResponseEntity.ok(warehouseService.getFilterMeta());
     }
 }

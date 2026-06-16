@@ -6,6 +6,8 @@ import com.ailogis.api.entity.WarehouseView;
 import com.ailogis.api.enums.Role;
 import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.mapper.WarehouseMapper;
+import com.ailogis.api.repository.CertificationTypeRepository;
+import com.ailogis.api.repository.SponsorTierRepository;
 import com.ailogis.api.repository.WarehouseRepository;
 import com.ailogis.api.repository.WarehouseViewRepository;
 import com.ailogis.api.security.CustomUserDetails;
@@ -28,6 +30,8 @@ public class WarehouseService {
     private final WarehouseRepository warehouseRepository;
     private final WarehouseViewRepository warehouseViewRepository;
     private final WarehouseMapper warehouseMapper;
+    private final SponsorTierRepository sponsorTierRepository;
+    private final CertificationTypeRepository certificationTypeRepository;
 
     public List<WarehouseResponseDTO> getActiveOnlyWarehouses() {
         return warehouseRepository.findByStatus(WarehouseStatus.ACTIVE)
@@ -124,5 +128,28 @@ public class WarehouseService {
 
         return warehouseRepository.searchWarehouses(province, isSponsor, minArea, maxArea, minPrice, maxPrice, minRating, pageable)
                 .map(warehouseMapper::toWarehouseResponseDTO);
+    }
+
+    public FilterMetaResponseDTO getFilterMeta() {
+        // 1. Lấy danh sách Địa điểm thực tế đang có kho bãi
+        List<String> locations = warehouseRepository.findDistinctProvinces();
+
+        // 2. Trạng thái mà khách thuê được phép tìm kiếm
+        List<String> statuses = List.of(
+                WarehouseStatus.ACTIVE.name(),
+                WarehouseStatus.RENTED.name()
+        );
+
+        // 3. Danh sách các gói Sponsor để Frontend vẽ nút
+        List<SponsorTierDTO> sponsorTiers = sponsorTierRepository.findByIsActiveTrue().stream()
+                .map(t -> new SponsorTierDTO(t.getId(), t.getPriorityLevel(), t.getPricingPerMonth(), t.getYearPackSale(), t.getLabel(), null, t.getIsActive()))
+                .toList();
+
+        // 4. Danh sách các Chứng chỉ (HACCP, ISO...)
+        List<CertDTO> certifications = certificationTypeRepository.findAll().stream()
+                .map(c -> new CertDTO(c.getId().toString(), c.getLabel(), c.getLawReferences(), c.getUpdateDate() != null ? c.getUpdateDate().toString() : null, c.getPdfLink()))
+                .toList();
+
+        return new FilterMetaResponseDTO(locations, statuses, sponsorTiers, certifications);
     }
 }

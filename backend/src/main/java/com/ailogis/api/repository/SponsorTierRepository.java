@@ -13,4 +13,7 @@ public interface SponsorTierRepository extends JpaRepository<SponsorTier, Long> 
     @Query("SELECT DISTINCT s FROM SponsorTier s LEFT JOIN Warehouse w ON w.sponsorType.id = s.id AND w.owner.id = :ownerId AND w.isSponsor = true " +
             "WHERE s.isActive = true OR w.id IS NOT NULL")
     List<SponsorTier> findActiveAndPurchasedByOwner(@Param("ownerId") Long ownerId);
+
+    // Lấy danh sách các gói tài trợ đang được bán
+    List<SponsorTier> findByIsActiveTrue();
 }
