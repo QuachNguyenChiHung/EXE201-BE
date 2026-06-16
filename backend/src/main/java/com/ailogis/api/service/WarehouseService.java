@@ -33,9 +33,9 @@ public class WarehouseService {
     private final SponsorTierRepository sponsorTierRepository;
     private final CertificationTypeRepository certificationTypeRepository;
 
-    public List<WarehouseResponseDTO> getActiveOnlyWarehouses() {
-        return warehouseRepository.findByStatus(WarehouseStatus.ACTIVE)
-                .stream().map(warehouseMapper::toWarehouseResponseDTO).toList();
+    public Page<WarehouseResponseDTO> getActiveOnlyWarehouses(Pageable pageable) {
+        return warehouseRepository.findByStatus(WarehouseStatus.ACTIVE, pageable)
+                .map(warehouseMapper::toWarehouseResponseDTO);
     }
 
     // DÀNH CHO OWNER/EMPLOYEE: Chỉ xem dữ liệu chi tiết thô, KHÔNG ghi nhận log lượt xem mới

@@ -16,7 +16,9 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
     @Query("SELECT r FROM RentalRequest r WHERE r.renter.id = :renterId AND (:status IS NULL OR r.status = :status)")
     List<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId, @Param("status") RequestStatus status);
 
-    @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.owner.id = :ownerId AND (:status IS NULL OR r.status = :status)")
+    @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.owner.id = :ownerId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
+    Page<RentalRequest> findByWarehouseOwnerIdWithFilter(@Param("ownerId") Long ownerId, @Param("status") RequestStatus status, Pageable pageable);
+    @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.owner.id = :ownerId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
     List<RentalRequest> findByWarehouseOwnerIdWithFilter(@Param("ownerId") Long ownerId, @Param("status") RequestStatus status);
 
     long countByStatus(RequestStatus status);
@@ -29,7 +31,7 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
     List<RentalRequest> findByWarehouseIdAndStatus(Long warehouseId, RequestStatus status);
 
     @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.id = :warehouseId AND (:status IS NULL OR r.status = :status) ORDER BY r.id DESC")
-    List<RentalRequest> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") RequestStatus status);
+    Page<RentalRequest> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") RequestStatus status, Pageable pageable);
 
     @Query("SELECT r FROM RentalRequest r WHERE r.renter.id = :renterId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
     Page<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId, @Param("status") RequestStatus status, Pageable pageable);

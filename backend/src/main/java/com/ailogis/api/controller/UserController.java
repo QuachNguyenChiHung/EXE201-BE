@@ -9,6 +9,8 @@ import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.EmployeeService;
 import com.ailogis.api.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -27,8 +29,11 @@ public class UserController {
 
     // GET /api/users?keyword=...
     @GetMapping
-    public ResponseEntity<List<UserDTO>> searchUsers(@RequestParam(required = false) String keyword) {
-        return ResponseEntity.ok(employeeService.searchUsers(keyword));
+    public ResponseEntity<Page<UserDTO>> searchUsers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(employeeService.searchUsers(keyword, PageRequest.of(page, size)));
     }
 
     // POST /api/users

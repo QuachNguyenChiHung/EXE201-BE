@@ -80,9 +80,23 @@ public class WarehouseMapper {
 
         String displayStatus = calculateOperationalStatus(w);
 
+        SponsorTierDTO sponsorDto = null;
+        if (w.getIsSponsor() != null && w.getIsSponsor() && w.getSponsorType() != null) {
+            sponsorDto = new SponsorTierDTO(
+                    w.getSponsorType().getId(),
+                    w.getSponsorType().getPriorityLevel(),
+                    w.getSponsorType().getPricingPerMonth(),
+                    w.getSponsorType().getYearPackSale(),
+                    w.getSponsorType().getLabel(),
+                    null,
+                    w.getSponsorType().getIsActive()
+            );
+        }
+
         return new WarehouseResponseDTO(
                 w.getId(), w.getName(), w.getDescription(), w.getLocationAddressText(),
-                w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs, displayStatus, viewStats, pendingReq
+                w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs, displayStatus, viewStats, pendingReq,
+                w.getIsSponsor(), sponsorDto
         );
     }
 

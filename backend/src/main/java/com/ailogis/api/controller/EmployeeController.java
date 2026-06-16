@@ -5,6 +5,8 @@ import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.service.EmployeeService;
 import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,18 +25,24 @@ public class EmployeeController {
     private final WarehouseService warehouseService;
 
     @GetMapping("/users")
-    public ResponseEntity<List<UserDTO>> getAllUsers() {
-        return ResponseEntity.ok(employeeService.getAllUsers());
+    public ResponseEntity<Page<UserDTO>> getAllUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(employeeService.searchUsers(null, PageRequest.of(page, size)));
     }
 
     @GetMapping("/warehouses")
-    public ResponseEntity<List<WarehouseEmployeeDTO>> getAllWarehouses() {
-        return ResponseEntity.ok(employeeService.getWarehousesByStatus(null));
+    public ResponseEntity<Page<WarehouseEmployeeDTO>> getAllWarehouses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(employeeService.getWarehousesByStatus(null, PageRequest.of(page, size)));
     }
 
     @GetMapping("/warehouses/pending")
-    public ResponseEntity<List<WarehouseEmployeeDTO>> getPendingWarehouses() {
-        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.PENDING));
+    public ResponseEntity<Page<WarehouseEmployeeDTO>> getPendingWarehouses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ResponseEntity.ok(employeeService.getWarehousesByStatus(WarehouseStatus.PENDING, PageRequest.of(page, size)));
     }
 
     @PatchMapping("/warehouses/{id}/accept")

@@ -22,8 +22,10 @@ public class PublicWarehouseController {
     private final WarehouseService warehouseService;
 
     @GetMapping
-    public ResponseEntity<List<WarehouseResponseDTO>> getActiveOnly() {
-        return ResponseEntity.ok(warehouseService.getActiveOnlyWarehouses());
+    public ResponseEntity<Page<WarehouseResponseDTO>> getActiveOnly(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size) {
+        return ResponseEntity.ok(warehouseService.getActiveOnlyWarehouses(PageRequest.of(page, size)));
     }
 
     @GetMapping("/{id}")

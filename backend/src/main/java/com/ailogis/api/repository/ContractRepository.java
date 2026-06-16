@@ -33,6 +33,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     Double sumActiveRentedAreaBySection(@Param("sectionId") Long sectionId);
 
     @Query("SELECT c FROM Contract c WHERE c.request.warehouse.id = :warehouseId AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
+    Page<Contract> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") ContractStatus status, Pageable pageable);
+    @Query("SELECT c FROM Contract c WHERE c.request.warehouse.id = :warehouseId AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
     List<Contract> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") ContractStatus status);
 
     @Query("SELECT c FROM Contract c WHERE (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")

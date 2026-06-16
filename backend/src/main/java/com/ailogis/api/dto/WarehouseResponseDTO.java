@@ -15,5 +15,7 @@ public record WarehouseResponseDTO(
         List<CertificationSubmitDTO> certificates,
         String status,
         Map<String, Long>viewCountByDate,
-        Long pendingRequestCount
+        Long pendingRequestCount,
+        Boolean isSponsor,
+        SponsorTierDTO sponsorTier
 ) {}

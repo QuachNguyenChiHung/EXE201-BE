@@ -6,10 +6,13 @@ import com.ailogis.api.enums.ContractStatus;
 import com.ailogis.api.enums.RequestStatus;
 import com.ailogis.api.enums.VerifyStatus;
 import com.ailogis.api.enums.WarehouseStatus;
+import com.ailogis.api.mapper.ContractMapper;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,25 +35,23 @@ public class OwnerService {
     private final ReviewRepository reviewRepository;
     private final SponsorTierRepository sponsorTierRepository;
     private final PaymentService paymentService;
+    private final ContractMapper contractMapper;
 
-    public List<WarehouseResponseDTO> getMyWarehouses(Long ownerId) {
-        return warehouseRepository.findByOwnerId(ownerId).stream()
-                .map(warehouseMapper::toWarehouseResponseDTO)
-                .toList();
+    public Page<WarehouseResponseDTO> getMyWarehouses(Long ownerId, Pageable pageable) {
+        return warehouseRepository.findByOwnerId(ownerId, pageable)
+                .map(warehouseMapper::toWarehouseResponseDTO);
     }
 
-    public List<RentRequestResponseDTO> getRequestsForMyWarehouses(Long ownerId, String statusStr) {
-        com.ailogis.api.enums.RequestStatus statusEnum = null;
+    public Page<RentRequestResponseDTO> getRequestsForMyWarehouses(Long ownerId, String statusStr, Pageable pageable) {
+        RequestStatus statusEnum = null;
         if (statusStr != null && !statusStr.isBlank()) {
             try {
-                statusEnum = com.ailogis.api.enums.RequestStatus.valueOf(statusStr.toUpperCase());
+                statusEnum = RequestStatus.valueOf(statusStr.toUpperCase());
             } catch (IllegalArgumentException e) {
                 throw new RuntimeException("Trạng thái Request không hợp lệ!");
             }
         }
-        return requestRepository.findByWarehouseOwnerIdWithFilter(ownerId, statusEnum).stream()
-                .map(this::mapToRequestDTO)
-                .toList();
+        return requestRepository.findByWarehouseOwnerIdWithFilter(ownerId, statusEnum, pageable).map(this::mapToRequestDTO);
     }
 
     @Transactional
@@ -447,7 +448,7 @@ public class OwnerService {
         return new PaymentResponseDTO(paymentUrl);
     }
 
-    public List<RentRequestResponseDTO> getWarehouseRentRequests(Long ownerId, Long warehouseId, String statusStr) {
+    public Page<RentRequestResponseDTO> getWarehouseRentRequests(Long ownerId, Long warehouseId, String statusStr, Pageable pageable) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -464,12 +465,10 @@ public class OwnerService {
             }
         }
 
-        return requestRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum).stream()
-                .map(this::mapToRequestDTO)
-                .toList();
+        return requestRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum, pageable).map(this::mapToRequestDTO);
     }
 
-    public List<ContractResponseDTO> getWarehouseContracts(Long ownerId, Long warehouseId, String statusStr) {
+    public Page<ContractResponseDTO> getWarehouseContracts(Long ownerId, Long warehouseId, String statusStr, Pageable pageable) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -486,25 +485,7 @@ public class OwnerService {
             }
         }
 
-        return contractRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum).stream()
-                .map(contractRepository -> contractRepository != null ?
-                        new ContractResponseDTO(
-                                contractRepository.getId(),
-                                contractRepository.getRequest() != null ? contractRepository.getRequest().getId() : null,
-                                warehouse.getName(),
-                                contractRepository.getCargoDescription(),
-                                contractRepository.getStartAt(),
-                                contractRepository.getEndAt(),
-                                contractRepository.getPaymentTerm(),
-                                contractRepository.getPenaltyClause(),
-                                contractRepository.getSpecialTerm(),
-                                contractRepository.getCancelReason(),
-                                contractRepository.getOwnerLegalName(), contractRepository.getOwnerTaxCode(), contractRepository.getOwnerEmail(), contractRepository.getOwnerPhone(), contractRepository.getOwnerAddress(),
-                                contractRepository.getRenterLegalName(), contractRepository.getRenterTaxCode(), contractRepository.getRenterEmail(), contractRepository.getRenterPhone(), contractRepository.getRenterAddress(),
-                                (contractRepository.getRequest() != null && contractRepository.getRequest().getOfferedPrice() != null) ? contractRepository.getRequest().getOfferedPrice().longValue() : 0L,
-                                contractRepository.getStatus() != null ? contractRepository.getStatus().name() : null
-                        ) : null)
-                .toList();
+        return contractRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum, pageable).map(contractMapper::toContractResponseDTO);
     }
 
     public List<SponsorTierDTO> getSponsorTiersForOwner(Long ownerId) {

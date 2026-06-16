@@ -1,6 +1,8 @@
 package com.ailogis.api.repository;
 
 import com.ailogis.api.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,7 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
             "LOWER(u.email) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(c.companyName) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "CAST(u.id AS string) LIKE LOWER(CONCAT('%', :keyword, '%')))")
-    List<User> searchUsers(@Param("keyword") String keyword);
+    Page<User> searchUsers(@Param("keyword") String keyword, Pageable pageable);
 
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.company WHERE u.id = :userId")
     Optional<User> findByIdWithCompany(@Param("userId") Long userId);

@@ -14,9 +14,11 @@ import java.util.List;
 @Repository
 public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     // Tìm danh sách kho đã được duyệt (dành cho Renter)
-    List<Warehouse> findByStatus(WarehouseStatus status);
+    Page<Warehouse> findByStatus(WarehouseStatus status, Pageable pageable);
+    List<Warehouse> findByStatus(com.ailogis.api.enums.WarehouseStatus status);
 
     // Tìm kho theo chủ sở hữu (dành cho Owner)
+    Page<Warehouse> findByOwnerId(Long ownerId, Pageable pageable);
     List<Warehouse> findByOwnerId(Long ownerId);
 
     long countByStatus(WarehouseStatus status);

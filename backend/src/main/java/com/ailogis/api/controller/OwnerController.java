@@ -6,6 +6,8 @@ import com.ailogis.api.service.FileStorageService;
 import com.ailogis.api.service.OwnerService;
 import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -24,21 +26,21 @@ public class OwnerController {
 
     // 1. Lấy danh sách kho bãi của CHÍNH Chủ kho đang đăng nhập
     @GetMapping("/warehouses")
-    public ResponseEntity<List<WarehouseResponseDTO>> getMyWarehouses(
+    public ResponseEntity<Page<WarehouseResponseDTO>> getMyWarehouses(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.getMyWarehouses(ownerId));
+        return ResponseEntity.ok(ownerService.getMyWarehouses(userDetails.getUser().getId(), PageRequest.of(page, size)));
     }
 
     // 2. Xem các đơn yêu cầu thuê gửi tới các kho của mình
     @GetMapping("/requests")
-    public ResponseEntity<List<RentRequestResponseDTO>> getIncomingRequests(
+    public ResponseEntity<Page<RentRequestResponseDTO>> getIncomingRequests(
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.getRequestsForMyWarehouses(ownerId, status));
+        return ResponseEntity.ok(ownerService.getRequestsForMyWarehouses(userDetails.getUser().getId(), status, PageRequest.of(page, size)));
     }
 
     // 3. Duyệt hoặc từ chối đơn thuê
@@ -141,24 +143,24 @@ public class OwnerController {
 
     // Lấy danh sách yêu cầu thuê của riêng 1 kho bãi
     @GetMapping("/warehouses/{warehouseId}/requests")
-    public ResponseEntity<List<RentRequestResponseDTO>> getWarehouseRentRequests(
+    public ResponseEntity<Page<RentRequestResponseDTO>> getWarehouseRentRequests(
             @PathVariable Long warehouseId,
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.getWarehouseRentRequests(ownerId, warehouseId, status));
+        return ResponseEntity.ok(ownerService.getWarehouseRentRequests(userDetails.getUser().getId(), warehouseId, status, PageRequest.of(page, size)));
     }
 
     // Lấy danh sách hợp đồng của riêng 1 kho bãi
     @GetMapping("/warehouses/{warehouseId}/contracts")
-    public ResponseEntity<List<ContractResponseDTO>> getWarehouseContracts(
+    public ResponseEntity<Page<ContractResponseDTO>> getWarehouseContracts(
             @PathVariable Long warehouseId,
             @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "6") int size,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-
-        Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.getWarehouseContracts(ownerId, warehouseId, status));
+        return ResponseEntity.ok(ownerService.getWarehouseContracts(userDetails.getUser().getId(), warehouseId, status, PageRequest.of(page, size)));
     }
 
     @GetMapping("/sponsor-tiers")

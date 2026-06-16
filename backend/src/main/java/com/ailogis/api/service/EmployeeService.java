@@ -7,6 +7,8 @@ import com.ailogis.api.mapper.ContractMapper;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,15 +34,6 @@ public class EmployeeService {
     private final ContractMapper contractMapper;
     private final AiSubscriptionTierRepository aiTierRepository;
     private final SponsorTierRepository sponsorTierRepository;
-
-    public List<UserDTO> getAllUsers() {
-        return userRepository.findAll().stream()
-                .map(u -> new UserDTO(
-                        u.getId(), u.getEmail(), u.getFullName(),
-                        u.getCompany() != null ? u.getCompany().getCompanyName() : "Cá nhân",
-                        u.getRole().name(), u.getStatus().name()
-                )).toList();
-    }
 
     public List<WarehouseResponseDTO> getPendingWarehouses() {
         return warehouseRepository.findByStatus(WarehouseStatus.PENDING).stream()
@@ -100,13 +93,12 @@ public class EmployeeService {
         return new UserStatisticResponseDTO(usersByRole);
     }
 
-    public List<UserDTO> searchUsers(String keyword) {
-        return userRepository.searchUsers(keyword).stream()
-                .map(u -> new UserDTO(
-                        u.getId(), u.getEmail(), u.getFullName(),
-                        u.getCompany() != null ? u.getCompany().getCompanyName() : "Cá nhân",
-                        u.getRole().name(), u.getStatus().name()
-                )).toList();
+    public Page<UserDTO> searchUsers(String keyword, Pageable pageable) {
+        return userRepository.searchUsers(keyword, pageable).map(u -> new UserDTO(
+                u.getId(), u.getEmail(), u.getFullName(),
+                u.getCompany() != null ? u.getCompany().getCompanyName() : "Cá nhân",
+                u.getRole().name(), u.getStatus().name()
+        ));
     }
 
     @Transactional
@@ -153,11 +145,10 @@ public class EmployeeService {
                 updated.getRole().name(), updated.getStatus().name());
     }
 
-    public List<WarehouseEmployeeDTO> getWarehousesByStatus(WarehouseStatus status) {
-        List<Warehouse> warehouses = (status == null) ?
-                warehouseRepository.findAll() : warehouseRepository.findByStatus(status);
-
-        return warehouses.stream().map(this::mapToEmployeeDTO).toList();
+    public Page<WarehouseEmployeeDTO> getWarehousesByStatus(WarehouseStatus status, Pageable pageable) {
+        Page<Warehouse> warehouses = (status == null) ?
+                warehouseRepository.findAll(pageable) : warehouseRepository.findByStatus(status, pageable);
+        return warehouses.map(this::mapToEmployeeDTO);
     }
 
     @Transactional
