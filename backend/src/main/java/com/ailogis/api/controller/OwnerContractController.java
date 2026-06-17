@@ -46,4 +46,14 @@ public class OwnerContractController {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(contractService.amendContract(ownerId, id, dto));
     }
+
+    @PutMapping("/{contractId}")
+    public ResponseEntity<ContractResponseDTO> updateContract(
+            @PathVariable Long contractId,
+            @RequestBody com.ailogis.api.dto.ContractUpdateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(contractService.updateContract(ownerId, contractId, dto));
+    }
 }

@@ -32,6 +32,9 @@ public class Contract {
     @JoinColumn(name = "id_rent_request", nullable = false)
     private RentalRequest request;
 
+    @Column(name = "total_price")
+    private Double totalPrice;
+
     private String cargoDescription;
     private LocalDate startAt;
     private LocalDate endAt;

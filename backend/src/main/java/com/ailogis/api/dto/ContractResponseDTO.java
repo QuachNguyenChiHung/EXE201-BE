@@ -13,6 +13,8 @@ public record ContractResponseDTO(
         String penaltyClause,
         String specialTerm,
         String cancelReason,
+        Boolean ownerSigned,
+        Boolean renterSigned,
 
         // Thông tin pháp lý Bên A (Owner)
         String ownerLegalName,
@@ -28,6 +30,6 @@ public record ContractResponseDTO(
         String renterPhone,
         String renterAddress,
 
-        Long totalPrice,
+        Double totalPrice,
         String status
 ) {}

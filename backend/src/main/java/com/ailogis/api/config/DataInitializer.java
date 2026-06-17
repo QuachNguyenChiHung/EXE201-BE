@@ -142,7 +142,14 @@ public class DataInitializer implements CommandLineRunner {
         RentRequestResponseDTO req1Res = rentalRequestService.createRequest(renter1.getId(), req1Dto);
         ownerService.updateRequestStatus(owner1.getId(), req1Res.id(), new RequestStatusUpdateDTO(RequestStatus.APPROVED, null, null, "Đồng ý cho thuê giá gốc"));
 
-        ContractResponseDTO c1Res = contractService.createContract(owner1.getId(), new ContractCreateDTO(req1Res.id(), (long) (500.0 * 260000.0 * 6)));
+        ContractResponseDTO c1Res = contractService.createContract(owner1.getId(), new ContractCreateDTO(
+                req1Res.id(),
+                (long) (500.0 * 260000.0 * 6),
+                null, null, null, null, null, null, // Các trường startAt, endAt, điều khoản
+                null, null, null, null, null,       // Thông tin Owner
+                null, null, null, null, null,       // Thông tin Renter
+                "PENDING"                           // Status
+        ));
 
         // HỢP ĐỒNG 2: Renter 2 thuê Kho 2 (Tổng giá gốc: 1 sector * 5tr = 5tr/tuần), Renter trả giá còn 4.8tr
         Long sec2Id = wh2Entity.getSections().get(0).getId();
@@ -160,7 +167,14 @@ public class DataInitializer implements CommandLineRunner {
                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 200.0, "m3")));
         rentalRequestService.createRequest(renter3.getId(), req3Dto);
 
-        ContractResponseDTO c2Res = contractService.createContract(owner2.getId(), new ContractCreateDTO(req2Res.id(), (long) 5000000.0 * 2));
+        ContractResponseDTO c2Res = contractService.createContract(owner2.getId(), new ContractCreateDTO(
+                req2Res.id(),
+                (long) 5000000.0 * 2,
+                null, null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null,
+                "PENDING"
+        ));
 
         // Fake lùi ngày ký hợp đồng vào quá khứ để test biểu đồ/thống kê
         Contract contract1 = contractRepository.findById(c1Res.id()).get();

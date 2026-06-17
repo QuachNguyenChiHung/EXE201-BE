@@ -23,6 +23,8 @@ public class ContractMapper {
                 c.getPenaltyClause(),
                 c.getSpecialTerm(),
                 c.getCancelReason(),
+                c.getOwnerSigned(),
+                c.getRenterSigned(),
 
                 c.getOwnerLegalName(),
                 c.getOwnerTaxCode(),
@@ -36,7 +38,7 @@ public class ContractMapper {
                 c.getRenterPhone(),
                 c.getRenterAddress(),
 
-                (c.getRequest() != null && c.getRequest().getOfferedPrice() != null) ? c.getRequest().getOfferedPrice().longValue() : 0L,
+                c.getTotalPrice(),
                 c.getStatus() != null ? c.getStatus().name() : null
         );
     }

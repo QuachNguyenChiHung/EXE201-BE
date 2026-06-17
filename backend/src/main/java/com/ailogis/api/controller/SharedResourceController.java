@@ -1,5 +1,6 @@
 package com.ailogis.api.controller;
 
+import com.ailogis.api.dto.ContractMetaDataResponseDTO;
 import com.ailogis.api.dto.ContractResponseDTO;
 import com.ailogis.api.dto.RentRequestResponseDTO;
 import com.ailogis.api.security.CustomUserDetails;
@@ -62,5 +63,12 @@ public class SharedResourceController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         return ResponseEntity.ok(warehouseService.getWarehouseViewStats(id, days, userDetails));
+    }
+
+    @GetMapping("/requests/{id}/contract-meta")
+    public ResponseEntity<ContractMetaDataResponseDTO> getMetaDataForContract(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        return ResponseEntity.ok(contractService.getMetaDataForContract(id));
     }
 }

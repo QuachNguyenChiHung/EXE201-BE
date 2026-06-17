@@ -1,8 +1,6 @@
 package com.ailogis.api.service;
 
-import com.ailogis.api.dto.ContractAmendDTO;
-import com.ailogis.api.dto.ContractCreateDTO;
-import com.ailogis.api.dto.ContractResponseDTO;
+import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.enums.ContractStatus;
 import com.ailogis.api.enums.RequestStatus;
@@ -52,33 +50,96 @@ public class ContractService {
                 throw new RuntimeException("Phòng số " + section.getSector() + " không đủ chỗ trống để kích hoạt hợp đồng!");
             }
             section.setAvailableCapacity(section.getAvailableCapacity() - detail.getRentedArea());
-            sectionRepository.save(section); // Cập nhật lại sức chứa phòng
+            sectionRepository.save(section);
         }
 
-        // Lưu bản chụp Snapshot thông tin pháp lý bất biến vào hợp đồng
+        LocalDate start = dto.startAt() != null ? LocalDate.parse(dto.startAt()) : LocalDate.now();
+        LocalDate end = dto.endAt() != null ? LocalDate.parse(dto.endAt()) : start.plusMonths(request.getDuration());
+
+        ContractStatus initialStatus = ContractStatus.PENDING;
+        if (dto.status() != null && !dto.status().isBlank()) {
+            initialStatus = ContractStatus.valueOf(dto.status().toUpperCase());
+        }
+
         Contract contract = Contract.builder()
                 .owner(owner)
                 .renter(renter)
                 .request(request)
-                .cargoDescription(request.getCargoDescription())
-                .startAt(LocalDate.now())
-                .endAt(LocalDate.now().plusMonths(request.getDuration()))
-                .ownerLegalName(owner.getCompany() != null ? owner.getCompany().getCompanyName() : owner.getFullName())
-                .ownerTaxCode(owner.getCompany() != null ? owner.getCompany().getCompanyTaxCode() : "N/A")
-                .ownerEmail(owner.getEmail())
-                .ownerPhone(owner.getPhone())
-                .renterLegalName(renter.getCompany() != null ? renter.getCompany().getCompanyName() : renter.getFullName())
-                .renterTaxCode(renter.getCompany() != null ? renter.getCompany().getCompanyTaxCode() : "N/A")
-                .renterEmail(renter.getEmail())
-                .renterPhone(renter.getPhone())
+                .cargoDescription(dto.cargoDescription() != null ? dto.cargoDescription() : request.getCargoDescription())
+                .startAt(start)
+                .endAt(end)
+                .totalPrice(dto.totalPrice() != null ? dto.totalPrice().doubleValue() : (request.getOfferedPrice() != null ? request.getOfferedPrice() : 0.0))
+
+                .paymentTerm(dto.paymentTerm())
+                .penaltyClause(dto.penaltyClause())
+                .specialTerm(dto.specialTerm())
+
+                .ownerLegalName(dto.ownerLegalName())
+                .ownerTaxCode(dto.ownerTaxCode())
+                .ownerEmail(dto.ownerEmail())
+                .ownerPhone(dto.ownerPhone())
+                .ownerAddress(dto.ownerAddress())
+
+                .renterLegalName(dto.renterLegalName())
+                .renterTaxCode(dto.renterTaxCode())
+                .renterEmail(dto.renterEmail())
+                .renterPhone(dto.renterPhone())
+                .renterAddress(dto.renterAddress())
+
                 .ownerSigned(true)
                 .renterSigned(false)
-                .status(ContractStatus.ACTIVE)
+                .status(initialStatus)
                 .build();
 
         Contract saved = contractRepository.save(contract);
 
-        return contractMapper.toContractResponseDTO(saved);
+        if (initialStatus == ContractStatus.PENDING) {
+            request.setStatus(RequestStatus.APPROVED);
+            requestRepository.save(request);
+        }
+
+        return mapToResponseDTO(saved);
+    }
+
+    @Transactional
+    public ContractResponseDTO updateContract(Long ownerId, Long contractId, com.ailogis.api.dto.ContractUpdateDTO dto) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        if (!contract.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền sửa hợp đồng này!");
+        }
+
+        // Chỉ cho phép sửa khi hợp đồng chưa có hiệu lực chính thức
+        if (contract.getStatus() != ContractStatus.PENDING) {
+            throw new RuntimeException("Chỉ có thể chỉnh sửa khi hợp đồng đang ở trạng thái PENDING (chờ ký)!");
+        }
+
+        if (dto.totalPrice() != null) contract.setTotalPrice(dto.totalPrice().doubleValue());
+        if (dto.startAt() != null) contract.setStartAt(LocalDate.parse(dto.startAt()));
+        if (dto.endAt() != null) contract.setEndAt(LocalDate.parse(dto.endAt()));
+
+        if (dto.paymentTerm() != null) contract.setPaymentTerm(dto.paymentTerm());
+        if (dto.penaltyClause() != null) contract.setPenaltyClause(dto.penaltyClause());
+        if (dto.specialTerm() != null) contract.setSpecialTerm(dto.specialTerm());
+        if (dto.cargoDescription() != null) contract.setCargoDescription(dto.cargoDescription());
+
+        if (dto.ownerLegalName() != null) contract.setOwnerLegalName(dto.ownerLegalName());
+        if (dto.ownerTaxCode() != null) contract.setOwnerTaxCode(dto.ownerTaxCode());
+        if (dto.ownerAddress() != null) contract.setOwnerAddress(dto.ownerAddress());
+        if (dto.ownerPhone() != null) contract.setOwnerPhone(dto.ownerPhone());
+        if (dto.ownerEmail() != null) contract.setOwnerEmail(dto.ownerEmail());
+
+        if (dto.renterLegalName() != null) contract.setRenterLegalName(dto.renterLegalName());
+        if (dto.renterTaxCode() != null) contract.setRenterTaxCode(dto.renterTaxCode());
+        if (dto.renterAddress() != null) contract.setRenterAddress(dto.renterAddress());
+        if (dto.renterPhone() != null) contract.setRenterPhone(dto.renterPhone());
+        if (dto.renterEmail() != null) contract.setRenterEmail(dto.renterEmail());
+
+        // Quan trọng: Nếu Owner sửa điều khoản, phải reset chữ ký của Renter về false để họ phải đọc và ký lại
+        contract.setRenterSigned(false);
+
+        return contractMapper.toContractResponseDTO(contractRepository.save(contract));
     }
 
     // Logic hoàn trả diện tích khi Hợp đồng Hủy hoặc Kết thúc
@@ -251,6 +312,26 @@ public class ContractService {
         return contractMapper.toContractResponseDTO(contractRepository.save(contract));
     }
 
+    public ContractMetaDataResponseDTO getMetaDataForContract(Long requestId) {
+        RentalRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Đơn thuê không tồn tại!"));
+
+        User owner = request.getWarehouse().getOwner();
+        User renter = request.getRenter();
+
+        return new ContractMetaDataResponseDTO(
+                buildPartyMeta(owner, request.getWarehouse().getLocationAddressText()),
+                buildPartyMeta(renter, null)
+        );
+    }
+
+    private ContractPartyMetaDataDTO buildPartyMeta(User user, String fallbackAddress) {
+        String legalName = user.getCompany() != null ? user.getCompany().getCompanyName() : user.getFullName();
+        String taxCode = user.getCompany() != null ? user.getCompany().getCompanyTaxCode() : "N/A";
+        String address = fallbackAddress != null ? fallbackAddress : "Chưa cập nhật địa chỉ";
+        return new ContractPartyMetaDataDTO(legalName, taxCode, address, user.getPhone(), user.getEmail());
+    }
+
     private void verifyAccess(CustomUserDetails userDetails, Long ownerId, Long renterId) {
         Long currentUserId = userDetails.getUser().getId();
         Role role = userDetails.getUser().getRole();
@@ -275,6 +356,9 @@ public class ContractService {
                 c.getSpecialTerm(),
                 c.getCancelReason(),
 
+                c.getOwnerSigned(),
+                c.getRenterSigned(),
+
                 c.getOwnerLegalName(),
                 c.getOwnerTaxCode(),
                 c.getOwnerEmail(),
@@ -287,7 +371,7 @@ public class ContractService {
                 c.getRenterPhone(),
                 c.getRenterAddress(),
 
-                (c.getRequest() != null && c.getRequest().getOfferedPrice() != null) ? c.getRequest().getOfferedPrice().longValue() : 0L,
+                c.getTotalPrice(),
                 c.getStatus() != null ? c.getStatus().name() : null
         );
     }
