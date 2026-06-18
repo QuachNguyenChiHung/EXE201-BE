@@ -119,7 +119,7 @@ public class OwnerService {
     }
 
     @Transactional
-    public WarehouseResponseDTO createWarehouse(Long ownerId, WarehouseCreateDTO dto, List<String> imageUrls, String certificateUrl) {
+    public WarehouseResponseDTO createWarehouse(Long ownerId, WarehouseCreateDTO dto, List<String> imageUrls, List<WarehouseCertCreateDTO> certificates) {
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new RuntimeException("Chủ kho không tồn tại!"));
 
@@ -186,16 +186,18 @@ public class OwnerService {
         }
 
         // Map Certificate
-        if (certificateUrl != null) {
-            CertificationType type = certificationTypeRepository.findById(1L)
-                    .orElseGet(() -> certificationTypeRepository.save(CertificationType.builder().label("Chứng nhận Cơ bản").build()));
+        if (certificates != null && !certificates.isEmpty()) {
+            for (WarehouseCertCreateDTO certDto : certificates) {
+                CertificationType type = certificationTypeRepository.findById(certDto.certTypeId())
+                        .orElseThrow(() -> new RuntimeException("Loại chứng chỉ với ID " + certDto.certTypeId() + " không tồn tại!"));
 
-            warehouse.getCertificationSubmits().add(CertificationSubmit.builder()
-                    .warehouse(warehouse)
-                    .type(type)
-                    .link(certificateUrl)
-                    .status(VerifyStatus.PENDING)
-                    .build());
+                warehouse.getCertificationSubmits().add(CertificationSubmit.builder()
+                        .warehouse(warehouse)
+                        .type(type)
+                        .link(certDto.link())
+                        .status(VerifyStatus.PENDING) // Chứng chỉ mới nộp luôn phải chờ Admin duyệt
+                        .build());
+            }
         }
 
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));

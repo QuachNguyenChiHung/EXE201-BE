@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -61,14 +63,15 @@ public class OwnerController {
     public ResponseEntity<WarehouseResponseDTO> createWarehouse(
             @RequestPart("warehouse") WarehouseCreateDTO dto,
             @RequestPart(value = "images", required = false) MultipartFile[] images,
-            @RequestPart(value = "certificate", required = false) MultipartFile certificate,
+            @RequestParam(value = "certTypeIds", required = false) List<Long> certTypeIds,
+            @RequestPart(value = "certFiles", required = false) MultipartFile[] certFiles,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long ownerId = userDetails.getUser().getId();
+        List<String> imageUrls = new ArrayList<>();
+        List<WarehouseCertCreateDTO> certificates = new ArrayList<>();
 
-        List<String> imageUrls = new java.util.ArrayList<>();
-        String certificateUrl = null;
-
+        // 1. Xử lý Upload Hình ảnh
         if (images != null && images.length > 0) {
             for (MultipartFile img : images) {
                 if (!img.isEmpty()) {
@@ -77,11 +80,18 @@ public class OwnerController {
             }
         }
 
-        if (certificate != null && !certificate.isEmpty()) {
-            certificateUrl = fileStorageService.storeFile(certificate, "pdfs");
+        // 2. Xử lý Upload Chứng chỉ (Nhiều file kèm theo Loại)
+        if (certFiles != null && certTypeIds != null && certFiles.length == certTypeIds.size()) {
+            for (int i = 0; i < certFiles.length; i++) {
+                MultipartFile certFile = certFiles[i];
+                if (!certFile.isEmpty()) {
+                    String certUrl = fileStorageService.storeFile(certFile, "pdfs");
+                    certificates.add(new WarehouseCertCreateDTO(certTypeIds.get(i), certUrl));
+                }
+            }
         }
 
-        return ResponseEntity.ok(ownerService.createWarehouse(ownerId, dto, imageUrls, certificateUrl));
+        return ResponseEntity.ok(ownerService.createWarehouse(ownerId, dto, imageUrls, certificates));
     }
 
     @GetMapping("/warehouses/{id}")
