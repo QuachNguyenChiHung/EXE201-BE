@@ -2,7 +2,7 @@ package com.ailogis.api.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "ai_conversations")
@@ -28,6 +28,6 @@ public class AiConversation {
     private Integer totalInputTokens;
     private Integer totalOutputTokens;
 
-    private LocalDate createdAt;
-    private LocalDate updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }
