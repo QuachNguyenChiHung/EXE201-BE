@@ -1,5 +1,6 @@
 package com.ailogis.api.dto;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public record RentRequestResponseDTO(
@@ -10,6 +11,8 @@ public record RentRequestResponseDTO(
         String cargoDescription,
         Integer duration,
         String durationUnit,
+        LocalDate startDate,
+        LocalDate endDate,
         String status,
         String otherDetail,
         String renterRejectionReason,

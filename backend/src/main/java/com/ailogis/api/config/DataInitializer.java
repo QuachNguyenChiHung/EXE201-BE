@@ -154,8 +154,9 @@ public class DataInitializer implements CommandLineRunner {
         Long sec1Id = wh1Entity.getSections().get(0).getId();
         Long pt1Id = wh1Entity.getSections().get(0).getPriceTiers().get(0).getId();
         RentRequestCreateDTO req1Dto = new RentRequestCreateDTO(wh1Entity.getId(), "Hải sản cá ngừ đại dương xuất khẩu", null, 6, "Tháng",
+                LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(6),
                 125000000.0,
-                List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 500.0, "m3"))); // Thuê 500 m3
+                List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 500.0, "m3")));
 
         RentRequestResponseDTO req1Res = rentalRequestService.createRequest(renter1.getId(), req1Dto);
         ownerService.updateRequestStatus(owner1.getId(), req1Res.id(), new RequestStatusUpdateDTO(RequestStatus.APPROVED, null, null, "Đồng ý cho thuê giá gốc"));
@@ -173,14 +174,16 @@ public class DataInitializer implements CommandLineRunner {
         Long sec2Id = wh2Entity.getSections().get(0).getId();
         Long pt2Id = wh2Entity.getSections().get(0).getPriceTiers().get(0).getId();
         RentRequestCreateDTO req2Dto = new RentRequestCreateDTO(wh2Entity.getId(), "Rau củ Đà Lạt nhập kho chờ phân phối", null, 2, "Tuần",
+                LocalDate.now().minusWeeks(5), LocalDate.now().plusWeeks(2),
                 4800000.0,
-                List.of(new RentRequestDetailCreateDTO(sec2Id, pt2Id, 1.0, "sector"))); // Thuê 1 sector
+                List.of(new RentRequestDetailCreateDTO(sec2Id, pt2Id, 1.0, "sector")));
 
         RentRequestResponseDTO req2Res = rentalRequestService.createRequest(renter2.getId(), req2Dto);
         ownerService.updateRequestStatus(owner2.getId(), req2Res.id(), new RequestStatusUpdateDTO(RequestStatus.APPROVED, null, null, "Kho lạnh Tân Bình xác nhận yêu cầu."));
 
         // Renter 3 gửi yêu cầu thuê Kho 1 nhưng Owner chưa duyệt (Tổng giá gốc: 200m3 * 260k = 52tr/tháng), Renter trả giá 50tr
         RentRequestCreateDTO req3Dto = new RentRequestCreateDTO(wh1Entity.getId(), "Thịt bò Kobe nhập khẩu đông lạnh", null, 3, "Tháng",
+                LocalDate.now(), LocalDate.now().plusMonths(3),
                 50000000.0,
                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 200.0, "m3")));
         rentalRequestService.createRequest(renter3.getId(), req3Dto);

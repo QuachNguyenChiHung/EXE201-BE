@@ -1,5 +1,6 @@
 package com.ailogis.api.dto;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public record RentRequestCreateDTO(
@@ -8,6 +9,8 @@ public record RentRequestCreateDTO(
         String otherDetail,
         Integer duration,
         String durationUnit,
+        LocalDate startDate,
+        LocalDate endDate,
         Double renterOfferedPrice,
         List<RentRequestDetailCreateDTO> details // Thuê nhiều phòng cùng lúc
 ) {}

@@ -107,6 +107,8 @@ public class OwnerService {
                 r.getCargoDescription(),
                 r.getDuration(),
                 r.getDurationUnit(),
+                r.getStartDate(),
+                r.getEndDate(),
                 r.getStatus().name(),
                 r.getOtherDetail(),
                 r.getRenterRejectionReason(),

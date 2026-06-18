@@ -36,6 +36,8 @@ public class RentalRequestService {
         RentalRequest request = RentalRequest.builder()
                 .renter(renter).warehouse(warehouse).cargoDescription(dto.cargoDescription())
                 .otherDetail(dto.otherDetail()).duration(dto.duration()).durationUnit(dto.durationUnit())
+                .startDate(dto.startDate())
+                .endDate(dto.endDate())
                 .renterOfferedPrice(dto.renterOfferedPrice())
                 .status(RequestStatus.PENDING).build();
 
@@ -80,6 +82,8 @@ public class RentalRequestService {
                 r.getCargoDescription(),
                 r.getDuration(),
                 r.getDurationUnit(),
+                r.getStartDate(),
+                r.getEndDate(),
                 r.getStatus().name(),
                 r.getOtherDetail(),
                 r.getRenterRejectionReason(),
