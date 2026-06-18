@@ -93,7 +93,7 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseCreateDTO wh1Dto = new WarehouseCreateDTO(
                 "Tổng kho Lạnh Quốc tế Sóng Thần", "Hệ thống kho vận đạt tiêu chuẩn ISO ứng dụng công nghệ giám sát nhiệt độ tự động.", "Số 10, KCN Sóng Thần 1", "Bình Dương", "Dĩ An",
                 106.7725, 10.9024, "75000",
-                List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO("Gói lưu trữ theo tháng", 260000.0, "VND", "m3")))));
+                List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO(null, "Gói lưu trữ theo tháng", 260000.0, "VND", "m3")))));
         List<WarehouseCertCreateDTO> certs1 = List.of(new WarehouseCertCreateDTO(iso9001.getId(), HACCP_link));
         WarehouseResponseDTO wh1Res = ownerService.createWarehouse(owner1.getId(), wh1Dto, List.of("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/images/07c00336-f2b5-4528-84c1-d082a9805f19.jpg"), certs1);
         employeeService.verifyWarehouse(wh1Res.id(), WarehouseStatus.ACTIVE);
@@ -102,7 +102,7 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseCreateDTO wh2Dto = new WarehouseCreateDTO(
                 "Kho mát Nông sản Tân Bình", "Chuyên lưu trữ rau củ quả tươi sống, vị trí ngay sát trung tâm TPHCM, thuận tiện giao hàng nội thành.", "KCN Tân Bình, Lô B2", "Hồ Chí Minh", "Tân Bình",
                 106.6358, 10.8038, "70000",
-                List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false, List.of(new PriceTierDTO("Thuê bao nguyên khu (Tuần)", 5000000.0, "VND", "sector")))));
+                List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false, List.of(new PriceTierDTO(null, "Thuê bao nguyên khu (Tuần)", 5000000.0, "VND", "sector")))));
         List<WarehouseCertCreateDTO> certs2 = List.of(new WarehouseCertCreateDTO(haccp.getId(), ISO9001_link));
         WarehouseResponseDTO wh2Res = ownerService.createWarehouse(owner2.getId(), wh2Dto, new ArrayList<>(), certs2);
         employeeService.verifyWarehouse(wh2Res.id(), WarehouseStatus.ACTIVE);
@@ -111,7 +111,7 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseCreateDTO wh3Dto = new WarehouseCreateDTO(
                 "Kho lạnh Y tế & Dược phẩm Quận 9", "Kho chuyên dụng chuẩn GSP lưu trữ Vắc xin và Sinh phẩm y tế.", "Khu Công Nghệ Cao, Đường D1", "Hồ Chí Minh", "Quận 9",
                 106.8029, 10.8491, "70000",
-                List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true, List.of(new PriceTierDTO("Lưu trữ theo Pallet/Tháng", 800000.0, "VND", "pallet")))));
+                List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true, List.of(new PriceTierDTO(null, "Lưu trữ theo Pallet/Tháng", 800000.0, "VND", "pallet")))));
         List<WarehouseCertCreateDTO> certs3 = List.of(
                 new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
                 new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link)
