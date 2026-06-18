@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+
 @Repository
 public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     // Tìm danh sách kho đã được duyệt (dành cho Renter)
@@ -43,12 +44,13 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             "AND (:maxArea IS NULL OR sec.availableCapacity <= :maxArea) " +
             "AND (:minPrice IS NULL OR pt.value >= :minPrice) " +
             "AND (:maxPrice IS NULL OR pt.value <= :maxPrice) " +
-            "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating)")
+            "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
+            "AND (:certTypeId IS NULL OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id = :certTypeId AND cs.status = 'VERIFIED'))")
     Page<Warehouse> searchWarehouses(
             @Param("province") String province, @Param("isSponsor") Boolean isSponsor,
             @Param("minArea") Double minArea, @Param("maxArea") Double maxArea,
             @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice,
-            @Param("minRating") Double minRating, Pageable pageable);
+            @Param("minRating") Double minRating, @Param("certTypeId") Long certTypeId, Pageable pageable);
 
     // Lấy danh sách các tỉnh/thành phố KHÔNG TRÙNG LẶP từ các kho bãi đang hoạt động
     @Query("SELECT DISTINCT w.locationProvince FROM Warehouse w WHERE w.locationProvince IS NOT NULL AND w.status IN ('ACTIVE', 'RENTED')")
