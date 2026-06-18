@@ -45,12 +45,12 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             "AND (:minPrice IS NULL OR pt.value >= :minPrice) " +
             "AND (:maxPrice IS NULL OR pt.value <= :maxPrice) " +
             "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
-            "AND (:certTypeId IS NULL OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id = :certTypeId AND cs.status = 'VERIFIED'))")
+            "AND (:certTypeIds IS NULL OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id IN :certTypeIds AND cs.status = 'VERIFIED'))")
     Page<Warehouse> searchWarehouses(
             @Param("province") String province, @Param("isSponsor") Boolean isSponsor,
             @Param("minArea") Double minArea, @Param("maxArea") Double maxArea,
             @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice,
-            @Param("minRating") Double minRating, @Param("certTypeId") Long certTypeId, Pageable pageable);
+            @Param("minRating") Double minRating, @Param("certTypeIds") List<Long> certTypeIds, Pageable pageable);
 
     // Lấy danh sách các tỉnh/thành phố KHÔNG TRÙNG LẶP từ các kho bãi đang hoạt động
     @Query("SELECT DISTINCT w.locationProvince FROM Warehouse w WHERE w.locationProvince IS NOT NULL AND w.status IN ('ACTIVE', 'RENTED')")

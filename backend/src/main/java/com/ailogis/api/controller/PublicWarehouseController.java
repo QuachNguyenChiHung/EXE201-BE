@@ -57,13 +57,17 @@ public class PublicWarehouseController {
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) Double minRating,
-            @RequestParam(required = false) Long certTypeId,
+            @RequestParam(required = false) java.util.List<Long> certTypeIds,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
 
+        if (certTypeIds != null && certTypeIds.isEmpty()) {
+            certTypeIds = null;
+        }
+
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(warehouseService.searchWarehouses(
-                province, isSponsor, minArea, maxArea, minPrice, maxPrice, minRating, certTypeId, pageable));
+                province, isSponsor, minArea, maxArea, minPrice, maxPrice, minRating, certTypeIds, pageable));
     }
 
     @GetMapping("/filter-meta")

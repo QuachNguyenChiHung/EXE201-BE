@@ -124,9 +124,9 @@ public class WarehouseService {
 
     public Page<WarehouseResponseDTO> searchWarehouses(
             String province, Boolean isSponsor, Double minArea, Double maxArea,
-            Double minPrice, Double maxPrice, Double minRating, Long certTypeId, Pageable pageable) {
+            Double minPrice, Double maxPrice, Double minRating, List<Long> certTypeIds, Pageable pageable) {
 
-        return warehouseRepository.searchWarehouses(province, isSponsor, minArea, maxArea, minPrice, maxPrice, minRating, certTypeId, pageable)
+        return warehouseRepository.searchWarehouses(province, isSponsor, minArea, maxArea, minPrice, maxPrice, minRating, certTypeIds, pageable)
                 .map(warehouseMapper::toWarehouseResponseDTO);
     }
 
