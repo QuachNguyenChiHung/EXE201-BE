@@ -8,6 +8,7 @@ import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -132,14 +133,27 @@ public class OwnerController {
         return ResponseEntity.ok(ownerService.reactivateWarehouse(ownerId, id));
     }
 
-    @PutMapping("/warehouses/{id}")
+    @PutMapping(value = "/warehouses/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<WarehouseResponseDTO> updateWarehouse(
             @PathVariable Long id,
-            @RequestBody WarehouseUpdateDTO dto,
+            @RequestPart("warehouse") WarehouseUpdateDTO dto,
+            @RequestPart(value = "images", required = false) MultipartFile[] images,
+            @RequestParam(value = "deletedImageIds", required = false) List<Long> deletedImageIds,
             @RequestParam(required = false) Boolean force,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
+
         Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto, force));
+
+        List<String> newImageUrls = new ArrayList<>();
+        if (images != null && images.length > 0) {
+            for (MultipartFile img : images) {
+                if (!img.isEmpty()) {
+                    newImageUrls.add(fileStorageService.storeFile(img, "images"));
+                }
+            }
+        }
+
+        return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto, force, newImageUrls, deletedImageIds));
     }
 
     @PostMapping("/warehouses/{id}/sponsor")

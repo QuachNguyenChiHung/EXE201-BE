@@ -36,6 +36,7 @@ public class OwnerService {
     private final SponsorTierRepository sponsorTierRepository;
     private final PaymentService paymentService;
     private final ContractMapper contractMapper;
+    private final FileStorageService fileStorageService;
 
     public Page<WarehouseResponseDTO> getMyWarehouses(Long ownerId, String statusStr, Pageable pageable) {
         WarehouseStatus statusEnum = null;
@@ -342,7 +343,7 @@ public class OwnerService {
     }
 
     @Transactional
-    public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto, Boolean force) {
+    public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto, Boolean force, List<String> newImageUrls, List<Long> deletedImageIds) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -424,6 +425,40 @@ public class OwnerService {
                     }
                     warehouse.getSections().add(section);
                 }
+            }
+        }
+
+        if (deletedImageIds != null && !deletedImageIds.isEmpty()) {
+            List<WarehouseImage> imagesToRemove = warehouse.getImages().stream()
+                    .filter(img -> deletedImageIds.contains(img.getId()))
+                    .toList();
+
+            for (WarehouseImage img : imagesToRemove) {
+                fileStorageService.deleteFile(img.getImageUrl());
+                warehouse.getImages().remove(img);
+            }
+        }
+
+        if (newImageUrls != null && !newImageUrls.isEmpty()) {
+            int currentMaxOrder = warehouse.getImages().stream()
+                    .mapToInt(WarehouseImage::getDisplayOrder)
+                    .max().orElse(-1);
+
+            for (int i = 0; i < newImageUrls.size(); i++) {
+                warehouse.getImages().add(WarehouseImage.builder()
+                        .warehouse(warehouse)
+                        .imageUrl(newImageUrls.get(i))
+                        .isThumbnail(false)
+                        .displayOrder(currentMaxOrder + 1 + i)
+                        .build());
+            }
+        }
+
+        if (!warehouse.getImages().isEmpty()) {
+            warehouse.getImages().sort(java.util.Comparator.comparing(WarehouseImage::getDisplayOrder));
+            for (int i = 0; i < warehouse.getImages().size(); i++) {
+                warehouse.getImages().get(i).setIsThumbnail(i == 0);
+                warehouse.getImages().get(i).setDisplayOrder(i);
             }
         }
 
