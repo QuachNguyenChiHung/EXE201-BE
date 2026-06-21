@@ -1,9 +1,6 @@
 package com.ailogis.api.controller;
 
-import com.ailogis.api.dto.CompanyResponseDTO;
-import com.ailogis.api.dto.UserCreateUpdateDTO;
-import com.ailogis.api.dto.UserDTO;
-import com.ailogis.api.dto.UserProfileDTO;
+import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.User;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.EmployeeService;
@@ -70,5 +67,13 @@ public class UserController {
                 user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
                 user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(), companyDTO
         ));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserProfileDTO> updateMyProfile(
+            @RequestBody UserProfileUpdateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        return ResponseEntity.ok(userService.updateMyProfile(userDetails.getUser().getId(), dto));
     }
 }
