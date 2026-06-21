@@ -39,8 +39,12 @@ public class DataInitializer implements CommandLineRunner {
     private final RentalRequestService rentalRequestService;
     private final ContractService contractService;
 
+
+    private final String admin_avatar_url = "https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/avatars/admin.png";
     private final String HACCP_link = "https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/HACCP.pdf";
     private final String ISO9001_link = "https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/ISO+9001_2015.pdf";
+
+    private final String warehouse_image_url_1 = "https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/warehouses/kho_1.jpg";
 
     @Override
     @Transactional
@@ -56,7 +60,7 @@ public class DataInitializer implements CommandLineRunner {
         // 1. KHỞI TẠO USERS & COMPANIES
         // =================================================================
 
-        employeeService.createEmployee(new UserCreateUpdateDTO("Trần Minh Admin", "employee@ailogis.com", "password123", "0911223344", "EMPLOYEE", "ACTIVE", "https://ailogis-storage-bucket.s3.ap-southeast-1.amazonaws.com/avatars/admin.png", null, null, null));
+        employeeService.createEmployee(new UserCreateUpdateDTO("Trần Minh Admin", "employee@ailogis.com", "password123", "0911223344", "EMPLOYEE", "ACTIVE", admin_avatar_url, null, null, null));
         User employee = userRepository.findByEmail("employee@ailogis.com").get();
 
         authService.registerUser(new RegisterRequestDTO("owner@ailogis.com", "password123", "Nguyễn Văn Sóng Thần", "0909123456", "OWNER", "Tập đoàn Kho vận Sóng Thần", "0109876543"));
@@ -82,8 +86,8 @@ public class DataInitializer implements CommandLineRunner {
         // =================================================================
         // 2. KHỞI TẠO CHỨNG CHỈ
         // =================================================================
-        CertificationType haccp = certificationTypeRepository.save(CertificationType.builder().label("HACCP - Hệ thống quản lý an toàn thực phẩm").lawReferences("TCVN 5603:2020").updateDate(LocalDate.now()).pdfLink("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/HACCP.pdf").build());
-        CertificationType iso9001 = certificationTypeRepository.save(CertificationType.builder().label("ISO 9001:2015 - Quản lý chất lượng").lawReferences("ISO/TC 176").updateDate(LocalDate.now()).pdfLink("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/certs/ISO+9001_2015.pdf").build());
+        CertificationType haccp = certificationTypeRepository.save(CertificationType.builder().label("HACCP - Hệ thống quản lý an toàn thực phẩm").lawReferences("TCVN 5603:2020").updateDate(LocalDate.now()).pdfLink(HACCP_link).build());
+        CertificationType iso9001 = certificationTypeRepository.save(CertificationType.builder().label("ISO 9001:2015 - Quản lý chất lượng").lawReferences("ISO/TC 176").updateDate(LocalDate.now()).pdfLink(ISO9001_link).build());
 
         // =================================================================
         // 3. KHỞI TẠO WAREHOUSES
@@ -95,7 +99,7 @@ public class DataInitializer implements CommandLineRunner {
                 106.7725, 10.9024, "75000",
                 List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO(null, "Gói lưu trữ theo tháng", 260000.0, "VND", "m3")))));
         List<WarehouseCertCreateDTO> certs1 = List.of(new WarehouseCertCreateDTO(iso9001.getId(), HACCP_link));
-        WarehouseResponseDTO wh1Res = ownerService.createWarehouse(owner1.getId(), wh1Dto, List.of("https://ailogis-storage-bucket-492017761328-ap-southeast-1-an.s3.ap-southeast-1.amazonaws.com/images/07c00336-f2b5-4528-84c1-d082a9805f19.jpg"), certs1);
+        WarehouseResponseDTO wh1Res = ownerService.createWarehouse(owner1.getId(), wh1Dto, List.of(warehouse_image_url_1), certs1);
         employeeService.verifyWarehouse(wh1Res.id(), WarehouseStatus.ACTIVE);
 
         // KHO 2: Kho Tân Bình (Tọa độ giả lập KCN Tân Bình, TP.HCM)

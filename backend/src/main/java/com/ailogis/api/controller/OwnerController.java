@@ -76,7 +76,7 @@ public class OwnerController {
         if (images != null && images.length > 0) {
             for (MultipartFile img : images) {
                 if (!img.isEmpty()) {
-                    imageUrls.add(fileStorageService.storeFile(img, "images"));
+                    imageUrls.add(fileStorageService.storeFile(img, "warehouses"));
                 }
             }
         }
@@ -86,7 +86,7 @@ public class OwnerController {
             for (int i = 0; i < certFiles.length; i++) {
                 MultipartFile certFile = certFiles[i];
                 if (!certFile.isEmpty()) {
-                    String certUrl = fileStorageService.storeFile(certFile, "pdfs");
+                    String certUrl = fileStorageService.storeFile(certFile, "certs");
                     certificates.add(new WarehouseCertCreateDTO(certTypeIds.get(i), certUrl));
                 }
             }
@@ -148,7 +148,7 @@ public class OwnerController {
         if (images != null && images.length > 0) {
             for (MultipartFile img : images) {
                 if (!img.isEmpty()) {
-                    newImageUrls.add(fileStorageService.storeFile(img, "images"));
+                    newImageUrls.add(fileStorageService.storeFile(img, "warehouses"));
                 }
             }
         }

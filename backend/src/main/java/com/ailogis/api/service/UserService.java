@@ -10,6 +10,7 @@ import com.ailogis.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +18,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
+    private final FileStorageService fileStorageService;
 
     @Transactional(readOnly = true)
     public User findByIdWithCompany(Long userId) {
@@ -41,6 +43,29 @@ public class UserService {
             if (dto.companyTaxCode() != null) company.setCompanyTaxCode(dto.companyTaxCode());
             companyRepository.save(company);
         }
+
+        User updatedUser = userRepository.save(user);
+
+        CompanyResponseDTO companyDTO = updatedUser.getCompany() != null ?
+                new CompanyResponseDTO(updatedUser.getCompany().getId(), updatedUser.getCompany().getCompanyName(), updatedUser.getCompany().getCompanyTaxCode()) : null;
+
+        return new UserProfileDTO(
+                updatedUser.getId(), updatedUser.getEmail(), updatedUser.getFullName(), updatedUser.getPhone(),
+                updatedUser.getAvatarUrl(), updatedUser.getRole().name(), updatedUser.getStatus().name(), companyDTO
+        );
+    }
+
+    @Transactional
+    public UserProfileDTO uploadAvatar(Long userId, MultipartFile file) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+
+        if (user.getAvatarUrl() != null && !user.getAvatarUrl().isEmpty()) {
+            fileStorageService.deleteFile(user.getAvatarUrl());
+        }
+
+        String newAvatarUrl = fileStorageService.storeFile(file, "avatars");
+        user.setAvatarUrl(newAvatarUrl);
 
         User updatedUser = userRepository.save(user);
 

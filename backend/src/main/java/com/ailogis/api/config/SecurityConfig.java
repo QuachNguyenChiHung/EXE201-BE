@@ -39,7 +39,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/payment/**").permitAll()
 
                         // 2. API CÁ NHÂN
-                        .requestMatchers("/api/users/me").authenticated()
+                        .requestMatchers("/api/users/me", "/api/users/me/**").authenticated()
 
                         // 3. API DÀNH RIÊNG CHO QUẢN TRỊ VIÊN (EMPLOYEE)
                         .requestMatchers("/api/users/**").hasRole("EMPLOYEE")
