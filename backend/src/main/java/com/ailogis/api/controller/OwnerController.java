@@ -60,7 +60,7 @@ public class OwnerController {
     }
 
     // 4. Tạo kho bãi mới gắn thẳng vào ID của Chủ kho đang đăng nhập
-    @PostMapping(value = "/warehouses", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/warehouses", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<WarehouseResponseDTO> createWarehouse(
             @RequestPart("warehouse") WarehouseCreateDTO dto,
             @RequestPart(value = "images", required = false) MultipartFile[] images,
@@ -139,12 +139,17 @@ public class OwnerController {
             @RequestPart("warehouse") WarehouseUpdateDTO dto,
             @RequestPart(value = "images", required = false) MultipartFile[] images,
             @RequestParam(value = "deletedImageIds", required = false) List<Long> deletedImageIds,
+            @RequestParam(value = "certTypeIds", required = false) List<Long> certTypeIds,
+            @RequestPart(value = "certFiles", required = false) MultipartFile[] certFiles,
+            @RequestParam(value = "deletedCertIds", required = false) List<Long> deletedCertIds,
             @RequestParam(required = false) Boolean force,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long ownerId = userDetails.getUser().getId();
-
         List<String> newImageUrls = new ArrayList<>();
+        List<WarehouseCertCreateDTO> newCertificates = new ArrayList<>();
+
+        // 1. Upload Hình ảnh mới
         if (images != null && images.length > 0) {
             for (MultipartFile img : images) {
                 if (!img.isEmpty()) {
@@ -153,7 +158,18 @@ public class OwnerController {
             }
         }
 
-        return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto, force, newImageUrls, deletedImageIds));
+        // 2. Upload Chứng chỉ mới
+        if (certFiles != null && certTypeIds != null && certFiles.length == certTypeIds.size()) {
+            for (int i = 0; i < certFiles.length; i++) {
+                MultipartFile certFile = certFiles[i];
+                if (!certFile.isEmpty()) {
+                    String certUrl = fileStorageService.storeFile(certFile, "certs");
+                    newCertificates.add(new WarehouseCertCreateDTO(certTypeIds.get(i), certUrl));
+                }
+            }
+        }
+
+        return ResponseEntity.ok(ownerService.updateWarehouse(ownerId, id, dto, force, newImageUrls, deletedImageIds, newCertificates, deletedCertIds));
     }
 
     @PostMapping("/warehouses/{id}/sponsor")

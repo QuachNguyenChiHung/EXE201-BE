@@ -343,7 +343,9 @@ public class OwnerService {
     }
 
     @Transactional
-    public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto, Boolean force, List<String> newImageUrls, List<Long> deletedImageIds) {
+    public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto, Boolean force,
+                                                List<String> newImageUrls, List<Long> deletedImageIds,
+                                                List<WarehouseCertCreateDTO> newCertificates, List<Long> deletedCertIds) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -428,6 +430,7 @@ public class OwnerService {
             }
         }
 
+        // 3. Cập nhật Images
         if (deletedImageIds != null && !deletedImageIds.isEmpty()) {
             List<WarehouseImage> imagesToRemove = warehouse.getImages().stream()
                     .filter(img -> deletedImageIds.contains(img.getId()))
@@ -462,6 +465,31 @@ public class OwnerService {
             }
         }
 
+        // 4. Cập nhật Certificates
+        if (deletedCertIds != null && !deletedCertIds.isEmpty()) {
+            List<CertificationSubmit> certsToRemove = warehouse.getCertificationSubmits().stream()
+                    .filter(c -> deletedCertIds.contains(c.getId())).toList();
+            for (CertificationSubmit cert : certsToRemove) {
+                if (cert.getLink() != null) {
+                    fileStorageService.deleteFile(cert.getLink());
+                }
+                warehouse.getCertificationSubmits().remove(cert);
+            }
+        }
+
+        if (newCertificates != null && !newCertificates.isEmpty()) {
+            for (WarehouseCertCreateDTO certDto : newCertificates) {
+                CertificationType type = certificationTypeRepository.findById(certDto.certTypeId())
+                        .orElseThrow(() -> new RuntimeException("Loại chứng chỉ ID " + certDto.certTypeId() + " không tồn tại!"));
+
+                warehouse.getCertificationSubmits().add(CertificationSubmit.builder()
+                        .warehouse(warehouse)
+                        .type(type)
+                        .link(certDto.link())
+                        .status(com.ailogis.api.enums.VerifyStatus.PENDING)
+                        .build());
+            }
+        }
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
     }
 
