@@ -1,11 +1,13 @@
 package com.ailogis.api.mapper;
 
 import com.ailogis.api.dto.*;
+import com.ailogis.api.entity.Review;
 import com.ailogis.api.entity.Warehouse;
 import com.ailogis.api.enums.RequestStatus;
 import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.repository.ContractRepository;
 import com.ailogis.api.repository.RentalRequestRepository;
+import com.ailogis.api.repository.ReviewRepository;
 import com.ailogis.api.repository.WarehouseViewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -21,6 +23,7 @@ public class WarehouseMapper {
     private final WarehouseViewRepository warehouseViewRepository;
     private final ContractRepository contractRepository;
     private final RentalRequestRepository rentalRequestRepository;
+    private final ReviewRepository reviewRepository;
 
     public WarehouseResponseDTO toWarehouseResponseDTO(Warehouse w) {
         List<WarehouseSectionDTO> sectionDTOs = w.getSections() != null ? w.getSections().stream().map(s -> {
@@ -78,6 +81,18 @@ public class WarehouseMapper {
             pendingReq = rentalRequestRepository.countByWarehouseIdAndStatus(w.getId(), RequestStatus.PENDING);
         }
 
+        // 6. Tính điểm đánh giá trung bình và tổng số đánh giá
+        double averageRating = 0.0;
+        int totalReviews = 0;
+        if (w.getId() != null) {
+            List<Review> reviews = reviewRepository.findByWarehouseId(w.getId());
+            if (!reviews.isEmpty()) {
+                totalReviews = reviews.size();
+                averageRating = reviews.stream().mapToInt(Review::getRating).average().orElse(0.0);
+                averageRating = Math.round(averageRating * 10.0) / 10.0; // Làm tròn 1 chữ số thập phân
+            }
+        }
+
         String displayStatus = calculateOperationalStatus(w);
 
         SponsorTierDTO sponsorDto = null;
@@ -96,7 +111,8 @@ public class WarehouseMapper {
         return new WarehouseResponseDTO(
                 w.getId(), w.getName(), w.getDescription(), w.getLocationAddressText(),
                 w.getLocationProvince(), w.getLocationCommune(), sectionDTOs, imageDTOs, certDTOs, displayStatus, viewStats, pendingReq,
-                w.getIsSponsor(), sponsorDto
+                w.getIsSponsor(), sponsorDto,
+                averageRating, totalReviews
         );
     }
 

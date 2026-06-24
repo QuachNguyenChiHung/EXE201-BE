@@ -1,9 +1,6 @@
 package com.ailogis.api.service;
 
-import com.ailogis.api.dto.RenterStatisticResponseDTO;
-import com.ailogis.api.dto.PaymentResponseDTO;
-import com.ailogis.api.dto.AiTierDTO;
-import com.ailogis.api.dto.WarehouseResponseDTO;
+import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.*;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
@@ -30,6 +27,7 @@ public class RenterService {
     private final BookmarkRepository bookmarkRepository;
     private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper warehouseMapper;
+    private final ReviewRepository reviewRepository;
 
     public RenterStatisticResponseDTO getRenterStatistics(Long renterId, int expireDaysAlert) {
         User renter = userRepository.findById(renterId)
@@ -107,5 +105,35 @@ public class RenterService {
         return bookmarkRepository.findByUserId(renterId).stream()
                 .map(b -> warehouseMapper.toWarehouseResponseDTO(b.getWarehouse()))
                 .toList();
+    }
+
+    @Transactional
+    public ReviewResponseDTO createReview(Long renterId, Long warehouseId, ReviewCreateDTO dto) {
+        User renter = userRepository.findById(renterId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy Renter!"));
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        boolean hasRented = contractRepository.findByWarehouseIdWithFilter(warehouseId, null)
+                .stream().anyMatch(c -> c.getRenter().getId().equals(renterId));
+
+        if (!hasRented) {
+            throw new RuntimeException("Bạn chỉ được phép đánh giá kho bãi sau khi đã từng giao dịch thuê kho này!");
+        }
+
+        // Tìm xem Renter đã đánh giá kho này chưa. Nếu có rồi thì ghi đè lên đánh giá cũ, nếu chưa thì tạo mới.
+        Review review = reviewRepository.findByUserIdAndWarehouseId(renterId, warehouseId)
+                .orElse(Review.builder().user(renter).warehouse(warehouse).build());
+        review.setRating(dto.rating());
+        review.setComment(dto.comment());
+
+        review = reviewRepository.save(review);
+
+        return new ReviewResponseDTO(
+                review.getId(),
+                renter.getFullName(),
+                review.getRating(),
+                review.getComment()
+        );
     }
 }

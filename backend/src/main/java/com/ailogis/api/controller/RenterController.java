@@ -6,6 +6,7 @@ import com.ailogis.api.service.ContractService;
 import com.ailogis.api.service.RentalRequestService;
 import com.ailogis.api.service.RenterService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -109,5 +110,15 @@ public class RenterController {
     public ResponseEntity<List<WarehouseResponseDTO>> getMyBookmarks(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         return ResponseEntity.ok(renterService.getMyBookmarks(userDetails.getUser().getId()));
+    }
+
+    @PostMapping("/warehouses/{warehouseId}/ratings")
+    public ResponseEntity<ReviewResponseDTO> rateWarehouse(
+            @PathVariable Long warehouseId,
+            @Valid @RequestBody ReviewCreateDTO dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long renterId = userDetails.getUser().getId();
+        return ResponseEntity.ok(renterService.createReview(renterId, warehouseId, dto));
     }
 }

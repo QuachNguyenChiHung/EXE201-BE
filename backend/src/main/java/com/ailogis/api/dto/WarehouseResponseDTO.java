@@ -17,5 +17,7 @@ public record WarehouseResponseDTO(
         Map<String, Long>viewCountByDate,
         Long pendingRequestCount,
         Boolean isSponsor,
-        SponsorTierDTO sponsorTier
+        SponsorTierDTO sponsorTier,
+        Double averageRating,
+        Integer totalReviews
 ) {}
