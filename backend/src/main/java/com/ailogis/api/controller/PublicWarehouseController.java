@@ -1,6 +1,7 @@
 package com.ailogis.api.controller;
 
 import com.ailogis.api.dto.FilterMetaResponseDTO;
+import com.ailogis.api.dto.ReviewResponseDTO;
 import com.ailogis.api.dto.WarehouseLocationDTO;
 import com.ailogis.api.dto.WarehouseResponseDTO;
 import com.ailogis.api.security.CustomUserDetails;
@@ -73,5 +74,10 @@ public class PublicWarehouseController {
     @GetMapping("/filter-meta")
     public ResponseEntity<FilterMetaResponseDTO> getFilterMeta() {
         return ResponseEntity.ok(warehouseService.getFilterMeta());
+    }
+
+    @GetMapping("/{warehouseId}/reviews")
+    public ResponseEntity<List<ReviewResponseDTO>> getWarehouseReviews(@PathVariable Long warehouseId) {
+        return ResponseEntity.ok(warehouseService.getWarehouseReviews(warehouseId));
     }
 }

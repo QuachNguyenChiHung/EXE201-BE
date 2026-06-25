@@ -1,15 +1,13 @@
 package com.ailogis.api.service;
 
 import com.ailogis.api.dto.*;
+import com.ailogis.api.entity.Review;
 import com.ailogis.api.entity.Warehouse;
 import com.ailogis.api.entity.WarehouseView;
 import com.ailogis.api.enums.Role;
 import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.mapper.WarehouseMapper;
-import com.ailogis.api.repository.CertificationTypeRepository;
-import com.ailogis.api.repository.SponsorTierRepository;
-import com.ailogis.api.repository.WarehouseRepository;
-import com.ailogis.api.repository.WarehouseViewRepository;
+import com.ailogis.api.repository.*;
 import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +30,7 @@ public class WarehouseService {
     private final WarehouseMapper warehouseMapper;
     private final SponsorTierRepository sponsorTierRepository;
     private final CertificationTypeRepository certificationTypeRepository;
+    private final ReviewRepository reviewRepository;
 
     public Page<WarehouseResponseDTO> getActiveOnlyWarehouses(Pageable pageable) {
         return warehouseRepository.findByStatus(WarehouseStatus.ACTIVE, pageable)
@@ -151,5 +150,16 @@ public class WarehouseService {
                 .toList();
 
         return new FilterMetaResponseDTO(locations, statuses, sponsorTiers, certifications);
+    }
+
+    public List<ReviewResponseDTO> getWarehouseReviews(Long warehouseId) {
+        List<Review> reviews = reviewRepository.findByWarehouseId(warehouseId);
+
+        return reviews.stream().map(r -> new ReviewResponseDTO(
+                r.getId(),
+                r.getUser() != null ? r.getUser().getFullName() : "Khách hàng ẩn danh",
+                r.getRating(),
+                r.getComment()
+        )).toList();
     }
 }
