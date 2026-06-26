@@ -35,19 +35,24 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     Page<Warehouse> findPopularWarehouses(@Param("thirtyDaysAgo") LocalDate thirtyDaysAgo, Pageable pageable);
 
     // API Search
-    @Query("SELECT DISTINCT w FROM Warehouse w " +
-            "LEFT JOIN w.sections sec LEFT JOIN sec.priceTiers pt " +
+    @Query("SELECT w FROM Warehouse w " +
+            "LEFT JOIN w.sponsorType st " +
             "WHERE w.status IN ('ACTIVE', 'RENTED') " +
+            "AND (:keyword IS NULL OR LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "    OR LOWER(w.description) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "    OR LOWER(w.locationAddressText) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "    OR LOWER(w.locationCommune) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
             "AND (:province IS NULL OR w.locationProvince = :province) " +
-            "AND (:isSponsor IS NULL OR w.isSponsor = :isSponsor) " +
-            "AND (:minArea IS NULL OR sec.availableCapacity >= :minArea) " +
-            "AND (:maxArea IS NULL OR sec.availableCapacity <= :maxArea) " +
-            "AND (:minPrice IS NULL OR pt.value >= :minPrice) " +
-            "AND (:maxPrice IS NULL OR pt.value <= :maxPrice) " +
+            "AND (:minArea IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity >= :minArea)) " +
+            "AND (:maxArea IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity <= :maxArea)) " +
+            "AND (:minPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value >= :minPrice)) " +
+            "AND (:maxPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value <= :maxPrice)) " +
             "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
-            "AND (:certTypeIds IS NULL OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id IN :certTypeIds AND cs.status = 'VERIFIED'))")
+            "AND (:certTypeIds IS NULL OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id IN :certTypeIds AND cs.status = 'VERIFIED')) " +
+            "ORDER BY w.isSponsor DESC, st.priorityLevel ASC, w.id DESC")
     Page<Warehouse> searchWarehouses(
-            @Param("province") String province, @Param("isSponsor") Boolean isSponsor,
+            @Param("keyword") String keyword,
+            @Param("province") String province,
             @Param("minArea") Double minArea, @Param("maxArea") Double maxArea,
             @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice,
             @Param("minRating") Double minRating, @Param("certTypeIds") List<Long> certTypeIds, Pageable pageable);
