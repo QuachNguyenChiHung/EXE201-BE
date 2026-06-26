@@ -123,9 +123,9 @@ public class WarehouseService {
 
     public Page<WarehouseResponseDTO> searchWarehouses(
             String keyword, String province, Double minArea, Double maxArea,
-            Double minPrice, Double maxPrice, Double minRating, List<Long> certTypeIds, Pageable pageable) {
+            Double minPrice, Double maxPrice, Double minRating, Double maxRating, List<Long> certTypeIds, Pageable pageable) {
 
-        return warehouseRepository.searchWarehouses(keyword, province, minArea, maxArea, minPrice, maxPrice, minRating, certTypeIds, pageable)
+        return warehouseRepository.searchWarehouses(keyword, province, minArea, maxArea, minPrice, maxPrice, minRating, maxRating, certTypeIds, pageable)
                 .map(warehouseMapper::toWarehouseResponseDTO);
     }
 

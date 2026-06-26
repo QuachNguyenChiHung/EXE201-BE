@@ -48,6 +48,7 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             "AND (:minPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value >= :minPrice)) " +
             "AND (:maxPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value <= :maxPrice)) " +
             "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
+            "AND (:maxRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) <= :maxRating) " +
             "AND (:certTypeIds IS NULL OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id IN :certTypeIds AND cs.status = 'VERIFIED')) " +
             "ORDER BY w.isSponsor DESC, st.priorityLevel ASC, w.id DESC")
     Page<Warehouse> searchWarehouses(
@@ -55,7 +56,9 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             @Param("province") String province,
             @Param("minArea") Double minArea, @Param("maxArea") Double maxArea,
             @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice,
-            @Param("minRating") Double minRating, @Param("certTypeIds") List<Long> certTypeIds, Pageable pageable);
+            @Param("minRating") Double minRating,
+            @Param("maxRating") Double maxRating,
+            @Param("certTypeIds") List<Long> certTypeIds, Pageable pageable);
 
     // Lấy danh sách các tỉnh/thành phố KHÔNG TRÙNG LẶP từ các kho bãi đang hoạt động
     @Query("SELECT DISTINCT w.locationProvince FROM Warehouse w WHERE w.locationProvince IS NOT NULL AND w.status IN ('ACTIVE', 'RENTED')")

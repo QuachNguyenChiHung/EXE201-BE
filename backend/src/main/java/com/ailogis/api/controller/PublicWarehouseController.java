@@ -58,6 +58,7 @@ public class PublicWarehouseController {
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             @RequestParam(required = false) Double minRating,
+            @RequestParam(required = false) Double maxRating,
             @RequestParam(required = false) List<Long> certTypeIds,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
@@ -68,7 +69,7 @@ public class PublicWarehouseController {
 
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(warehouseService.searchWarehouses(
-                keyword, province, minArea, maxArea, minPrice, maxPrice, minRating, certTypeIds, pageable));
+                keyword, province, minArea, maxArea, minPrice, maxPrice, minRating, maxRating, certTypeIds, pageable));
     }
 
     @GetMapping("/filter-meta")
