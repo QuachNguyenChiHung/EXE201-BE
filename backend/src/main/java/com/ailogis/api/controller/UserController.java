@@ -67,7 +67,9 @@ public class UserController {
 
         return ResponseEntity.ok(new UserProfileDTO(
                 user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
-                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(), companyDTO
+                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(),
+                user.getDateOfBirth(), user.getGender() != null ? user.getGender().name() : null,
+                companyDTO
         ));
     }
 

@@ -1,5 +1,6 @@
 package com.ailogis.api.entity;
 
+import com.ailogis.api.enums.Gender;
 import com.ailogis.api.enums.Role;
 import com.ailogis.api.enums.UserStatus;
 import jakarta.persistence.*;
@@ -32,6 +33,11 @@ public class User {
     private String fullName;
 
     private String avatarUrl;
+
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
+
+    private String dateOfBirth;
 
     @Enumerated(EnumType.STRING)
     private Role role;

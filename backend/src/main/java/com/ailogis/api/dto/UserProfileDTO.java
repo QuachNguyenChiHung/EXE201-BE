@@ -8,5 +8,7 @@ public record UserProfileDTO(
         String avatarUrl,
         String role,
         String status,
+        String dateOfBirth,
+        String gender,
         CompanyResponseDTO company
 ) {}

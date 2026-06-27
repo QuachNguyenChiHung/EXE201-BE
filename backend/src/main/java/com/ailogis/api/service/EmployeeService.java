@@ -277,7 +277,9 @@ public class EmployeeService {
 
         UserProfileDTO userProfile = new UserProfileDTO(
                 user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
-                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(), companyDTO
+                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(),
+                user.getDateOfBirth(), user.getGender() != null ? user.getGender().name() : null,
+                companyDTO
         );
 
         String aiPlan = user.getAiTier() != null ? user.getAiTier().getLabel() : "Chưa đăng ký";
@@ -330,7 +332,9 @@ public class EmployeeService {
 
         UserProfileDTO userProfile = new UserProfileDTO(
                 user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
-                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(), companyDTO
+                user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(),
+                user.getDateOfBirth(), user.getGender() != null ? user.getGender().name() : null,
+                companyDTO
         );
 
         List<WarehouseResponseDTO> warehouses = warehouseRepository.findByOwnerId(userId).stream().map(warehouseMapper::toWarehouseResponseDTO).toList();
