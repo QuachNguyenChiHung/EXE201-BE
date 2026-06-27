@@ -86,8 +86,13 @@ public class DataInitializer implements CommandLineRunner {
         // =================================================================
         // 2. KHỞI TẠO CHỨNG CHỈ
         // =================================================================
-        CertificationType haccp = certificationTypeRepository.save(CertificationType.builder().label("HACCP - Hệ thống quản lý an toàn thực phẩm").lawReferences("TCVN 5603:2020").updateDate(LocalDate.now()).pdfLink(HACCP_link).build());
-        CertificationType iso9001 = certificationTypeRepository.save(CertificationType.builder().label("ISO 9001:2015 - Quản lý chất lượng").lawReferences("ISO/TC 176").updateDate(LocalDate.now()).pdfLink(ISO9001_link).build());
+        CertificationType haccp    = certificationTypeRepository.save(CertificationType.builder().label("HACCP - Hệ thống quản lý an toàn thực phẩm").lawReferences("TCVN 5603:2020").description("Hệ thống quản lý chất lượng vệ sinh an toàn thực phẩm, đảm bảo kiểm soát các mối nguy từ quá trình sản xuất đến tiêu thụ.").updateDate(LocalDate.now()).pdfLink(HACCP_link).build());
+        CertificationType iso9001  = certificationTypeRepository.save(CertificationType.builder().label("ISO 9001:2015 - Quản lý chất lượng").lawReferences("ISO/TC 176").description("Tiêu chuẩn quốc tế về hệ thống quản lý chất lượng, giúp tổ chức đảm bảo cung cấp sản phẩm và dịch vụ đáp ứng yêu cầu khách hàng.").updateDate(LocalDate.now()).pdfLink(ISO9001_link).build());
+        CertificationType iso22000 = certificationTypeRepository.save(CertificationType.builder().label("ISO 22000:2018 - Quản lý an toàn thực phẩm").lawReferences("ISO/TC 34/SC 17").description("Tiêu chuẩn quốc tế về hệ thống quản lý an toàn thực phẩm, kết hợp nguyên tắc HACCP và hệ thống quản lý.").updateDate(LocalDate.now()).pdfLink(ISO9001_link).build());
+        CertificationType brc      = certificationTypeRepository.save(CertificationType.builder().label("BRC Global Standard - An toàn thực phẩm quốc tế").lawReferences("BRCGS Issue 9:2022").description("Tiêu chuẩn toàn cầu (được công nhận bởi GFSI) cung cấp khuôn khổ khắt khe để quản lý an toàn, chất lượng thực phẩm.").updateDate(LocalDate.now()).pdfLink(HACCP_link).build());
+        CertificationType gmp      = certificationTypeRepository.save(CertificationType.builder().label("GMP - Thực hành sản xuất tốt").lawReferences("QCVN 01-02:2009/BCT").description("Hệ thống quy định chung hoặc những hướng dẫn đảm bảo điều kiện về kỹ thuật và quản lý để sản xuất ra sản phẩm an toàn.").updateDate(LocalDate.now()).pdfLink(ISO9001_link).build());
+        CertificationType gsp      = certificationTypeRepository.save(CertificationType.builder().label("GSP - Thực hành bảo quản tốt (Dược phẩm)").lawReferences("Thông tư 36/2018/TT-BYT").description("Thực hành tốt bảo quản thuốc, đảm bảo chất lượng dược phẩm, sinh phẩm được duy trì trong suốt quá trình lưu trữ.").updateDate(LocalDate.now()).pdfLink(ISO9001_link).build());
+        CertificationType halal    = certificationTypeRepository.save(CertificationType.builder().label("Halal - Chứng nhận thực phẩm đạt chuẩn Hồi giáo").lawReferences("TCVN 12944:2020").description("Chứng nhận sản phẩm không chứa các thành phần bị cấm theo luật Hồi giáo và đáp ứng các tiêu chuẩn vệ sinh nghiêm ngặt.").updateDate(LocalDate.now()).pdfLink(HACCP_link).build());
 
         // =================================================================
         // 3. KHỞI TẠO WAREHOUSES
@@ -97,7 +102,7 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseCreateDTO wh1Dto = new WarehouseCreateDTO(
                 "Tổng kho Lạnh Quốc tế Sóng Thần", "Hệ thống kho vận đạt tiêu chuẩn ISO ứng dụng công nghệ giám sát nhiệt độ tự động.", "Số 10, KCN Sóng Thần 1", "Bình Dương", "Dĩ An",
                 106.7725, 10.9024, "75000",
-                List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO(null, "Gói lưu trữ theo tháng", 260000.0, "VND", "m3")))));
+                List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true, List.of(new PriceTierDTO(null, "Gói lưu trữ theo tháng", 260000.0, "year", "m3")))));
         List<WarehouseCertCreateDTO> certs1 = List.of(new WarehouseCertCreateDTO(iso9001.getId(), HACCP_link));
         WarehouseResponseDTO wh1Res = ownerService.createWarehouse(owner1.getId(), wh1Dto, List.of(warehouse_image_url_1), certs1);
         employeeService.verifyWarehouse(wh1Res.id(), WarehouseStatus.ACTIVE);
@@ -106,7 +111,7 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseCreateDTO wh2Dto = new WarehouseCreateDTO(
                 "Kho mát Nông sản Tân Bình", "Chuyên lưu trữ rau củ quả tươi sống, vị trí ngay sát trung tâm TPHCM, thuận tiện giao hàng nội thành.", "KCN Tân Bình, Lô B2", "Hồ Chí Minh", "Tân Bình",
                 106.6358, 10.8038, "70000",
-                List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false, List.of(new PriceTierDTO(null, "Thuê bao nguyên khu (Tuần)", 5000000.0, "VND", "sector")))));
+                List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false, List.of(new PriceTierDTO(null, "Thuê bao nguyên khu (Tuần)", 5000000.0, "year", "m3")))));
         List<WarehouseCertCreateDTO> certs2 = List.of(new WarehouseCertCreateDTO(haccp.getId(), ISO9001_link));
         WarehouseResponseDTO wh2Res = ownerService.createWarehouse(owner2.getId(), wh2Dto, new ArrayList<>(), certs2);
         employeeService.verifyWarehouse(wh2Res.id(), WarehouseStatus.ACTIVE);
@@ -115,10 +120,11 @@ public class DataInitializer implements CommandLineRunner {
         WarehouseCreateDTO wh3Dto = new WarehouseCreateDTO(
                 "Kho lạnh Y tế & Dược phẩm Quận 9", "Kho chuyên dụng chuẩn GSP lưu trữ Vắc xin và Sinh phẩm y tế.", "Khu Công Nghệ Cao, Đường D1", "Hồ Chí Minh", "Quận 9",
                 106.8029, 10.8491, "70000",
-                List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true, List.of(new PriceTierDTO(null, "Lưu trữ theo Pallet/Tháng", 800000.0, "VND", "pallet")))));
+                List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true, List.of(new PriceTierDTO(null, "Lưu trữ theo Pallet/Tháng", 800000.0, "year", "m3")))));
         List<WarehouseCertCreateDTO> certs3 = List.of(
                 new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
-                new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link)
+                new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link),
+                new WarehouseCertCreateDTO(gsp.getId(), ISO9001_link)
         );
         WarehouseResponseDTO wh3Res = ownerService.createWarehouse(owner3.getId(), wh3Dto, new ArrayList<>(), certs3);
         employeeService.verifyWarehouse(wh3Res.id(), WarehouseStatus.ACTIVE);
@@ -149,6 +155,154 @@ public class DataInitializer implements CommandLineRunner {
                 );
             }
         });
+
+        // =================================================================
+        // 3b. 10 KHO BÃI BỔ SUNG (đa tỉnh/thành, đa nhiệt độ)
+        // =================================================================
+
+        // KHO 4: Hà Nội – Đông Anh | Thực phẩm đông lạnh
+        WarehouseCreateDTO wh4Dto = new WarehouseCreateDTO(
+                "Kho lạnh Thực phẩm Đông Anh", "Kho hiện đại tại KCN Thăng Long, chuyên bảo quản thịt gia súc, gia cầm và chế phẩm sữa. Hệ thống điều nhiệt tự động 24/7, giám sát từ xa.",
+                "Lô CN7, KCN Thăng Long", "Hà Nội", "Đông Anh",
+                105.8442, 21.1198, "10000",
+                List.of(new WarehouseSectionDTO(null, 1, 1200.0, 1200.0, -20.0, -15.0, 55.0, true,
+                        List.of(new PriceTierDTO(null, "Thuê theo tháng", 280000.0, "year", "m3")))));
+        WarehouseResponseDTO wh4Res = ownerService.createWarehouse(owner1.getId(), wh4Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
+                        new WarehouseCertCreateDTO(iso22000.getId(), ISO9001_link)));
+        employeeService.verifyWarehouse(wh4Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 5: Hải Phòng – Hải An | Hải sản cảng biển (2 khu nhiệt độ)
+        WarehouseCreateDTO wh5Dto = new WarehouseCreateDTO(
+                "Trung tâm Lạnh Cảng Hải Phòng", "Sát Cảng Đình Vũ, tiếp nhận container lạnh, bảo quản hải sản nhập khẩu. Hai khu nhiệt độ độc lập phục vụ đa dạng nhu cầu.",
+                "KCN Đình Vũ, Đường Bạch Đằng", "Hải Phòng", "Hải An",
+                106.7519, 20.8270, "18000",
+                List.of(
+                        new WarehouseSectionDTO(null, 1, 800.0, 800.0, -25.0, -18.0, 60.0, true,
+                                List.of(new PriceTierDTO(null, "Đông lạnh sâu theo tháng", 320000.0, "year", "m3"))),
+                        new WarehouseSectionDTO(null, 2, 400.0, 400.0, -2.0, 4.0, 85.0, false,
+                                List.of(new PriceTierDTO(null, "Bảo quản tươi theo tháng", 180000.0, "year", "m3")))));
+        WarehouseResponseDTO wh5Res = ownerService.createWarehouse(owner2.getId(), wh5Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link), new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link)));
+        employeeService.verifyWarehouse(wh5Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 6: Đà Nẵng – Sơn Trà | Hải sản xuất khẩu
+        WarehouseCreateDTO wh6Dto = new WarehouseCreateDTO(
+                "Kho lạnh Hải sản Xuất khẩu Đà Nẵng", "Chuẩn HACCP, phục vụ xuất khẩu sang Nhật Bản và EU. Gần cảng Tiên Sa, thủ tục nhanh gọn, hỗ trợ chứng từ xuất nhập khẩu.",
+                "KCN Thọ Quang, Sơn Trà", "Đà Nẵng", "Sơn Trà",
+                108.2301, 16.0900, "55000",
+                List.of(new WarehouseSectionDTO(null, 1, 600.0, 600.0, -22.0, -18.0, 60.0, true,
+                        List.of(new PriceTierDTO(null, "Lưu trữ hải sản theo tháng", 310000.0, "year", "m3")))));
+        WarehouseResponseDTO wh6Res = ownerService.createWarehouse(owner3.getId(), wh6Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
+                        new WarehouseCertCreateDTO(brc.getId(), HACCP_link)));
+        employeeService.verifyWarehouse(wh6Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 7: Cần Thơ – Ninh Kiều | Thủy sản ĐBSCL
+        WarehouseCreateDTO wh7Dto = new WarehouseCreateDTO(
+                "Kho Thủy sản ĐBSCL Cần Thơ", "Trung tâm thu mua và bảo quản tôm, cá tra, cá basa cho vùng Đồng bằng sông Cửu Long. Công suất lớn, giá cạnh tranh nhất khu vực.",
+                "KCN Trà Nóc, Đường Trần Hoàng Na", "Cần Thơ", "Ninh Kiều",
+                105.7469, 10.0180, "92000",
+                List.of(new WarehouseSectionDTO(null, 1, 1000.0, 1000.0, -18.0, -12.0, 65.0, true,
+                        List.of(new PriceTierDTO(null, "Thuê kho theo tháng", 240000.0, "year", "m3")))));
+        WarehouseResponseDTO wh7Res = ownerService.createWarehouse(owner1.getId(), wh7Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
+                        new WarehouseCertCreateDTO(halal.getId(), HACCP_link)));
+        employeeService.verifyWarehouse(wh7Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 8: Long An – Bến Lức | Trái cây xuất khẩu (không cần cert đặc biệt)
+        WarehouseCreateDTO wh8Dto = new WarehouseCreateDTO(
+                "Kho Mát Trái Cây Xuất Khẩu Long An", "Chuyên thanh long, xoài, dứa phục vụ xuất khẩu Trung Quốc, Hàn Quốc. Dải nhiệt độ rộng phù hợp nhiều chủng loại trái cây nhiệt đới.",
+                "KCN Thuận Đạo, Đường tỉnh 830", "Long An", "Bến Lức",
+                106.4809, 10.6254, "85000",
+                List.of(new WarehouseSectionDTO(null, 1, 700.0, 700.0, 4.0, 12.0, 80.0, false,
+                        List.of(new PriceTierDTO(null, "Bảo quản trái cây theo tháng", 150000.0, "year", "m3")))));
+        WarehouseResponseDTO wh8Res = ownerService.createWarehouse(owner2.getId(), wh8Dto, List.of(warehouse_image_url_1), new ArrayList<>());
+        employeeService.verifyWarehouse(wh8Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 9: Đồng Nai – Biên Hòa | Thực phẩm chế biến
+        WarehouseCreateDTO wh9Dto = new WarehouseCreateDTO(
+                "Kho Lạnh Thực phẩm Chế biến Biên Hòa", "Trong KCN Biên Hòa 2, phục vụ các doanh nghiệp chế biến thực phẩm. Kết nối thuận tiện tuyến cao tốc TP.HCM – Hà Nội.",
+                "KCN Biên Hòa 2, Đường số 4", "Đồng Nai", "Biên Hòa",
+                107.0338, 10.9450, "71000",
+                List.of(new WarehouseSectionDTO(null, 1, 900.0, 900.0, -15.0, -10.0, 60.0, true,
+                        List.of(new PriceTierDTO(null, "Thuê kho chế biến theo tháng", 230000.0, "year", "m3")))));
+        WarehouseResponseDTO wh9Res = ownerService.createWarehouse(owner3.getId(), wh9Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
+                        new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link),
+                        new WarehouseCertCreateDTO(iso22000.getId(), ISO9001_link)));
+        employeeService.verifyWarehouse(wh9Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 10: Bà Rịa – Vũng Tàu | Thủy sản tươi sống
+        WarehouseCreateDTO wh10Dto = new WarehouseCreateDTO(
+                "Kho Lạnh Thủy sản Tươi Vũng Tàu", "Ngay cạnh cảng cá Vũng Tàu, chuyên bảo quản tôm hùm, mực ống, cá biển tươi sống. Phục vụ nhà hàng cao cấp và xuất khẩu.",
+                "Số 12, Đường 30/4, Phường Thắng Nhì", "Bà Rịa - Vũng Tàu", "Thắng Nhì",
+                107.0843, 10.3460, "64000",
+                List.of(new WarehouseSectionDTO(null, 1, 450.0, 450.0, -5.0, 0.0, 90.0, true,
+                        List.of(new PriceTierDTO(null, "Bảo quản hải sản tươi theo tháng", 200000.0, "year", "m3")))));
+        WarehouseResponseDTO wh10Res = ownerService.createWarehouse(owner1.getId(), wh10Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link)));
+        employeeService.verifyWarehouse(wh10Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 11: Bình Dương – Thuận An | Đa năng 2 khu vực
+        WarehouseCreateDTO wh11Dto = new WarehouseCreateDTO(
+                "Kho Lạnh Đa Năng Thuận An", "Hai khu vực nhiệt độ độc lập: đông lạnh sâu và bảo quản mát. Giá tốt, gần TP.HCM, phù hợp doanh nghiệp cần linh hoạt diện tích.",
+                "KCN Thuận An, Đường Lê Hồng Phong", "Bình Dương", "Thuận An",
+                106.6778, 10.9809, "75000",
+                List.of(
+                        new WarehouseSectionDTO(null, 1, 1000.0, 1000.0, -20.0, -10.0, 60.0, true,
+                                List.of(new PriceTierDTO(null, "Đông lạnh theo tháng", 250000.0, "year", "m3"))),
+                        new WarehouseSectionDTO(null, 2, 600.0, 600.0, 0.0, 8.0, 80.0, false,
+                                List.of(new PriceTierDTO(null, "Bảo quản mát theo tháng", 130000.0, "year", "m3")))));
+        WarehouseResponseDTO wh11Res = ownerService.createWarehouse(owner2.getId(), wh11Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link)));
+        employeeService.verifyWarehouse(wh11Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 12: Hải Phòng – Lê Chân | Dược phẩm & vắc xin
+        WarehouseCreateDTO wh12Dto = new WarehouseCreateDTO(
+                "Kho Lạnh Dược phẩm Hải Phòng", "Chuẩn GSP, chuyên lưu trữ vắc xin, huyết thanh và dược phẩm yêu cầu kiểm soát nhiệt độ nghiêm ngặt. Hệ thống ghi nhật ký tự động 24/7.",
+                "Số 88, Đường Đinh Tiên Hoàng, Phường Minh Khai", "Hải Phòng", "Lê Chân",
+                106.6880, 20.8499, "18000",
+                List.of(new WarehouseSectionDTO(null, 1, 200.0, 200.0, 2.0, 8.0, 45.0, true,
+                        List.of(new PriceTierDTO(null, "Bảo quản dược phẩm theo tháng", 650000.0, "year", "m3")))));
+        WarehouseResponseDTO wh12Res = ownerService.createWarehouse(owner3.getId(), wh12Dto, List.of(warehouse_image_url_1),
+                List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
+                        new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link),
+                        new WarehouseCertCreateDTO(gsp.getId(), ISO9001_link),
+                        new WarehouseCertCreateDTO(gmp.getId(), ISO9001_link)));
+        employeeService.verifyWarehouse(wh12Res.id(), WarehouseStatus.ACTIVE);
+
+        // KHO 13: Hà Nội – Hoàng Mai | Nông sản Bắc Bộ (2 khu mát)
+        WarehouseCreateDTO wh13Dto = new WarehouseCreateDTO(
+                "Kho Nông sản Bắc Bộ Hoàng Mai", "Chuyên bảo quản rau củ và trái cây miền Bắc cho hệ thống siêu thị và chuỗi bán lẻ. Hai khu vực riêng biệt tối ưu từng chủng loại.",
+                "Số 200, Đường Lĩnh Nam, KCN Vĩnh Tuy", "Hà Nội", "Hoàng Mai",
+                105.8659, 20.9815, "10000",
+                List.of(
+                        new WarehouseSectionDTO(null, 1, 500.0, 500.0, 5.0, 12.0, 85.0, false,
+                                List.of(new PriceTierDTO(null, "Bảo quản rau củ theo tháng", 120000.0, "year", "m3"))),
+                        new WarehouseSectionDTO(null, 2, 400.0, 400.0, 8.0, 15.0, 75.0, false,
+                                List.of(new PriceTierDTO(null, "Bảo quản trái cây theo tháng", 100000.0, "year", "m3")))));
+        WarehouseResponseDTO wh13Res = ownerService.createWarehouse(owner1.getId(), wh13Dto, List.of(warehouse_image_url_1), new ArrayList<>());
+        employeeService.verifyWarehouse(wh13Res.id(), WarehouseStatus.ACTIVE);
+
+        // Duyệt toàn bộ chứng nhận cho 10 kho mới
+        for (Long whId : List.of(wh4Res.id(), wh5Res.id(), wh6Res.id(), wh7Res.id(), wh8Res.id(),
+                wh9Res.id(), wh10Res.id(), wh11Res.id(), wh12Res.id(), wh13Res.id())) {
+            Warehouse whEnt = warehouseRepository.findById(whId).get();
+            whEnt.getCertificationSubmits().forEach(c ->
+                    employeeService.reviewWarehouseCertification(c.getId(), new CertReviewDTO("VERIFIED", null, c.getType().getId())));
+        }
+
+        // Lưu entity refs dùng cho reviews
+        Warehouse wh4Entity  = warehouseRepository.findById(wh4Res.id()).get();
+        Warehouse wh5Entity  = warehouseRepository.findById(wh5Res.id()).get();
+        Warehouse wh6Entity  = warehouseRepository.findById(wh6Res.id()).get();
+        Warehouse wh7Entity  = warehouseRepository.findById(wh7Res.id()).get();
+        Warehouse wh8Entity  = warehouseRepository.findById(wh8Res.id()).get();
+        Warehouse wh9Entity  = warehouseRepository.findById(wh9Res.id()).get();
+        Warehouse wh10Entity = warehouseRepository.findById(wh10Res.id()).get();
+        Warehouse wh12Entity = warehouseRepository.findById(wh12Res.id()).get();
+        Warehouse wh13Entity = warehouseRepository.findById(wh13Res.id()).get();
 
         // =================================================================
         // 4. KHỞI TẠO REQUEST & CONTRACTS
@@ -286,18 +440,50 @@ public class DataInitializer implements CommandLineRunner {
         // =================================================================
         // 7. KHỞI TẠO ĐÁNH GIÁ (RATINGS & REVIEWS)
         // =================================================================
-        List<Review> reviews = List.of(
-                // Kho 1: Hạ điểm xuống (Avg: 3.5 sao)
+        List<Review> reviews = new ArrayList<>(List.of(
+                // Kho 1: Avg 3.5 sao
                 Review.builder().user(renter1).warehouse(wh1Entity).rating(4).comment("Kho tạm ổn, nhưng đường vào hơi nhỏ, bãi đậu xe hay bị kẹt.").build(),
                 Review.builder().user(renter2).warehouse(wh1Entity).rating(3).comment("Dịch vụ bình thường, thỉnh thoảng nhiệt độ kho báo cáo hơi chậm.").build(),
 
-                // Kho 2: Avg: 5.0 sao
+                // Kho 2: Avg 5.0 sao
                 Review.builder().user(renter3).warehouse(wh2Entity).rating(5).comment("Vị trí ngay sát trung tâm, xe tải ra vào rất thuận tiện. Tuyệt vời!").build(),
 
-                // Kho 3: Tăng số lượng đánh giá và điểm lên tối đa để test thuật toán (Avg: 5.0 sao)
+                // Kho 3: Avg 5.0 sao
                 Review.builder().user(renter1).warehouse(wh3Entity).rating(5).comment("Kho y tế chuẩn GSP, quy trình kiểm soát vi sinh rất khắt khe và an toàn tuyệt đối.").build(),
-                Review.builder().user(renter2).warehouse(wh3Entity).rating(5).comment("Rất hài lòng với cách quản lý chuyên nghiệp, thủ tục giấy tờ cực kỳ nhanh gọn.").build()
-        );
+                Review.builder().user(renter2).warehouse(wh3Entity).rating(5).comment("Rất hài lòng với cách quản lý chuyên nghiệp, thủ tục giấy tờ cực kỳ nhanh gọn.").build(),
+
+                // Kho 4 – Hà Nội Đông Anh: Avg 4.0
+                Review.builder().user(renter2).warehouse(wh4Entity).rating(4).comment("Kho sạch sẽ, nhiệt độ ổn định. Vị trí KCN Thăng Long thuận tiện cho xe container.").build(),
+                Review.builder().user(renter3).warehouse(wh4Entity).rating(4).comment("Nhân viên nhiệt tình, thủ tục nhập xuất hàng nhanh gọn. Sẽ tiếp tục thuê.").build(),
+
+                // Kho 5 – Cảng Hải Phòng: Avg 4.5
+                Review.builder().user(renter1).warehouse(wh5Entity).rating(5).comment("Sát cảng Đình Vũ, tiết kiệm chi phí vận chuyển rất nhiều. Khu đông lạnh sâu hoạt động hoàn hảo.").build(),
+                Review.builder().user(renter3).warehouse(wh5Entity).rating(4).comment("Hai khu nhiệt độ riêng biệt rất linh hoạt. Giá hợp lý so với vị trí đắc địa.").build(),
+
+                // Kho 6 – Đà Nẵng: Avg 5.0
+                Review.builder().user(renter2).warehouse(wh6Entity).rating(5).comment("Xuất khẩu sang Nhật, yêu cầu chứng từ HACCP rất ngặt nghèo — kho này đáp ứng hoàn toàn.").build(),
+
+                // Kho 7 – Cần Thơ: Avg 4.0
+                Review.builder().user(renter1).warehouse(wh7Entity).rating(4).comment("Giá cạnh tranh nhất vùng ĐBSCL. Công suất lớn, phù hợp thu mua vụ tôm cá tra.").build(),
+                Review.builder().user(renter3).warehouse(wh7Entity).rating(4).comment("Chút lưu ý là đường vào kho mùa mưa hơi trơn, nhưng dịch vụ kho bãi rất tốt.").build(),
+
+                // Kho 8 – Long An trái cây: Avg 4.0
+                Review.builder().user(renter2).warehouse(wh8Entity).rating(4).comment("Giá tốt nhất cho kho mát trái cây khu vực Long An. Xuất thanh long đi Trung Quốc rất thuận tiện.").build(),
+
+                // Kho 9 – Đồng Nai chế biến: Avg 4.5
+                Review.builder().user(renter1).warehouse(wh9Entity).rating(5).comment("HACCP + ISO 9001 đầy đủ, đối tác nước ngoài kiểm tra rất hài lòng. Đường cao tốc sát bên.").build(),
+                Review.builder().user(renter2).warehouse(wh9Entity).rating(4).comment("Diện tích vừa đủ cho dây chuyền chế biến quy mô vừa. Dịch vụ hỗ trợ kỹ thuật tốt.").build(),
+
+                // Kho 10 – Vũng Tàu hải sản tươi: Avg 5.0
+                Review.builder().user(renter3).warehouse(wh10Entity).rating(5).comment("Ngay cảng cá, tôm hùm giữ tươi cực kỳ tốt. Nhà hàng khách sạn 5 sao dùng rất hài lòng.").build(),
+
+                // Kho 12 – Hải Phòng dược phẩm: Avg 5.0
+                Review.builder().user(renter1).warehouse(wh12Entity).rating(5).comment("Hệ thống ghi log nhiệt độ tự động đáp ứng chuẩn GDP/GSP quốc tế. Tuyệt đối tin tưởng cho vắc xin.").build(),
+                Review.builder().user(renter2).warehouse(wh12Entity).rating(5).comment("Chứng chỉ đầy đủ, nhân viên được đào tạo bài bản. Lựa chọn hàng đầu cho dược phẩm tại Hải Phòng.").build(),
+
+                // Kho 13 – Hà Nội nông sản: Avg 4.0
+                Review.builder().user(renter3).warehouse(wh13Entity).rating(4).comment("Hai khu nhiệt độ riêng giúp bảo quản rau củ và trái cây không bị lẫn mùi. Giá rẻ, phù hợp chuỗi bán lẻ.").build()
+        ));
         reviewRepository.saveAll(reviews);
 
         log.info("✅ Init Data Hoàn tất! Tất cả kho bãi, hợp đồng đều ở trạng thái ACTIVE/APPROVED sẵn sàng test.");

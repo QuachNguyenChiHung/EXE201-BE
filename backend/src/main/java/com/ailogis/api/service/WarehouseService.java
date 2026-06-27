@@ -31,6 +31,8 @@ public class WarehouseService {
         private final SponsorTierRepository sponsorTierRepository;
         private final CertificationTypeRepository certificationTypeRepository;
         private final ReviewRepository reviewRepository;
+        private final WarehouseSectionRepository warehouseSectionRepository;
+        private final PriceTierRepository priceTierRepository;
 
         public Page<WarehouseResponseDTO> getActiveOnlyWarehouses(Pageable pageable) {
                 return warehouseRepository.findByStatus(WarehouseStatus.ACTIVE, pageable)
@@ -43,6 +45,27 @@ public class WarehouseService {
                 Warehouse warehouse = warehouseRepository.findById(id)
                                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
                 return warehouseMapper.toWarehouseResponseDTO(warehouse);
+        }
+
+        /**
+         * Fetch a batch of warehouses by their IDs and map them to DTOs.
+         * The returned list preserves the order of the input {@code ids} list
+         * (useful when the AI returns IDs ranked by relevance).
+         * IDs that do not exist in the DB are silently skipped.
+         *
+         * @param ids ordered list of warehouse IDs
+         * @return DTOs in the same order as {@code ids}
+         */
+        public List<WarehouseResponseDTO> getWarehousesByIds(List<Long> ids) {
+                if (ids == null || ids.isEmpty()) return List.of();
+                // findAllById returns in arbitrary order — index by id to restore rank order
+                Map<Long, WarehouseResponseDTO> byId = new HashMap<>();
+                warehouseRepository.findAllById(ids)
+                                .forEach(w -> byId.put(w.getId(), warehouseMapper.toWarehouseResponseDTO(w)));
+                return ids.stream()
+                                .filter(byId::containsKey)
+                                .map(byId::get)
+                                .collect(java.util.stream.Collectors.toList());
         }
 
         // DÀNH CHO PUBLIC/RENTER: Xem chi tiết + Ghi nhận log lượt xem
@@ -122,36 +145,53 @@ public class WarehouseService {
         }
 
         public Page<WarehouseResponseDTO> searchWarehouses(
-                        String keyword, String province, Double minArea, Double maxArea,
+                        String keyword, List<String> provinces, Double minArea, Double maxArea,
                         Double minPrice, Double maxPrice, Double minRating, Double maxRating, List<Long> certTypeIds,
                         Pageable pageable) {
 
+                String safeKeyword = (keyword == null || keyword.isBlank()) ? "" : keyword.trim();
+                List<String> safeProvinces = (provinces == null) ? List.of() : provinces;
+                List<Long> safeCertTypeIds = (certTypeIds == null) ? List.of() : certTypeIds;
+
+                boolean hasProvinces = !safeProvinces.isEmpty();
+                boolean hasCerts = !safeCertTypeIds.isEmpty();
+                // Pass a non-empty dummy list when skipping — empty IN() is invalid SQL.
+                List<String> provincesParam = hasProvinces ? safeProvinces : List.of("__none__");
+                List<Long> certsParam = hasCerts ? safeCertTypeIds : List.of(-1L);
+
                 return warehouseRepository
-                                .searchWarehouses(keyword, province, minArea, maxArea, minPrice, maxPrice, minRating,
-                                                maxRating, certTypeIds, pageable)
+                                .searchWarehouses(safeKeyword, hasProvinces, provincesParam,
+                                                minArea, maxArea, minPrice, maxPrice,
+                                                minRating, maxRating, hasCerts, certsParam, pageable)
                                 .map(warehouseMapper::toWarehouseResponseDTO);
         }
 
         public Page<WarehouseResponseDTO> searchWarehousesByCriteria(SearchCriteriaDTO criteria, Pageable pageable) {
-                String province = (criteria.location() != null && !criteria.location().isEmpty())
-                                ? normalizeProvince(criteria.location().get(0).province())
-                                : null;
-                Double minAvail = criteria.availableCapacity() != null ? criteria.availableCapacity().min_range()
-                                : null;
-                Double maxAvail = criteria.availableCapacity() != null ? criteria.availableCapacity().max_range()
-                                : null;
+                List<String> provinces = new ArrayList<>();
+                if (criteria.location() != null) {
+                        for (SearchCriteriaDTO.LocationDTO loc : criteria.location()) {
+                                String normalized = normalizeProvince(loc.province());
+                                if (normalized != null && !normalized.isBlank()) {
+                                        provinces.add(normalized);
+                                }
+                        }
+                }
+
+                Double minAvail = criteria.availableCapacity() != null ? criteria.availableCapacity().min_range() : null;
+                Double maxAvail = criteria.availableCapacity() != null ? criteria.availableCapacity().max_range() : null;
                 Double minTotal = criteria.totalCapacity() != null ? criteria.totalCapacity().min_range() : null;
                 Double maxTotal = criteria.totalCapacity() != null ? criteria.totalCapacity().max_range() : null;
                 String sortType = criteria.sort() != null ? criteria.sort().type() : null;
 
-                // Pass empty string (not null) for keyword/region so JPQL doesn't generate
+                // Pass empty string (not null) for keyword so JPQL doesn't generate
                 // `lower(bytea)` errors
-                String safeKeyword = (criteria.name() == null || criteria.name().isBlank()) ? ""
-                                : criteria.name().trim();
-                String safeProvince = province == null ? "" : province;
+                String safeKeyword = (criteria.name() == null || criteria.name().isBlank()) ? "" : criteria.name().trim();
+                
+                boolean hasProvinces = !provinces.isEmpty();
+                List<String> provincesParam = hasProvinces ? provinces : List.of("__none__");
 
                 return warehouseRepository.searchWarehousesByCriteria(
-                                safeKeyword, safeProvince,
+                                safeKeyword, hasProvinces, provincesParam,
                                 criteria.tempMin(), criteria.tempMax(),
                                 minAvail, maxAvail, minTotal, maxTotal,
                                 criteria.minPrice(), criteria.maxPrice(),
@@ -205,6 +245,33 @@ public class WarehouseService {
                         return trimmed;
                 String key = trimmed.toLowerCase();
                 return PROVINCE_ALIASES.getOrDefault(key, trimmed);
+        }
+
+        public AiFilterMetaResponseDTO getAiFilterMeta() {
+                List<String> provinces = warehouseRepository.findDistinctProvinces();
+
+                List<AiFilterMetaResponseDTO.CertInfo> certs = certificationTypeRepository.findAll().stream()
+                                .map(c -> new AiFilterMetaResponseDTO.CertInfo(c.getId().toString(), c.getLabel(), c.getDescription()))
+                                .toList();
+
+                List<Object[]> tempResult = warehouseSectionRepository.findTemperatureRange();
+                List<Object[]> capResult = warehouseSectionRepository.findCapacityRange();
+                List<Object[]> priceResult = priceTierRepository.findActivePriceRange();
+
+                return new AiFilterMetaResponseDTO(
+                                provinces, certs,
+                                extractRange(tempResult, 0, -30.0),
+                                extractRange(tempResult, 1, 15.0),
+                                extractRange(capResult, 0, 0.0),
+                                extractRange(capResult, 1, 10000.0),
+                                extractRange(priceResult, 0, 0.0),
+                                extractRange(priceResult, 1, 1000000.0));
+        }
+
+        private static Double extractRange(List<Object[]> rows, int col, double fallback) {
+                if (rows == null || rows.isEmpty() || rows.get(0) == null || rows.get(0)[col] == null)
+                        return fallback;
+                return ((Number) rows.get(0)[col]).doubleValue();
         }
 
         public FilterMetaResponseDTO getFilterMeta() {

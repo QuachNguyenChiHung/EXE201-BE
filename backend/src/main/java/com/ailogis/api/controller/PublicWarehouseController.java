@@ -52,7 +52,7 @@ public class PublicWarehouseController {
     @GetMapping("/search")
     public ResponseEntity<Page<WarehouseResponseDTO>> searchWarehouses(
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String province,
+            @RequestParam(required = false) List<String> provinces,
             @RequestParam(required = false) Double minArea,
             @RequestParam(required = false) Double maxArea,
             @RequestParam(required = false) Double minPrice,
@@ -63,13 +63,9 @@ public class PublicWarehouseController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
 
-        if (certTypeIds != null && certTypeIds.isEmpty()) {
-            certTypeIds = null;
-        }
-
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(warehouseService.searchWarehouses(
-                keyword, province, minArea, maxArea, minPrice, maxPrice, minRating, maxRating, certTypeIds, pageable));
+                keyword, provinces, minArea, maxArea, minPrice, maxPrice, minRating, maxRating, certTypeIds, pageable));
     }
 
     @GetMapping("/filter-meta")

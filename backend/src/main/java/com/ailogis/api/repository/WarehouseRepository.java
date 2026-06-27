@@ -35,29 +35,34 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     Page<Warehouse> findPopularWarehouses(@Param("thirtyDaysAgo") LocalDate thirtyDaysAgo, Pageable pageable);
 
     // API Search
+    // keyword must NEVER be null — caller passes "" if absent to avoid
+    // Postgres inferring `bytea` for the LIKE-bound parameter.
+    // hasProvinces/hasCerts flags replace IS EMPTY (not supported on params in Hibernate 7).
     @Query("SELECT w FROM Warehouse w " +
             "LEFT JOIN w.sponsorType st " +
             "WHERE w.status IN ('ACTIVE', 'RENTED') " +
-            "AND (:keyword IS NULL OR LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "AND (:keyword = '' OR LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "    OR LOWER(w.description) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "    OR LOWER(w.locationAddressText) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
             "    OR LOWER(w.locationCommune) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:province IS NULL OR w.locationProvince = :province) " +
+            "AND (:hasProvinces = false OR w.locationProvince IN :provinces) " +
             "AND (:minArea IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity >= :minArea)) " +
             "AND (:maxArea IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity <= :maxArea)) " +
             "AND (:minPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value >= :minPrice)) " +
             "AND (:maxPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value <= :maxPrice)) " +
             "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
             "AND (:maxRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) <= :maxRating) " +
-            "AND (:certTypeIds IS NULL OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id IN :certTypeIds AND cs.status = 'VERIFIED')) " +
+            "AND (:hasCerts = false OR EXISTS (SELECT 1 FROM CertificationSubmit cs WHERE cs.warehouse = w AND cs.type.id IN :certTypeIds AND cs.status = 'VERIFIED')) " +
             "ORDER BY w.isSponsor DESC, st.priorityLevel ASC, w.id DESC")
     Page<Warehouse> searchWarehouses(
             @Param("keyword") String keyword,
-            @Param("province") String province,
+            @Param("hasProvinces") boolean hasProvinces,
+            @Param("provinces") List<String> provinces,
             @Param("minArea") Double minArea, @Param("maxArea") Double maxArea,
             @Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice,
             @Param("minRating") Double minRating,
             @Param("maxRating") Double maxRating,
+            @Param("hasCerts") boolean hasCerts,
             @Param("certTypeIds") List<Long> certTypeIds, Pageable pageable);
 
     // Lấy danh sách các tỉnh/thành phố KHÔNG TRÙNG LẶP từ các kho bãi đang hoạt động
@@ -75,7 +80,7 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             "LEFT JOIN w.sponsorType st " +
             "WHERE w.status IN ('ACTIVE', 'RENTED') " +
             "AND (LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-            "AND (:province = '' OR w.locationProvince = :province) " +
+            "AND (:hasProvinces = false OR w.locationProvince IN :provinces) " +
             "AND (:minTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMin <= :minTemp)) " +
             "AND (:maxTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMax >= :maxTemp)) " +
             "AND (:minAvailableCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity >= :minAvailableCap)) " +
@@ -92,7 +97,7 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             "  w.isSponsor DESC, st.priorityLevel ASC, w.id DESC",
             countQuery = "SELECT COUNT(w) FROM Warehouse w WHERE w.status IN ('ACTIVE', 'RENTED') " +
                     "AND (LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-                    "AND (:province = '' OR w.locationProvince = :province) " +
+                    "AND (:hasProvinces = false OR w.locationProvince IN :provinces) " +
                     "AND (:minTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMin <= :minTemp)) " +
                     "AND (:maxTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMax >= :maxTemp)) " +
                     "AND (:minAvailableCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity >= :minAvailableCap)) " +
@@ -105,7 +110,8 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
                     "AND (:maxRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) <= :maxRating)")
     Page<Warehouse> searchWarehousesByCriteria(
             @Param("keyword") String keyword,
-            @Param("province") String province,
+            @Param("hasProvinces") boolean hasProvinces,
+            @Param("provinces") List<String> provinces,
             @Param("minTemp") Double minTemp,
             @Param("maxTemp") Double maxTemp,
             @Param("minAvailableCap") Double minAvailableCap,

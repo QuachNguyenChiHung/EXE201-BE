@@ -8,5 +8,6 @@ public record AiSearchResponseDTO(
     java.util.List<Long> refinedWarehouseIds,
     String criteriaJson,
     Integer inputTokens,
-    Integer outputTokens
+    Integer outputTokens,
+    Boolean tokenExhausted
 ) {}

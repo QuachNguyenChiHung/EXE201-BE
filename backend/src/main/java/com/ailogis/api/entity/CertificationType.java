@@ -19,4 +19,6 @@ public class CertificationType {
     private LocalDate updateDate;
     private String lawReferences;
     private String pdfLink;
+    @Column(columnDefinition = "TEXT")
+    private String description;
 }

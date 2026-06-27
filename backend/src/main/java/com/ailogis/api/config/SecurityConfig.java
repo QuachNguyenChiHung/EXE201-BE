@@ -36,6 +36,7 @@ public class SecurityConfig {
                         // 1. PUBLIC API
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/warehouses/**").permitAll()
+                        .requestMatchers("/api/ai/filter-meta").permitAll()
                         .requestMatchers("/api/payment/**").permitAll()
 
                         // 2. API CÁ NHÂN
