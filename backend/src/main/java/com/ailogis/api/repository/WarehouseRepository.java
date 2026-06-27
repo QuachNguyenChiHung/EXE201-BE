@@ -67,4 +67,55 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
     // Lấy danh sách kho của Owner có hỗ trợ lọc Status và Phân trang
     @Query("SELECT w FROM Warehouse w WHERE w.owner.id = :ownerId AND (:status IS NULL OR w.status = :status) ORDER BY w.id DESC")
     Page<Warehouse> findByOwnerIdWithFilterPaged(@Param("ownerId") Long ownerId, @Param("status") WarehouseStatus status, Pageable pageable);
+
+    // AI Search: supports temp range, capacity range, and dynamic sort
+    // Note: keyword/province must NEVER be null (caller must pass "" if absent).
+    // Passing null causes Postgres to infer `bytea` for the LIKE-bound parameter → "function lower(bytea) does not exist".
+    @Query(value = "SELECT w FROM Warehouse w " +
+            "LEFT JOIN w.sponsorType st " +
+            "WHERE w.status IN ('ACTIVE', 'RENTED') " +
+            "AND (LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "AND (:province = '' OR w.locationProvince = :province) " +
+            "AND (:minTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMin <= :minTemp)) " +
+            "AND (:maxTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMax >= :maxTemp)) " +
+            "AND (:minAvailableCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity >= :minAvailableCap)) " +
+            "AND (:maxAvailableCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity <= :maxAvailableCap)) " +
+            "AND (:minTotalCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.totalCapacity >= :minTotalCap)) " +
+            "AND (:maxTotalCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.totalCapacity <= :maxTotalCap)) " +
+            "AND (:minPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value >= :minPrice)) " +
+            "AND (:maxPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value <= :maxPrice)) " +
+            "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
+            "AND (:maxRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) <= :maxRating) " +
+            "ORDER BY " +
+            "  CASE WHEN :sortType = 'price' THEN (SELECT COALESCE(MIN(pt.value), 999999999) FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w) END ASC, " +
+            "  CASE WHEN :sortType = 'rating' THEN (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) END DESC, " +
+            "  w.isSponsor DESC, st.priorityLevel ASC, w.id DESC",
+            countQuery = "SELECT COUNT(w) FROM Warehouse w WHERE w.status IN ('ACTIVE', 'RENTED') " +
+                    "AND (LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+                    "AND (:province = '' OR w.locationProvince = :province) " +
+                    "AND (:minTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMin <= :minTemp)) " +
+                    "AND (:maxTemp IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.tempMax >= :maxTemp)) " +
+                    "AND (:minAvailableCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity >= :minAvailableCap)) " +
+                    "AND (:maxAvailableCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.availableCapacity <= :maxAvailableCap)) " +
+                    "AND (:minTotalCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.totalCapacity >= :minTotalCap)) " +
+                    "AND (:maxTotalCap IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec WHERE sec.warehouse = w AND sec.totalCapacity <= :maxTotalCap)) " +
+                    "AND (:minPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value >= :minPrice)) " +
+                    "AND (:maxPrice IS NULL OR EXISTS (SELECT 1 FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w AND pt.value <= :maxPrice)) " +
+                    "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
+                    "AND (:maxRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) <= :maxRating)")
+    Page<Warehouse> searchWarehousesByCriteria(
+            @Param("keyword") String keyword,
+            @Param("province") String province,
+            @Param("minTemp") Double minTemp,
+            @Param("maxTemp") Double maxTemp,
+            @Param("minAvailableCap") Double minAvailableCap,
+            @Param("maxAvailableCap") Double maxAvailableCap,
+            @Param("minTotalCap") Double minTotalCap,
+            @Param("maxTotalCap") Double maxTotalCap,
+            @Param("minPrice") Double minPrice,
+            @Param("maxPrice") Double maxPrice,
+            @Param("minRating") Double minRating,
+            @Param("maxRating") Double maxRating,
+            @Param("sortType") String sortType,
+            Pageable pageable);
 }
