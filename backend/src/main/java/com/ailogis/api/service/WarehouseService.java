@@ -11,6 +11,7 @@ import com.ailogis.api.repository.*;
 import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -168,13 +170,23 @@ public class WarehouseService {
 
         public Page<WarehouseResponseDTO> searchWarehousesByCriteria(SearchCriteriaDTO criteria, Pageable pageable) {
                 List<String> provinces = new ArrayList<>();
+                boolean hasNoWarehouseSentinel = false;
                 if (criteria.location() != null) {
                         for (SearchCriteriaDTO.LocationDTO loc : criteria.location()) {
                                 String normalized = normalizeProvince(loc.province());
-                                if (normalized != null && !normalized.isBlank()) {
-                                        provinces.add(normalized);
+                                if (normalized == null || normalized.isBlank())
+                                        continue;
+                                if ("__no_warehouse__".equals(normalized)) {
+                                        hasNoWarehouseSentinel = true;
+                                        continue;
                                 }
+                                provinces.add(normalized);
                         }
+                }
+
+                // If user asked for a city with no warehouse coverage, return empty immediately
+                if (hasNoWarehouseSentinel && provinces.isEmpty()) {
+                        return new PageImpl<>(List.of(), pageable, 0);
                 }
 
                 Double minAvail = criteria.availableCapacity() != null ? criteria.availableCapacity().min_range() : null;
@@ -209,43 +221,128 @@ public class WarehouseService {
          * any common alias resolves to the canonical form so the exact-match JPQL
          * works.
          */
-        private static final Map<String, String> PROVINCE_ALIASES = Map.ofEntries(
-                        Map.entry("tp.hcm", "Hồ Chí Minh"),
-                        Map.entry("tp hcm", "Hồ Chí Minh"),
-                        Map.entry("tphcm", "Hồ Chí Minh"),
-                        Map.entry("hcmc", "Hồ Chí Minh"),
-                        Map.entry("ho chi minh", "Hồ Chí Minh"),
-                        Map.entry("ho chi minh city", "Hồ Chí Minh"),
-                        Map.entry("thành phố hồ chí minh", "Hồ Chí Minh"),
-                        Map.entry("sài gòn", "Hồ Chí Minh"),
-                        Map.entry("saigon", "Hồ Chí Minh"),
-                        Map.entry("tp.hà nội", "Hà Nội"),
-                        Map.entry("tp hà nội", "Hà Nội"),
-                        Map.entry("tphn", "Hà Nội"),
-                        Map.entry("hn", "Hà Nội"),
-                        Map.entry("hanoi", "Hà Nội"),
-                        Map.entry("đà nẵng", "Đà Nẵng"),
-                        Map.entry("da nang", "Đà Nẵng"),
-                        Map.entry("danang", "Đà Nẵng"),
-                        Map.entry("hải phòng", "Hải Phòng"),
-                        Map.entry("hai phong", "Hải Phòng"),
-                        Map.entry("cần thơ", "Cần Thơ"),
-                        Map.entry("can tho", "Cần Thơ"));
+	private static final Map<String, String> PROVINCE_ALIASES = Map.ofEntries(
+			Map.entry("tp.hcm", "Hồ Chí Minh"),
+			Map.entry("tp hcm", "Hồ Chí Minh"),
+			Map.entry("tphcm", "Hồ Chí Minh"),
+			Map.entry("hcmc", "Hồ Chí Minh"),
+			Map.entry("ho chi minh", "Hồ Chí Minh"),
+			Map.entry("ho chi minh city", "Hồ Chí Minh"),
+			Map.entry("thành phố hồ chí minh", "Hồ Chí Minh"),
+			Map.entry("sài gòn", "Hồ Chí Minh"),
+			Map.entry("saigon", "Hồ Chí Minh"),
+			Map.entry("tp.hà nội", "Hà Nội"),
+			Map.entry("tp hà nội", "Hà Nội"),
+			Map.entry("tphn", "Hà Nội"),
+			Map.entry("hn", "Hà Nội"),
+			Map.entry("hanoi", "Hà Nội"),
+			Map.entry("đà nẵng", "Đà Nẵng"),
+			Map.entry("da nang", "Đà Nẵng"),
+			Map.entry("danang", "Đà Nẵng"),
+			Map.entry("hải phòng", "Hải Phòng"),
+			Map.entry("hai phong", "Hải Phòng"),
+			Map.entry("cần thơ", "Cần Thơ"),
+			Map.entry("can tho", "Cần Thơ"),
+			// ── Cities WITHOUT warehouses in the DB — sentinel so callers detect out-of-coverage
+			Map.entry("nha trang", "__no_warehouse__"),
+			Map.entry("nhatrang", "__no_warehouse__"),
+			Map.entry("khánh hòa", "__no_warehouse__"),
+			Map.entry("khanh hoa", "__no_warehouse__"),
+			Map.entry("vũng tàu", "__no_warehouse__"),
+			Map.entry("vung tau", "__no_warehouse__"),
+			Map.entry("bà rịa vũng tàu", "__no_warehouse__"),
+			Map.entry("ba ria vung tau", "__no_warehouse__"),
+			Map.entry("bà rịa", "__no_warehouse__"),
+			Map.entry("ba ria", "__no_warehouse__"),
+			Map.entry("huế", "__no_warehouse__"),
+			Map.entry("hue", "__no_warehouse__"),
+			Map.entry("thừa thiên huế", "__no_warehouse__"),
+			Map.entry("thua thien hue", "__no_warehouse__"),
+			Map.entry("thanh hóa", "__no_warehouse__"),
+			Map.entry("thanhhoa", "__no_warehouse__"),
+			Map.entry("lâm đồng", "__no_warehouse__"),
+			Map.entry("lam dong", "__no_warehouse__"),
+			Map.entry("cà mau", "__no_warehouse__"),
+			Map.entry("ca mau", "__no_warehouse__"),
+			Map.entry("vĩnh long", "__no_warehouse__"),
+			Map.entry("vinh long", "__no_warehouse__"),
+			Map.entry("quảng ninh", "__no_warehouse__"),
+			Map.entry("quangninh", "__no_warehouse__"),
+			Map.entry("bình thuận", "__no_warehouse__"),
+			Map.entry("binh thuan", "__no_warehouse__"),
+			Map.entry("bắc ninh", "__no_warehouse__"),
+			Map.entry("bac ninh", "__no_warehouse__"),
+			Map.entry("hưng yên", "__no_warehouse__"),
+			Map.entry("hung yen", "__no_warehouse__"),
+			Map.entry("hải dương", "__no_warehouse__"),
+			Map.entry("hai duong", "__no_warehouse__"),
+			Map.entry("nam định", "__no_warehouse__"),
+			Map.entry("nam dinh", "__no_warehouse__"),
+			Map.entry("thái bình", "__no_warehouse__"),
+			Map.entry("thai binh", "__no_warehouse__"),
+			Map.entry("ninh bình", "__no_warehouse__"),
+			Map.entry("ninh binh", "__no_warehouse__"),
+			Map.entry("hà nam", "__no_warehouse__"),
+			Map.entry("ha nam", "__no_warehouse__"),
+			Map.entry("quảng nam", "__no_warehouse__"),
+			Map.entry("quang nam", "__no_warehouse__"),
+			Map.entry("quảng ngãi", "__no_warehouse__"),
+			Map.entry("quang ngai", "__no_warehouse__"),
+			Map.entry("bình định", "__no_warehouse__"),
+			Map.entry("binh dinh", "__no_warehouse__"),
+			Map.entry("phú yên", "__no_warehouse__"),
+			Map.entry("phu yen", "__no_warehouse__"),
+			Map.entry("bình phước", "__no_warehouse__"),
+			Map.entry("binh phuoc", "__no_warehouse__"),
+			Map.entry("tây ninh", "__no_warehouse__"),
+			Map.entry("tay nin", "__no_warehouse__"),
+			Map.entry("long an", "__no_warehouse__"),
+			Map.entry("tiền giang", "__no_warehouse__"),
+			Map.entry("tien giang", "__no_warehouse__"),
+			Map.entry("bến tre", "__no_warehouse__"),
+			Map.entry("ben tre", "__no_warehouse__"),
+			Map.entry("trà vinh", "__no_warehouse__"),
+			Map.entry("tra vinh", "__no_warehouse__"),
+			Map.entry("hậu giang", "__no_warehouse__"),
+			Map.entry("hau giang", "__no_warehouse__"),
+			Map.entry("sóc trăng", "__no_warehouse__"),
+			Map.entry("soc trang", "__no_warehouse__"),
+			Map.entry("an giang", "__no_warehouse__"),
+			Map.entry("kiên giang", "__no_warehouse__"),
+			Map.entry("kien giang", "__no_warehouse__"),
+			Map.entry("đồng tháp", "__no_warehouse__"),
+			Map.entry("dong thap", "__no_warehouse__"));
 
-        /**
-         * Look up a Vietnamese province name in the alias map.
-         * Returns the canonical DB form if found, otherwise the trimmed input
-         * unchanged.
-         */
-        static String normalizeProvince(String raw) {
-                if (raw == null)
-                        return null;
-                String trimmed = raw.trim();
-                if (trimmed.isEmpty())
-                        return trimmed;
-                String key = trimmed.toLowerCase();
-                return PROVINCE_ALIASES.getOrDefault(key, trimmed);
-        }
+	private static final Set<String> VALID_PROVINCES = Set.of(
+			"Hồ Chí Minh", "Hà Nội", "Đà Nẵng", "Hải Phòng",
+			"Cần Thơ", "Bình Dương", "Đồng Nai");
+
+	/**
+	 * Look up a Vietnamese province name in the alias map.
+	 * Returns the canonical DB form if found, otherwise the trimmed input unchanged.
+	 * Returns "__no_warehouse__" for cities without warehouse coverage so callers
+	 * can detect out-of-coverage requests.
+	 */
+	static String normalizeProvince(String raw) {
+		if (raw == null)
+			return null;
+		String trimmed = raw.trim();
+		if (trimmed.isEmpty())
+			return trimmed;
+		String key = trimmed.toLowerCase();
+		String resolved = PROVINCE_ALIASES.getOrDefault(key, trimmed);
+		// __no_warehouse__ sentinel means the city has no coverage
+		if ("__no_warehouse__".equals(resolved))
+			return "__no_warehouse__";
+		// If not a recognized alias, check for direct DB province match (case-insensitive)
+		if (resolved.equalsIgnoreCase(trimmed)) {
+			return VALID_PROVINCES.stream()
+					.filter(p -> p.equalsIgnoreCase(trimmed))
+					.findFirst()
+					.orElse(trimmed);
+		}
+		return resolved;
+	}
 
         public AiFilterMetaResponseDTO getAiFilterMeta() {
                 List<String> provinces = warehouseRepository.findDistinctProvinces();

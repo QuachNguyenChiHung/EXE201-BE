@@ -92,9 +92,10 @@ public interface WarehouseRepository extends JpaRepository<Warehouse, Long> {
             "AND (:minRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) >= :minRating) " +
             "AND (:maxRating IS NULL OR (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) <= :maxRating) " +
             "ORDER BY " +
+            "  w.isSponsor DESC, st.priorityLevel ASC, " +
             "  CASE WHEN :sortType = 'price' THEN (SELECT COALESCE(MIN(pt.value), 999999999) FROM WarehouseSection sec JOIN sec.priceTiers pt WHERE sec.warehouse = w) END ASC, " +
             "  CASE WHEN :sortType = 'rating' THEN (SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.warehouse = w) END DESC, " +
-            "  w.isSponsor DESC, st.priorityLevel ASC, w.id DESC",
+            "  w.id DESC",
             countQuery = "SELECT COUNT(w) FROM Warehouse w WHERE w.status IN ('ACTIVE', 'RENTED') " +
                     "AND (LOWER(w.name) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
                     "AND (:hasProvinces = false OR w.locationProvince IN :provinces) " +

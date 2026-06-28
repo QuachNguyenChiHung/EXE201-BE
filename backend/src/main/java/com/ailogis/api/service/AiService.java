@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -156,6 +157,28 @@ public class AiService {
             throw new RuntimeException("Không đủ token. Vui lòng nạp thêm gói AI!");
         }
 
+        // ── Upfront price-type guard ───────────────────────────────────────────────
+        // Ask before any branching so BOTH initial-handshake and follow-up queries
+        // are caught. Only fires when the user mentions price without a duration unit.
+        if (isMissingPriceType(query)) {
+            log.info("[AI/chat] no price type in query — returning clarification");
+            String clarification = "Trước khi tìm kiếm, cho mình hỏi — bạn muốn xem giá theo đơn vị nào: theo ngày, theo tuần, theo tháng, hay theo năm?";
+            Page<WarehouseResponseDTO> emptyPage = new PageImpl<>(Collections.emptyList(), Pageable.unpaged(), 0);
+            int outputTokens = clarification.length() / 4;
+            int remaining = balance - outputTokens;
+            boolean tokenExhausted = remaining < 0;
+            if (tokenExhausted) remaining = 0;
+            user.getAiTier().setTokenOutput(remaining);
+            userRepository.save(user);
+            AiConversation convo = AiConversation.builder()
+                    .user(user).criteria(query).message(clarification)
+                    .totalInputTokens(0).totalOutputTokens(outputTokens)
+                    .build();
+            aiConversationRepository.save(convo);
+            return new AiSearchResponseDTO(clarification, emptyPage, List.of(),
+                    "{\"clarification\": \"price_type\"}", 0, outputTokens, tokenExhausted);
+        }
+
         Page<WarehouseResponseDTO> warehousePage;
         String criteriaJson;
         int run1OutputTokens;
@@ -250,7 +273,7 @@ public class AiService {
                 // Treat the raw response as a conversational answer and return it
                 // directly (keep the current FE warehouse list unchanged).
                 log.warn("[AI/chat] JSON parse failed — returning raw AI text as conversational answer");
-                String fallbackText = cleanedJson.startsWith("{") ? cleanedJson : rawJson.trim();
+                String fallbackText = "Xin lỗi bạn, mình chưa hiểu rõ yêu cầu. Bạn có thể diễn đạt lại về khu vực, nhiệt độ hoặc ngân sách cụ thể hơn không?";
                 warehousePage = new PageImpl<>(Collections.emptyList(), Pageable.unpaged(), 0);
                 int fbOutputTokens = rawJson.length() / 4;
                 int remaining = balance - fbOutputTokens;
@@ -340,12 +363,45 @@ public class AiService {
         List<WarehouseResponseDTO> warehouseList = toListFromFeCandidates(warehouses);
         log.info("[AI/contextChat] received {} warehouse candidates from FE", warehouseList.size());
 
-        String prompt = buildContextSearchPrompt(query, conversationHistory, warehouseList);
-        log.info("[AI/contextChat] calling agent for context processing...");
+        // ── Out-of-coverage check: skip AI call entirely for unsupported cities ───────
+        String outOfCoverageCity = detectOutOfCoverageCity(query);
+        if (outOfCoverageCity != null) {
+            log.info("[AI/contextChat] query targets unsupported city '{}' — returning friendly message", outOfCoverageCity);
+            int inputTokens = (query == null ? 0 : query.length()) / 4;
+            int outputTokens = 0;
+            int remaining = balance - outputTokens;
+            boolean tokenExhausted = remaining < 0;
+            if (tokenExhausted) remaining = 0;
+            user.getAiTier().setTokenOutput(remaining);
+            userRepository.save(user);
+            aiConversationRepository.save(AiConversation.builder()
+                    .user(user).criteria(query == null ? "" : query)
+                    .message("Xin lỗi bạn, hiện tại chúng mình chưa có kho lạnh tại " + outOfCoverageCity
+                            + ". Bạn có thể thử tìm ở các khu vực lân cận như: "
+                            + "Hồ Chí Minh, Bình Dương, Đồng Nai, Hà Nội, Hải Phòng, Đà Nẵng hoặc Cần Thơ nhé!")
+                    .totalInputTokens(inputTokens).totalOutputTokens(outputTokens).build());
+            Page<WarehouseResponseDTO> emptyPage = new PageImpl<>(List.of(), Pageable.unpaged(), 0);
+            return new AiSearchResponseDTO(
+                    "Xin lỗi bạn, hiện tại chúng mình chưa có kho lạnh tại " + outOfCoverageCity
+                            + ". Bạn có thể thử tìm ở các khu vực lân cận như: "
+                            + "Hồ Chí Minh, Bình Dương, Đồng Nai, Hà Nội, Hải Phòng, Đà Nẵng hoặc Cần Thơ nhé!",
+                    emptyPage, List.of(), null, inputTokens, outputTokens, tokenExhausted);
+        }
+
+        // ── Pre-filter warehouses before sending to AI ──────────────────────────────
+        // Apply hard constraints (capacity minimum, required certs) so the AI works on
+        // a candidate set that definitely satisfies the user's non-negotiable requirements.
+        List<WarehouseResponseDTO> filteredWarehouses = applyHardFilters(query, warehouseList);
+        log.info("[AI/contextChat] hard filters: {} of {} warehouses remain",
+                filteredWarehouses.size(), warehouseList.size());
+
+        String prompt = buildContextSearchPrompt(query, conversationHistory, filteredWarehouses);
+        log.info("[AI/contextChat] calling agent...");
         String rawResponse = callAgent(prompt, conversationHistory);
-        log.info("[AI/contextChat] raw agent response: {}", rawResponse);
+        log.info("[AI/contextChat] raw response length={}", rawResponse.length());
         String cleaned = extractJsonFromMarkdown(rawResponse);
 
+        // ── Parse AI response ───────────────────────────────────────────────────────
         String responseText;
         List<Long> refinedIds;
         try {
@@ -358,10 +414,9 @@ public class AiService {
                     .map(v -> Long.parseLong(v.toString()))
                     .collect(Collectors.toList());
         } catch (Exception e) {
-            log.warn("[AI/contextChat] JSON parse failed — returning raw AI text as conversational answer");
-            // AI returned plain text — fall back to the original candidate order
-            responseText = rawResponse.trim();
-            refinedIds = warehouseList.stream().map(WarehouseResponseDTO::id).collect(Collectors.toList());
+            log.warn("[AI/contextChat] JSON parse failed — friendly fallback: {}", e.getMessage());
+            responseText = "Xin lỗi bạn, mình chưa hiểu rõ yêu cầu. Bạn có thể diễn đạt lại về khu vực, nhiệt độ hoặc ngân sách cụ thể hơn không?";
+            refinedIds = List.of();
         }
 
         // Fetch authoritative warehouse data from DB in ranked order
@@ -386,8 +441,19 @@ public class AiService {
                 .build();
         aiConversationRepository.save(conversation);
 
-        Page<WarehouseResponseDTO> warehousePage = new PageImpl<>(rankedWarehouses, Pageable.unpaged(), rankedWarehouses.size());
-        return new AiSearchResponseDTO(responseText, warehousePage, refinedIds, null, inputTokens, outputTokens, tokenExhausted);
+        // ── No results → return friendly message, NOT all warehouses ───────────────
+        Page<WarehouseResponseDTO> warehousePage;
+        if (refinedIds.isEmpty()) {
+            String noResults = "Không tìm thấy kho nào phù hợp với yêu cầu của bạn. "
+                    + "Bạn có thể thử điều chỉnh khu vực, nhiệt độ hoặc ngân sách nhé!";
+            warehousePage = new PageImpl<>(List.of(), Pageable.unpaged(), 0);
+            return new AiSearchResponseDTO(noResults, warehousePage, List.of(), null,
+                    inputTokens, outputTokens, tokenExhausted);
+        }
+
+        warehousePage = new PageImpl<>(rankedWarehouses, Pageable.unpaged(), rankedWarehouses.size());
+        return new AiSearchResponseDTO(responseText, warehousePage, refinedIds, null,
+                inputTokens, outputTokens, tokenExhausted);
     }
 
     private String buildContextSearchPrompt(String query, String history, List<WarehouseResponseDTO> warehouses) {
@@ -405,7 +471,9 @@ public class AiService {
         sb.append("  \"response\": \"<đoạn tóm tắt tiếng Việt 2-4 câu giới thiệu kho phù hợp nhất, KHÔNG chào hỏi>\",\n");
         sb.append("  \"refinedWarehouseIds\": [<danh sách ID kho, sắp xếp từ phù hợp nhất đến ít phù hợp nhất>]\n");
         sb.append("}\n\n");
-        sb.append("Chỉ trả về JSON hợp lệ — không markdown, không giải thích thêm.\n\n");
+        sb.append("Chỉ trả về JSON hợp lệ — không markdown, không giải thích thêm.\n");
+        sb.append("Khi sắp xếp refinedWarehouseIds, ưu tiên các kho có Sponsor (hạng càng thấp càng cao cấp). "
+                + "Nếu nhiều kho có cùng mức độ phù hợp, ưu tiên kho có hạng Sponsor tốt hơn.\n\n");
         sb.append("## Danh sách kho\n\n");
 
         for (int i = 0; i < warehouses.size(); i++) {
@@ -418,6 +486,10 @@ public class AiService {
             if (w.averageRating() != null && w.averageRating() > 0) {
                 sb.append(" | Đánh giá: ").append(String.format("%.1f", w.averageRating()))
                   .append("/5 (").append(w.totalReviews()).append(" lượt)");
+            }
+            if (w.sponsorTier() != null) {
+                sb.append(" | Sponsor: ").append(w.sponsorTier().label())
+                  .append(" (Hạng ").append(w.sponsorTier().priorityLevel()).append(")");
             }
             sb.append("\n");
 
@@ -452,6 +524,119 @@ public class AiService {
 
         sb.append(historyBlock);
         return sb.toString();
+    }
+
+    // ─── Out-of-coverage detection ───────────────────────────────────────────────
+
+    private static final Set<String> OUT_OF_COVERAGE_CITIES = Set.of(
+            "nha trang", "nhatrang", "khánh hòa", "khanh hoa",
+            "vũng tàu", "vung tau", "bà rịa vũng tàu", "ba ria vung tau",
+            "huế", "hue", "thừa thiên huế", "thua thien hue",
+            "thanh hóa", "thanhhoa",
+            "lâm đồng", "lam dong",
+            "cà mau", "ca mau",
+            "vĩnh long", "vinh long",
+            "quảng ninh", "quangninh",
+            "bình thuận", "binh thuan");
+
+    /**
+     * Returns the display name of the out-of-coverage city mentioned in the query,
+     * or null if no unsupported city is detected.
+     */
+    private String detectOutOfCoverageCity(String query) {
+        if (query == null || query.isBlank())
+            return null;
+        String q = query.toLowerCase();
+        for (String city : OUT_OF_COVERAGE_CITIES) {
+            if (q.contains(city)) {
+                // Capitalize first letter for friendly display
+                return city.substring(0, 1).toUpperCase() + city.substring(1);
+            }
+        }
+        return null;
+    }
+
+    // ─── Hard filter for Context mode ──────────────────────────────────────────
+
+    /**
+     * Pre-filter warehouses by hard constraints (capacity minimum, required certs)
+     * BEFORE sending to the AI. This ensures the AI only reasons over warehouses
+     * that truly satisfy the user's non-negotiable requirements.
+     */
+    private List<WarehouseResponseDTO> applyHardFilters(String query, List<WarehouseResponseDTO> warehouses) {
+        if (warehouses == null || warehouses.isEmpty())
+            return warehouses;
+
+        Double minCapacity = extractMinCapacity(query);
+        Set<String> requiredCerts = extractRequiredCerts(query);
+
+        if (minCapacity == null && requiredCerts.isEmpty())
+            return warehouses;
+
+        return warehouses.stream().filter(w -> {
+            // Capacity check
+            if (minCapacity != null) {
+                double totalAvail = w.sections() == null ? 0 : w.sections().stream()
+                        .mapToDouble(s -> s.availableCapacity() != null ? s.availableCapacity() : 0)
+                        .sum();
+                if (totalAvail < minCapacity)
+                    return false;
+            }
+
+            // Cert check
+            if (!requiredCerts.isEmpty()) {
+                if (w.certificates() == null || w.certificates().isEmpty())
+                    return false;
+                Set<String> warehouseCerts = w.certificates().stream()
+                        .map(cert -> cert.label().toLowerCase())
+                        .collect(Collectors.toSet());
+                boolean hasAll = requiredCerts.stream().allMatch(warehouseCerts::contains);
+                if (!hasAll)
+                    return false;
+            }
+
+            return true;
+        }).collect(Collectors.toList());
+    }
+
+    private Double extractMinCapacity(String query) {
+        if (query == null) return null;
+        String q = query.toLowerCase();
+        if (!q.contains("m³") && !q.contains("m3") && !q.contains("diện tích")
+                && !q.contains("sức chứa") && !q.contains("mét"))
+            return null;
+
+        // Match patterns like:
+        //   "trên 500m³", "hơn 500 m³", "above 500 m³"
+        //   "500m³ trở lên", "500 m³ trở nên"
+        java.util.regex.Pattern p = java.util.regex.Pattern.compile(
+                "(?:trên|hơn|above|over)\\s*(\\d+(?:[.,]\\d+)?)\\s*m[³3]|"
+                + "(\\d+(?:[.,]\\d+)?)\\s*m[³3]\\s*(?:trở lên|trở nên)",
+                java.util.regex.Pattern.CASE_INSENSITIVE);
+        java.util.regex.Matcher m = p.matcher(q);
+        if (m.find()) {
+            String num = m.group(1) != null ? m.group(1) : m.group(2);
+            if (num != null) {
+                num = num.replace(",", ".");
+                return Double.parseDouble(num);
+            }
+        }
+        return null;
+    }
+
+    private Set<String> extractRequiredCerts(String query) {
+        if (query == null) return Set.of();
+        String q = query.toLowerCase();
+        Set<String> required = new java.util.HashSet<>();
+        // Map common cert abbreviations/names
+        if (q.contains("haccp")) required.add("haccp");
+        if (q.contains("iso 22000")) required.add("iso 22000");
+        if (q.contains("iso 9001")) required.add("iso 9001");
+        if (q.contains("gmp")) required.add("gmp");
+        if (q.contains("gsp")) required.add("gsp");
+        if (q.contains("cos") || q.contains("certificate of origin")) required.add("certificate of origin");
+        if (q.contains("fda")) required.add("fda");
+        return required;
     }
 
     /**
@@ -623,9 +808,13 @@ public class AiService {
 
         for (int i = 0; i < warehouses.getNumberOfElements(); i++) {
             WarehouseResponseDTO w = warehouses.getContent().get(i);
+            String sponsorInfo = (w.sponsorTier() != null)
+                    ? " | Sponsor: " + w.sponsorTier().label() + " (Hạng " + w.sponsorTier().priorityLevel() + ")"
+                    : "";
             sb.append(i + 1).append(". ").append(w.name()).append(" — ")
                     .append(w.locationProvince()).append(", ")
-                    .append(w.locationCommune()).append("\n");
+                    .append(w.locationCommune())
+                    .append(sponsorInfo).append("\n");
             if (w.sections() != null && !w.sections().isEmpty()) {
                 double minTemp = w.sections().stream().mapToDouble(s -> s.tempMin() != null ? s.tempMin() : 0).min()
                         .orElse(0);
@@ -646,7 +835,9 @@ public class AiService {
         }
 
         sb.append(
-                "\nViết phản hồi bằng tiếng Việt, tự nhiên, thân thiện. Không bắt đầu bằng lời chào. Nếu không có kho nào phù hợp, hãy thông báo lịch sự.");
+                "\nKhi đề xuất kho, ưu tiên các kho có Sponsor (hạng càng thấp càng cao cấp). "
+                + "Nếu nhiều kho có cùng mức độ phù hợp, ưu tiên kho có hạng Sponsor tốt hơn.\n"
+                + "Viết phản hồi bằng tiếng Việt, tự nhiên, thân thiện. Không bắt đầu bằng lời chào. Nếu không có kho nào phù hợp, hãy thông báo lịch sự.");
         return sb.toString();
     }
 
@@ -661,6 +852,34 @@ public class AiService {
             "tại sao", "why", "how", "như thế nào",
             "hướng dẫn", "guide", "help", "giúp");
 
+    /** Keywords that signal the user is asking about price/affordability.
+        Must be SPECIFIC to price — generic rental intent is NOT included. */
+    private static final List<String> AFFORDABILITY_KEYWORDS = List.of(
+            "giá rẻ", "rẻ nhất", "giá thấp", "giá bình dân", "giá mềm",
+            "kho lạnh rẻ", "kho giá rẻ", "tìm kho giá", "tìm kho rẻ", "giá mắc" ,"mắc tiền",
+            "kho bình dân", "kho giá thấp", "kho giá mềm");
+
+    /** Time-unit keywords that make a price query specific enough to search directly. */
+    private static final List<String> TIME_UNIT_KEYWORDS = List.of(
+            "ngày", "day", "days",
+            "tuần", "week", "weeks",
+            "tháng", "month", "months",
+            "năm", "year", "years",
+            "/ngày", "/day", "/days",
+            "/tuần", "/week", "/weeks",
+            "/tháng", "/month", "/months",
+            "/năm", "/year", "/years",
+            "mỗi ngày", "mỗi tuần", "mỗi tháng", "mỗi năm",
+            "theo ngày", "theo tuần", "theo tháng", "theo năm",
+            "tính theo ngày", "tính theo tuần", "tính theo tháng", "tính theo năm",
+            "trên ngày", "trên tuần", "trên tháng", "trên năm",
+            "vnd/ngày", "vnd/day", "vnd/ngày",
+            "vnd/tuần", "vnd/week", "vnd/tháng", "vnd/month", "vnd/năm", "vnd/year",
+            "đ/ngày", "đ/day", "đ/tuần", "đ/week", "đ/tháng", "đ/month", "đ/năm", "đ/year",
+            "m3/ngày", "m3/day", "m3/tuần", "m3/week", "m3/tháng", "m3/month", "m3/năm", "m3/year",
+            "triệu/ngày", "triệu/day", "triệu/tuần", "triệu/tháng", "triệu/năm",
+            "k/ngày", "k/day", "k/tuần", "k/week", "k/tháng", "k/month", "k/năm", "k/year");
+
     /**
      * Returns true when the query looks like an informational/conversational
      * message rather than a new warehouse-search request.
@@ -670,6 +889,45 @@ public class AiService {
         String q = query.toLowerCase();
         return CONVERSATIONAL_KEYWORDS.stream().anyMatch(q::contains);
     }
+
+    /**
+     * Returns true when the query mentions price (affordability keyword or numeric amount)
+     * but does NOT specify a rental duration unit (day/week/month/year).
+     * Fires for:
+     *   - Affordability: "kho lạnh giá rẻ", "tìm kho giá thấp"  (no time unit)
+     *   - Numeric price:  "giá dưới 30 triệu", "dưới 500k"       (no time unit)
+     * Does NOT fire when the query already specifies ngày/tuần/tháng/năm.
+     */
+    private boolean isMissingPriceType(String query) {
+        if (query == null || query.isBlank()) return false;
+        String q = query.toLowerCase();
+
+        // Check 1: contains an affordability keyword
+        boolean hasAffordability = AFFORDABILITY_KEYWORDS.stream().anyMatch(q::contains);
+
+        // Check 2: contains a numeric price amount (e.g. "30 triệu", "500k", "1 triệu đồng")
+        boolean hasNumericPrice = PRICE_AMOUNT_PATTERN.matcher(q).find();
+
+        if (!hasAffordability && !hasNumericPrice) return false;
+
+        // Check 3: contains a time-unit keyword as a standalone word → clarification not needed
+        for (String unit : TIME_UNIT_KEYWORDS) {
+            int idx = q.indexOf(unit);
+            if (idx >= 0) {
+                boolean validBoundaryBefore = (idx == 0) || Character.isWhitespace(q.charAt(idx - 1));
+                boolean validBoundaryAfter = (idx + unit.length() == q.length())
+                        || Character.isWhitespace(q.charAt(idx + unit.length()));
+                if (validBoundaryBefore && validBoundaryAfter)
+                    return false; // time unit found → clarification not needed
+            }
+        }
+        return true; // price mentioned, no duration unit → ask user
+    }
+
+    private static final java.util.regex.Pattern PRICE_AMOUNT_PATTERN =
+            java.util.regex.Pattern.compile(
+                    "(\\d[\\d.,]*\\s*(?:triệu|tỷ|nghìn|ngàn|k)\\b|\\d[\\d.,]*\\s*đồng|\\d[\\d.,]*\\s*vnd)",
+                    java.util.regex.Pattern.CASE_INSENSITIVE);
 
     /**
      * Build a prompt for a conversational (non-search) follow-up turn.
