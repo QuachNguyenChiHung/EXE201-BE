@@ -19,10 +19,11 @@ public class PriceTier {
     @ToString.Exclude
     private WarehouseSection section;
 
-    private String label; // VD: "Thuê tháng", "Thuê ngày"
+    private String label; // VD: "Giá theo tháng", "Giá theo ngày", "Giá theo năm", "Giá theo tuần"
+
     private Double value; // VD: 200000
-    private String unit; // VD: "VND"
-    private String areaUnit; // VD: "m3", "tấn"
+    private String unit; // VD: "year,month,day,week"
+    private String areaUnit; // VD: "m3",
 
     @Builder.Default
     private Boolean isActive = true;

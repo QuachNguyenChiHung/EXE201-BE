@@ -782,16 +782,30 @@ public class AiService {
                 + "Price tier labels: [" + priceTierLabelList + "]\n"
                 + "Certifications: [" + certList + "]\n"
                 + "Temperature range in DB: " + meta.tempMin() + "°C to " + meta.tempMax() + "°C\n"
+                + "Price range in DB: " + meta.priceMin() + " to " + meta.priceMax() + " VND\n"
                 + "Available capacity range in DB: " + meta.capacityMin() + " to " + meta.capacityMax() + " m³\n\n"
 
                 + "## Region → Province Mapping (apply when user mentions a region, not a specific city)\n"
                 + "When the user says a REGION word, return ALL MATCHING provinces from the province list above.\n"
-                + "Use these mappings as guidance (only use provinces that appear in the list above):\n"
+                + "Use these mappings as guidance (only use provinces that appear in the province list above):\n"
                 + "Note: The city and province may have prefix Tỉnh/Thành phố like: Thành Phố Hồ Chí Minh, TP Hồ Chí Minh, Tỉnh Cà Mau \n"
-                + "- North / miền Bắc / phía Bắc / northern → include: Hà Nội, Hải Phòng, Quảng Ninh, Hải Dương, Bắc Ninh, Hưng Yên\n"
-                + "- South / miền Nam / phía Nam / southern → include: Hồ Chí Minh, Bình Dương, Đồng Nai, Đồng Tháp, Long An, Tiền Giang\n"
-                + "- Central / miền Trung / phía Trung → include: Đà Nẵng, Thừa Thiên Huế, Quảng Nam, Bình Định, Khánh Hòa\n"
-                + "- Example: If the user says 'north', return ALL northern provinces that exist in the DB list inside the \"location\" array of the JSON Schema.\n\n"
+                + "COMMON DIRECTIONS (East/West/North/South of Vietnam):\n"
+                + "- North / miền Bắc / phía Bắc / northern / bắc / miền bắc → include: Hà Nội, Hải Phòng, Quảng Ninh, Hải Dương, Bắc Ninh, Hưng Yên, Thái Nguyên, Bắc Giang, Hà Nam, Ninh Bình, Nam Định, Thái Bình\n"
+                + "- South / miền Nam / phía Nam / southern / nam / miền nam → include: Hồ Chí Minh, Bình Dương, Đồng Nai, Long An, Bà Rịa - Vũng Tàu, Cần Thơ, Bình Phước, Tây Ninh, Tiền Giang, Đồng Tháp, An Giang, Kiên Giang\n"
+                + "- Central / miền Trung / phía Trung / central / trung → include: Đà Nẵng, Thừa Thiên Huế, Quảng Nam, Bình Định, Khánh Hòa, Quảng Ngãi, Gia Lai, Kon Tum, Đắk Lắk, Đắk Nông, Lâm Đồng, Phú Yên, Nghệ An, Thanh Hóa, Hà Tĩnh, Quảng Bình, Quảng Trị\n"
+                + "- East / miền Đông / phía Đông / eastern / đông → include: Bình Dương, Đồng Nai, Bà Rịa - Vũng Tàu, Bình Phước, Hồ Chí Minh, Cần Thơ\n"
+                + "- West / miền Tây / phía Tây / western / tây → include: Long An, Tiền Giang, Đồng Tháp, An Giang, Kiên Giang, Cần Thơ, Bạc Liêu, Hậu Giang, Sóc Trăng, Trà Vinh, Vĩnh Long, Bến Tre\n"
+                + "VIETNAM SUB-REGIONS:\n"
+                + "- Đông Bắc Bộ / Northeastern → include: Quảng Ninh, Hải Dương, Bắc Giang, Thái Nguyên, Bắc Ninh, Hưng Yên, Hải Phòng, Hà Nội, Hà Nam, Nam Định, Thái Bình, Ninh Bình\n"
+                + "- Tây Bắc Bộ / Northwestern → include: Lào Cai, Yên Bái, Điện Biên, Hòa Bình, Sơn La, Lai Châu, Hà Giang, Cao Bằng, Lạng Sơn, Bắc Kạn, Tuyên Quang, Phú Thọ\n"
+                + "- Đồng bằng sông Hồng / Red River Delta → include: Hà Nội, Hải Phòng, Bắc Ninh, Hưng Yên, Hải Dương, Nam Định, Thái Bình, Hà Nam, Ninh Bình, Quảng Ninh\n"
+                + "- Bắc Trung Bộ / North Central Coast → include: Thanh Hóa, Nghệ An, Hà Tĩnh, Quảng Bình, Quảng Trị, Thừa Thiên Huế\n"
+                + "- Duyên hải Nam Trung Bộ / South Central Coast → include: Đà Nẵng, Quảng Nam, Quảng Ngãi, Bình Định, Phú Yên, Khánh Hòa\n"
+                + "- Tây Nguyên / Central Highlands → include: Gia Lai, Kon Tum, Đắk Lắk, Đắk Nông, Lâm Đồng\n"
+                + "- Đông Nam Bộ / Southeastern → include: Hồ Chí Minh, Bình Dương, Đồng Nai, Bà Rịa - Vũng Tàu, Bình Phước, Tây Ninh\n"
+                + "- Đồng bằng sông Cửu Long / Mekong Delta / ĐBSCL / Cửu Long → include: Cần Thơ, Long An, Tiền Giang, Đồng Tháp, An Giang, Kiên Giang, Bạc Liêu, Hậu Giang, Sóc Trăng, Trà Vinh, Vĩnh Long, Bến Tre\n"
+                + "- Example 1: If the user says 'north', return ALL northern provinces that exist in the DB province list.\n"
+                + "- Example 2: If the user says 'Đông Nam Bộ', return all southeastern provinces that exist in the DB province list.\n\n"
 
                 + "## Warehouse Data Schema (WarehouseResponseDTO)\n"
                 + "The warehouses being filtered have these fields:\n"
@@ -821,7 +835,7 @@ public class AiService {
                 + "⚠️  YOU MUST RETURN ONLY A VALID JSON OBJECT. No Vietnamese text, no explanations, no markdown, no apologies.\n"
                 + "Even if you cannot determine specific values, return the JSON schema with null fields.\n"
                 + "Example of a valid response (for a generic query):\n"
-                + "{\"location\":[{\"province\":null}],\"minPrice\":null,\"maxPrice\":null,\"priceType\":null,\"areaUnit\":\"m3\",\"name\":null,\"tempMin\":null,\"tempMax\":null,\"availableCapacity\":{\"min_range\":null,\"max_range\":null},\"totalCapacity\":{\"min_range\":null,\"max_range\":null},\"rating\":{\"min_range\":null,\"max_range\":null},\"certificates\":null,\"sort\":{\"type\":null},\"warehouseSection\":null,\"priceTier\":null}\n\n"
+                + "{\"location\":[{\"province\":null}],\"minPrice\":null,\"maxPrice\":null,\"priceType\":null,\"areaUnit\":\"m3\",\"name\":null,\"tempMin\":null,\"tempMax\":null,\"availableCapacity\":{\"min_range\":null,\"max_range\":null},\"totalCapacity\":{\"min_range\":null,\"max_range\":null},\"rating\":{\"min_range\":null,\"max_range\":null},\"certificates\":null,\"sort\":{\"type\":null},\"warehouseSection\":null,\"priceTier\":\"Giá theo tháng\"}\n\n"
 
                 + "## JSON Schema\n"
                 + "{\n"
@@ -847,17 +861,17 @@ public class AiService {
                 + "   - If user mentions a SPECIFIC city/province: use that exact string.\n"
                 + "   - If user mentions a REGION (north/south/central/miền Bắc/miền Nam/miền Trung): use the Region→Province Mapping above to return MULTIPLE province objects for all matching provinces FROM THE LIST.\n"
                 + "   - If no location mentioned at all: [{\"province\": null}]. Do NOT guess or infer provinces based on the topic (e.g. \"cold storage\" or \"kho lạnh\" does not imply any particular province).\n"
-                + "2. minPrice/maxPrice — VND. null if not mentioned.\n"
-                + "3. priceType — e.g. [\"month\"]. null if not mentioned.\n"
+                + "2. minPrice/maxPrice — ALWAYS null UNLESS the user explicitly mentions a price value (e.g. 'giá dưới 5 triệu', 'rẻ nhất', 'budget 3 triệu', 'giá 4-5 triệu'). Price range in DB is for YOUR REFERENCE ONLY — do NOT copy it into the output. Do NOT set these fields from the DB metadata range unless the user asks for it.\n"
+                + "3. priceType — only if user explicitly mentions a time period for pricing (e.g. 'theo tháng', 'theo ngày'). null otherwise.\n"
                 + "4. areaUnit — always \"m3\".\n"
                 + "5. name — only if user mentions a specific warehouse name. null otherwise.\n"
-                + "6. tempMin/tempMax — °C. Use DB range as guide. null if not mentioned.\n"
-                + "7. availableCapacity/totalCapacity — m³. null fields if not mentioned.\n"
+                + "6. tempMin/tempMax — ALWAYS null unless the user explicitly mentions temperature (e.g. 'dưới -20°C', 'kho lạnh', 'nhiệt độ thấp'). The DB temperature range is for YOUR REFERENCE ONLY — do NOT copy it into the output.\n"
+                + "7. availableCapacity/totalCapacity — ALWAYS null unless the user explicitly mentions capacity (e.g. 'hơn 1000m³', 'dưới 500m³'). The DB capacity range is for YOUR REFERENCE ONLY.\n"
                 + "8. rating — 0–5 range. null if not mentioned.\n"
                 + "9. certificates — list of certification labels mentioned by user (MUST exactly match labels from Certifications list above). null if not mentioned.\n"
                 + "10. sort — \"price\" when user wants cheapest, \"rating\" when user wants highest rated, null otherwise.\n"
                 + "11. warehouseSection — filter by section labels (e.g. 'Phòng Đông Lạnh A1'). null if user did not mention a specific section.\n"
-                + "12. priceTier — when the user mentions a rental duration in ANY form — whether compact (e.g. 'tuần', 'tháng', 'ngày', 'năm', 'thuê tuần', 'cho thuê theo tuần') or a full phrase ('theo ngày', 'theo tháng', 'theo tuần', 'theo năm') — map it to the matching label from priceTierLabels (e.g. 'Giá theo ngày', 'Giá theo tháng', 'Giá theo tuần', 'Giá theo năm'). null if no duration is specified.\n\n"
+                + "12. priceTier — when the user mentions a rental duration in ANY form — whether compact (e.g. 'tuần', 'tháng', 'ngày', 'năm', 'cho thuê theo tháng', 'thuê theo ngày') or a full phrase ('theo ngày', 'theo tháng', 'theo tuần', 'theo năm') — map it to the matching label from priceTierLabels (e.g. 'Giá theo ngày', 'Giá theo tháng', 'Giá theo tuần', 'Giá theo năm'). null if no duration is specified.\n\n"
 
                 + historyBlock
                 + "\nUser: \"" + (userQuery == null ? "" : userQuery) + "\"";
@@ -1342,6 +1356,33 @@ public class AiService {
         trimmed = trimmed.replaceAll(
                 "\"priceType\"\\s*:\\s*\"([^\"]+)\"",
                 "\"priceType\": [\"$1\"]");
+
+        // Safety net: if priceType is set but priceTier is missing, derive priceTier
+        // from priceType. The AI often sets priceType="month" from "theo tháng"
+        // but forgets to also set priceTier="Giá theo tháng".
+        if (trimmed.contains("\"priceType\"") && !trimmed.contains("\"priceTier\"")) {
+            String priceType = null;
+            Matcher ptMatch = Pattern.compile("\"priceType\"\\s*:\\s*\\[\\s*\"([^\"]+)\"\\s*\\]").matcher(trimmed);
+            if (ptMatch.find()) {
+                priceType = ptMatch.group(1).toLowerCase();
+            }
+            if (priceType != null && PRICE_TYPE_TO_TIER_LABEL.containsKey(priceType)) {
+                String derivedTier = PRICE_TYPE_TO_TIER_LABEL.get(priceType);
+                trimmed = trimmed.replaceAll(
+                        "\"priceTier\"\\s*:\\s*null",
+                        "\"priceTier\": \"" + derivedTier + "\"");
+                // If priceTier doesn't appear at all, inject it before the closing brace
+                if (!trimmed.contains("\"priceTier\"")) {
+                    int brace = trimmed.lastIndexOf('}');
+                    if (brace > 0) {
+                        trimmed = trimmed.substring(0, brace)
+                                + ", \"priceTier\": \"" + derivedTier + "\""
+                                + trimmed.substring(brace);
+                    }
+                }
+                log.info("[AI/normalize] derived priceTier='{}' from priceType='{}'", derivedTier, priceType);
+            }
+        }
 
         // Fix "warehouseSection": [{...}] → unwrap to just the labels array
         trimmed = trimmed.replaceAll(

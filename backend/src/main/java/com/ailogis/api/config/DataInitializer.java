@@ -134,7 +134,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh1Dto = new WarehouseCreateDTO(
                                 "Tổng kho Lạnh Quốc tế Sóng Thần",
                                 "Hệ thống kho vận đạt tiêu chuẩn ISO ứng dụng công nghệ giám sát nhiệt độ tự động.",
-                                "Số 10, KCN Sóng Thần 1", "Bình Dương", "Dĩ An",
+                                "Số 10, KCN Sóng Thần 1", "Tỉnh Bình Dương", "Dĩ An",
                                 106.7725, 10.9024, "75000",
                                 List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng", 260000.0, "month",
@@ -148,7 +148,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh2Dto = new WarehouseCreateDTO(
                                 "Kho mát Nông sản Tân Bình",
                                 "Chuyên lưu trữ rau củ quả tươi sống, vị trí ngay sát trung tâm TPHCM, thuận tiện giao hàng nội thành.",
-                                "KCN Tân Bình, Lô B2", "Hồ Chí Minh", "Tân Bình",
+                                "KCN Tân Bình, Lô B2", "Thành phố Hồ Chí Minh", "Tân Bình",
                                 106.6358, 10.8038, "70000",
                                 List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false,
                                                 List.of(new PriceTierDTO(null, "Giá theo tuần", 5000000.0,
@@ -162,7 +162,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh3Dto = new WarehouseCreateDTO(
                                 "Kho lạnh Y tế & Dược phẩm Quận 9",
                                 "Kho chuyên dụng chuẩn GSP lưu trữ Vắc xin và Sinh phẩm y tế.",
-                                "Khu Công Nghệ Cao, Đường D1", "Hồ Chí Minh", "Quận 9",
+                                "Khu Công Nghệ Cao, Đường D1", "Thành phố Hồ Chí Minh", "Quận 9",
                                 106.8029, 10.8491, "70000",
                                 List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng", 800000.0,
@@ -207,7 +207,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh4Dto = new WarehouseCreateDTO(
                                 "Kho lạnh Thực phẩm Đông Anh",
                                 "Kho hiện đại tại KCN Thăng Long, chuyên bảo quản thịt gia súc, gia cầm và chế phẩm sữa. Hệ thống điều nhiệt tự động 24/7, giám sát từ xa.",
-                                "Lô CN7, KCN Thăng Long", "Hà Nội", "Đông Anh",
+                                "Lô CN7, KCN Thăng Long", "Thành phố Hà Nội", "Đông Anh",
                                 105.8442, 21.1198, "10000",
                                 List.of(new WarehouseSectionDTO(null, 1, 1200.0, 1200.0, -20.0, -15.0, 55.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng", 280000.0, "month",
@@ -222,7 +222,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh5Dto = new WarehouseCreateDTO(
                                 "Trung tâm Lạnh Cảng Hải Phòng",
                                 "Sát Cảng Đình Vũ, tiếp nhận container lạnh, bảo quản hải sản nhập khẩu. Hai khu nhiệt độ độc lập phục vụ đa dạng nhu cầu.",
-                                "KCN Đình Vũ, Đường Bạch Đằng", "Hải Phòng", "Hải An",
+                                "KCN Đình Vũ, Đường Bạch Đằng", "Thành phố Hải Phòng", "Hải An",
                                 106.7519, 20.8270, "18000",
                                 List.of(
                                                 new WarehouseSectionDTO(null, 1, 800.0, 800.0, -25.0, -18.0, 60.0, true,
@@ -243,7 +243,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh6Dto = new WarehouseCreateDTO(
                                 "Kho lạnh Hải sản Xuất khẩu Đà Nẵng",
                                 "Chuẩn HACCP, phục vụ xuất khẩu sang Nhật Bản và EU. Gần cảng Tiên Sa, thủ tục nhanh gọn, hỗ trợ chứng từ xuất nhập khẩu.",
-                                "KCN Thọ Quang, Sơn Trà", "Đà Nẵng", "Sơn Trà",
+                                "KCN Thọ Quang, Sơn Trà", "Thành phố Đà Nẵng", "Sơn Trà",
                                 108.2301, 16.0900, "55000",
                                 List.of(new WarehouseSectionDTO(null, 1, 600.0, 600.0, -22.0, -18.0, 60.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng", 310000.0,
@@ -258,7 +258,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh7Dto = new WarehouseCreateDTO(
                                 "Kho Thủy sản ĐBSCL Cần Thơ",
                                 "Trung tâm thu mua và bảo quản tôm, cá tra, cá basa cho vùng Đồng bằng sông Cửu Long. Công suất lớn, giá cạnh tranh nhất khu vực.",
-                                "KCN Trà Nóc, Đường Trần Hoàng Na", "Cần Thơ", "Ninh Kiều",
+                                "KCN Trà Nóc, Đường Trần Hoàng Na", "Thành phố Cần Thơ", "Ninh Kiều",
                                 105.7469, 10.0180, "92000",
                                 List.of(new WarehouseSectionDTO(null, 1, 1000.0, 1000.0, -18.0, -12.0, 65.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng", 240000.0, "month",
@@ -273,7 +273,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh8Dto = new WarehouseCreateDTO(
                                 "Kho Mát Trái Cây Xuất Khẩu Long An",
                                 "Chuyên thanh long, xoài, dứa phục vụ xuất khẩu Trung Quốc, Hàn Quốc. Dải nhiệt độ rộng phù hợp nhiều chủng loại trái cây nhiệt đới.",
-                                "KCN Thuận Đạo, Đường tỉnh 830", "Long An", "Bến Lức",
+                                "KCN Thuận Đạo, Đường tỉnh 830", "Tỉnh Long An", "Bến Lức",
                                 106.4809, 10.6254, "85000",
                                 List.of(new WarehouseSectionDTO(null, 1, 700.0, 700.0, 4.0, 12.0, 80.0, false,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng", 150000.0,
@@ -286,7 +286,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh9Dto = new WarehouseCreateDTO(
                                 "Kho Lạnh Thực phẩm Chế biến Biên Hòa",
                                 "Trong KCN Biên Hòa 2, phục vụ các doanh nghiệp chế biến thực phẩm. Kết nối thuận tiện tuyến cao tốc TP.HCM – Hà Nội.",
-                                "KCN Biên Hòa 2, Đường số 4", "Đồng Nai", "Biên Hòa",
+                                "KCN Biên Hòa 2, Đường số 4", "Tỉnh Đồng Nai", "Biên Hòa",
                                 107.0338, 10.9450, "71000",
                                 List.of(new WarehouseSectionDTO(null, 1, 900.0, 900.0, -15.0, -10.0, 60.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng", 230000.0,
@@ -302,7 +302,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh10Dto = new WarehouseCreateDTO(
                                 "Kho Lạnh Thủy sản Tươi Vũng Tàu",
                                 "Ngay cạnh cảng cá Vũng Tàu, chuyên bảo quản tôm hùm, mực ống, cá biển tươi sống. Phục vụ nhà hàng cao cấp và xuất khẩu.",
-                                "Số 12, Đường 30/4, Phường Thắng Nhì", "Bà Rịa - Vũng Tàu", "Thắng Nhì",
+                                "Số 12, Đường 30/4, Phường Thắng Nhì", "Thành phố Hồ Chí Minh", "Thắng Nhì",
                                 107.0843, 10.3460, "64000",
                                 List.of(new WarehouseSectionDTO(null, 1, 450.0, 450.0, -5.0, 0.0, 90.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng",
@@ -316,7 +316,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh11Dto = new WarehouseCreateDTO(
                                 "Kho Lạnh Đa Năng Thuận An",
                                 "Hai khu vực nhiệt độ độc lập: đông lạnh sâu và bảo quản mát. Giá tốt, gần TP.HCM, phù hợp doanh nghiệp cần linh hoạt diện tích.",
-                                "KCN Thuận An, Đường Lê Hồng Phong", "Bình Dương", "Thuận An",
+                                "KCN Thuận An, Đường Lê Hồng Phong", "Tỉnh Bình Dương", "Thuận An",
                                 106.6778, 10.9809, "75000",
                                 List.of(
                                                 new WarehouseSectionDTO(null, 1, 1000.0, 1000.0, -20.0, -10.0, 60.0,
@@ -336,7 +336,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh12Dto = new WarehouseCreateDTO(
                                 "Kho Lạnh Dược phẩm Hải Phòng",
                                 "Chuẩn GSP, chuyên lưu trữ vắc xin, huyết thanh và dược phẩm yêu cầu kiểm soát nhiệt độ nghiêm ngặt. Hệ thống ghi nhật ký tự động 24/7.",
-                                "Số 88, Đường Đinh Tiên Hoàng, Phường Minh Khai", "Hải Phòng", "Lê Chân",
+                                "Số 88, Đường Đinh Tiên Hoàng, Phường Minh Khai", "Thành phố Hải Phòng", "Lê Chân",
                                 106.6880, 20.8499, "18000",
                                 List.of(new WarehouseSectionDTO(null, 1, 200.0, 200.0, 2.0, 8.0, 45.0, true,
                                                 List.of(new PriceTierDTO(null, "Giá theo tháng",
@@ -353,7 +353,7 @@ public class DataInitializer implements CommandLineRunner {
                 WarehouseCreateDTO wh13Dto = new WarehouseCreateDTO(
                                 "Kho Nông sản Bắc Bộ Hoàng Mai",
                                 "Chuyên bảo quản rau củ và trái cây miền Bắc cho hệ thống siêu thị và chuỗi bán lẻ. Hai khu vực riêng biệt tối ưu từng chủng loại.",
-                                "Số 200, Đường Lĩnh Nam, KCN Vĩnh Tuy", "Hà Nội", "Hoàng Mai",
+                                "Số 200, Đường Lĩnh Nam, KCN Vĩnh Tuy", "Thành phố Hà Nội", "Hoàng Mai",
                                 105.8659, 20.9815, "10000",
                                 List.of(
                                                 new WarehouseSectionDTO(null, 1, 500.0, 500.0, 5.0, 12.0, 85.0, false,
