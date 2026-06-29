@@ -10,7 +10,9 @@ public record AiFilterMetaResponseDTO(
         Double capacityMin,
         Double capacityMax,
         Double priceMin,
-        Double priceMax
+        Double priceMax,
+        List<String> warehouseSectionLabels,
+        List<String> priceTierLabels
 ) {
     public record CertInfo(String id, String label, String description) {}
 }

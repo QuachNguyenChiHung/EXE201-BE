@@ -14,7 +14,10 @@ public record SearchCriteriaDTO(
     CapacityRange availableCapacity,
     CapacityRange totalCapacity,
     RatingRange rating,
-    SortType sort
+    List<String> certificates,
+    SortType sort,
+    List<String> warehouseSection,
+    String priceTier
 ) {
     public record LocationDTO(String province) {}
 

@@ -15,4 +15,7 @@ public interface WarehouseSectionRepository extends JpaRepository<WarehouseSecti
 
     @Query("SELECT MIN(s.availableCapacity), MAX(s.availableCapacity) FROM WarehouseSection s WHERE s.warehouse.status IN ('ACTIVE', 'RENTED')")
     List<Object[]> findCapacityRange();
+
+    @Query("SELECT DISTINCT s.label FROM WarehouseSection s WHERE s.warehouse.status IN ('ACTIVE', 'RENTED') AND s.label IS NOT NULL AND s.label <> ''")
+    List<String> findDistinctLabels();
 }

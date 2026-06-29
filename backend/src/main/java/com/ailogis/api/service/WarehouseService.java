@@ -10,6 +10,7 @@ import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
 import com.ailogis.api.security.CustomUserDetails;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WarehouseService {
@@ -164,11 +166,14 @@ public class WarehouseService {
                 return warehouseRepository
                                 .searchWarehouses(safeKeyword, hasProvinces, provincesParam,
                                                 minArea, maxArea, minPrice, maxPrice,
-                                                minRating, maxRating, hasCerts, certsParam, pageable)
+                                                minRating, maxRating, hasCerts, certsParam, null, pageable)
                                 .map(warehouseMapper::toWarehouseResponseDTO);
         }
 
         public Page<WarehouseResponseDTO> searchWarehousesByCriteria(SearchCriteriaDTO criteria, Pageable pageable) {
+                log.info("[WarehouseService/searchWarehousesByCriteria] priceTier='{}' minPrice={} maxPrice={}",
+                        criteria.priceTier(), criteria.minPrice(), criteria.maxPrice());
+
                 List<String> provinces = new ArrayList<>();
                 boolean hasNoWarehouseSentinel = false;
                 if (criteria.location() != null) {
@@ -202,6 +207,20 @@ public class WarehouseService {
                 boolean hasProvinces = !provinces.isEmpty();
                 List<String> provincesParam = hasProvinces ? provinces : List.of("__none__");
 
+                // Map certificate labels to IDs
+                List<Long> certTypeIds = new ArrayList<>();
+                if (criteria.certificates() != null && !criteria.certificates().isEmpty()) {
+                        List<com.ailogis.api.entity.CertificationType> dbCerts = certificationTypeRepository.findAll();
+                        for (String certLabel : criteria.certificates()) {
+                                dbCerts.stream()
+                                        .filter(c -> c.getLabel().equalsIgnoreCase(certLabel))
+                                        .findFirst()
+                                        .ifPresent(c -> certTypeIds.add(c.getId()));
+                        }
+                }
+                boolean hasCerts = !certTypeIds.isEmpty();
+                List<Long> certsParam = hasCerts ? certTypeIds : List.of(-1L);
+
                 return warehouseRepository.searchWarehousesByCriteria(
                                 safeKeyword, hasProvinces, provincesParam,
                                 criteria.tempMin(), criteria.tempMax(),
@@ -209,7 +228,8 @@ public class WarehouseService {
                                 criteria.minPrice(), criteria.maxPrice(),
                                 criteria.rating() != null ? criteria.rating().min_range() : null,
                                 criteria.rating() != null ? criteria.rating().max_range() : null,
-                                sortType, pageable).map(warehouseMapper::toWarehouseResponseDTO);
+                                hasCerts, certsParam,
+                                sortType, criteria.priceTier(), pageable).map(warehouseMapper::toWarehouseResponseDTO);
         }
 
         /**
@@ -344,25 +364,77 @@ public class WarehouseService {
 		return resolved;
 	}
 
+	/**
+	 * Vietnamese tokens that strongly imply the user is referring to a location,
+	 * even without naming a specific province.
+	 */
+	private static final Set<String> LOCATION_HINT_TOKENS = Set.of(
+			"ở", "tại", "khu vực", "vùng", "miền", "tỉnh", "thành phố",
+			"tp.", "tp ", "city", "province", "region", "khu vuc", "tinh", "thanh pho",
+			"gần", "quanh", "khoảng");
+
+	/**
+	 * Returns true when the user query appears to mention a specific location.
+	 * Detection layers (any one is enough):
+	 *  1. Any Vietnamese location-hint token ("ở", "tại", "miền Bắc", ...).
+	 *  2. Any province-alias key (e.g. "hcm", "tphcm", "ha noi") appears in the query.
+	 *  3. Any canonical province name (e.g. "Hồ Chí Minh", "Cần Thơ") appears in the query.
+	 *
+	 * Used by the AI layer as a server-side backstop: if the user did not mention
+	 * a location but the AI agent hallucinated one in the criteria JSON, we clear
+	 * the location list before querying the DB.
+	 */
+	public static boolean queryMentionsLocation(String query) {
+		if (query == null || query.isBlank())
+			return false;
+		String q = query.toLowerCase();
+
+		for (String token : LOCATION_HINT_TOKENS) {
+			if (q.contains(token))
+				return true;
+		}
+		for (String alias : PROVINCE_ALIASES.keySet()) {
+			if (alias.length() >= 3 && q.contains(alias))
+				return true;
+		}
+		for (String province : VALID_PROVINCES) {
+			if (province != null && !province.isBlank()
+					&& q.contains(province.toLowerCase()))
+				return true;
+		}
+		return false;
+	}
+
         public AiFilterMetaResponseDTO getAiFilterMeta() {
                 List<String> provinces = warehouseRepository.findDistinctProvinces();
 
                 List<AiFilterMetaResponseDTO.CertInfo> certs = certificationTypeRepository.findAll().stream()
+                                .filter(c -> c.getLabel() != null)
+                                .collect(java.util.stream.Collectors.toMap(
+                                        c -> c.getLabel().toLowerCase(),
+                                        c -> c,
+                                        (existing, replacement) -> existing
+                                ))
+                                .values().stream()
                                 .map(c -> new AiFilterMetaResponseDTO.CertInfo(c.getId().toString(), c.getLabel(), c.getDescription()))
                                 .toList();
 
                 List<Object[]> tempResult = warehouseSectionRepository.findTemperatureRange();
                 List<Object[]> capResult = warehouseSectionRepository.findCapacityRange();
                 List<Object[]> priceResult = priceTierRepository.findActivePriceRange();
+                List<String> warehouseSectionLabels = warehouseSectionRepository.findDistinctLabels();
+                List<String> priceTierLabels = priceTierRepository.findDistinctLabels();
 
                 return new AiFilterMetaResponseDTO(
                                 provinces, certs,
                                 extractRange(tempResult, 0, -30.0),
                                 extractRange(tempResult, 1, 15.0),
-                                extractRange(capResult, 0, 0.0),
-                                extractRange(capResult, 1, 10000.0),
-                                extractRange(priceResult, 0, 0.0),
-                                extractRange(priceResult, 1, 1000000.0));
+                                extractRange(capResult, 1, 0.0),
+                                extractRange(capResult, 0, 10000.0),
+                                extractRange(priceResult, 1, 0.0),
+                                extractRange(priceResult, 0, 1000000.0),
+                                warehouseSectionLabels,
+                                priceTierLabels);
         }
 
         private static Double extractRange(List<Object[]> rows, int col, double fallback) {

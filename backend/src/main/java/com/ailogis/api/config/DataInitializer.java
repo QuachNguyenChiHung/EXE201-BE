@@ -137,7 +137,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "Số 10, KCN Sóng Thần 1", "Bình Dương", "Dĩ An",
                                 106.7725, 10.9024, "75000",
                                 List.of(new WarehouseSectionDTO(null, 1, 1500.0, 1500.0, -25.0, -18.0, 60.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng", 260000.0, "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng", 260000.0, "month",
+                                                                "m3")))));
                 List<WarehouseCertCreateDTO> certs1 = List.of(new WarehouseCertCreateDTO(iso9001.getId(), HACCP_link));
                 WarehouseResponseDTO wh1Res = ownerService.createWarehouse(owner1.getId(), wh1Dto,
                                 List.of(warehouse_image_url_1), certs1);
@@ -150,8 +151,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "KCN Tân Bình, Lô B2", "Hồ Chí Minh", "Tân Bình",
                                 106.6358, 10.8038, "70000",
                                 List.of(new WarehouseSectionDTO(null, 1, 800.0, 800.0, 2.0, 8.0, 85.0, false,
-                                                List.of(new PriceTierDTO(null, "tuần", 5000000.0,
-                                                                "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tuần", 5000000.0,
+                                                                "week", "m3")))));
                 List<WarehouseCertCreateDTO> certs2 = List.of(new WarehouseCertCreateDTO(haccp.getId(), ISO9001_link));
                 WarehouseResponseDTO wh2Res = ownerService.createWarehouse(owner2.getId(), wh2Dto, new ArrayList<>(),
                                 certs2);
@@ -164,8 +165,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "Khu Công Nghệ Cao, Đường D1", "Hồ Chí Minh", "Quận 9",
                                 106.8029, 10.8491, "70000",
                                 List.of(new WarehouseSectionDTO(null, 1, 300.0, 300.0, -80.0, -20.0, 40.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng", 800000.0,
-                                                                "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng", 800000.0,
+                                                                "month", "m3")))));
                 List<WarehouseCertCreateDTO> certs3 = List.of(
                                 new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
                                 new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link),
@@ -209,7 +210,7 @@ public class DataInitializer implements CommandLineRunner {
                                 "Lô CN7, KCN Thăng Long", "Hà Nội", "Đông Anh",
                                 105.8442, 21.1198, "10000",
                                 List.of(new WarehouseSectionDTO(null, 1, 1200.0, 1200.0, -20.0, -15.0, 55.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng", 280000.0, "year",
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng", 280000.0, "month",
                                                                 "m3")))));
                 WarehouseResponseDTO wh4Res = ownerService.createWarehouse(owner1.getId(), wh4Dto,
                                 List.of(warehouse_image_url_1),
@@ -226,12 +227,12 @@ public class DataInitializer implements CommandLineRunner {
                                 List.of(
                                                 new WarehouseSectionDTO(null, 1, 800.0, 800.0, -25.0, -18.0, 60.0, true,
                                                                 List.of(new PriceTierDTO(null,
-                                                                                "tháng", 320000.0,
-                                                                                "year", "m3"))),
+                                                                                "Giá theo tháng", 320000.0,
+                                                                                "month", "m3"))),
                                                 new WarehouseSectionDTO(null, 2, 400.0, 400.0, -2.0, 4.0, 85.0, false,
                                                                 List.of(new PriceTierDTO(null,
-                                                                                "tháng", 180000.0,
-                                                                                "year", "m3")))));
+                                                                                "Giá theo tháng", 180000.0,
+                                                                                "month", "m3")))));
                 WarehouseResponseDTO wh5Res = ownerService.createWarehouse(owner2.getId(), wh5Dto,
                                 List.of(warehouse_image_url_1),
                                 List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
@@ -245,8 +246,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "KCN Thọ Quang, Sơn Trà", "Đà Nẵng", "Sơn Trà",
                                 108.2301, 16.0900, "55000",
                                 List.of(new WarehouseSectionDTO(null, 1, 600.0, 600.0, -22.0, -18.0, 60.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng", 310000.0,
-                                                                "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng", 310000.0,
+                                                                "month", "m3")))));
                 WarehouseResponseDTO wh6Res = ownerService.createWarehouse(owner3.getId(), wh6Dto,
                                 List.of(warehouse_image_url_1),
                                 List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
@@ -260,7 +261,7 @@ public class DataInitializer implements CommandLineRunner {
                                 "KCN Trà Nóc, Đường Trần Hoàng Na", "Cần Thơ", "Ninh Kiều",
                                 105.7469, 10.0180, "92000",
                                 List.of(new WarehouseSectionDTO(null, 1, 1000.0, 1000.0, -18.0, -12.0, 65.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng", 240000.0, "year",
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng", 240000.0, "month",
                                                                 "m3")))));
                 WarehouseResponseDTO wh7Res = ownerService.createWarehouse(owner1.getId(), wh7Dto,
                                 List.of(warehouse_image_url_1),
@@ -275,8 +276,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "KCN Thuận Đạo, Đường tỉnh 830", "Long An", "Bến Lức",
                                 106.4809, 10.6254, "85000",
                                 List.of(new WarehouseSectionDTO(null, 1, 700.0, 700.0, 4.0, 12.0, 80.0, false,
-                                                List.of(new PriceTierDTO(null, "tháng", 150000.0,
-                                                                "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng", 150000.0,
+                                                                "month", "m3")))));
                 WarehouseResponseDTO wh8Res = ownerService.createWarehouse(owner2.getId(), wh8Dto,
                                 List.of(warehouse_image_url_1), new ArrayList<>());
                 employeeService.verifyWarehouse(wh8Res.id(), WarehouseStatus.ACTIVE);
@@ -288,8 +289,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "KCN Biên Hòa 2, Đường số 4", "Đồng Nai", "Biên Hòa",
                                 107.0338, 10.9450, "71000",
                                 List.of(new WarehouseSectionDTO(null, 1, 900.0, 900.0, -15.0, -10.0, 60.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng", 230000.0,
-                                                                "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng", 230000.0,
+                                                                "month", "m3")))));
                 WarehouseResponseDTO wh9Res = ownerService.createWarehouse(owner3.getId(), wh9Dto,
                                 List.of(warehouse_image_url_1),
                                 List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
@@ -304,8 +305,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "Số 12, Đường 30/4, Phường Thắng Nhì", "Bà Rịa - Vũng Tàu", "Thắng Nhì",
                                 107.0843, 10.3460, "64000",
                                 List.of(new WarehouseSectionDTO(null, 1, 450.0, 450.0, -5.0, 0.0, 90.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng",
-                                                                200000.0, "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng",
+                                                                200000.0, "month", "m3")))));
                 WarehouseResponseDTO wh10Res = ownerService.createWarehouse(owner1.getId(), wh10Dto,
                                 List.of(warehouse_image_url_1),
                                 List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link)));
@@ -320,12 +321,12 @@ public class DataInitializer implements CommandLineRunner {
                                 List.of(
                                                 new WarehouseSectionDTO(null, 1, 1000.0, 1000.0, -20.0, -10.0, 60.0,
                                                                 true,
-                                                                List.of(new PriceTierDTO(null, "tháng",
-                                                                                250000.0, "year", "m3"))),
+                                                                List.of(new PriceTierDTO(null, "Giá theo tháng",
+                                                                                250000.0, "month", "m3"))),
                                                 new WarehouseSectionDTO(null, 2, 600.0, 600.0, 0.0, 8.0, 80.0, false,
                                                                 List.of(new PriceTierDTO(null,
-                                                                                "tháng", 130000.0,
-                                                                                "year", "m3")))));
+                                                                                "Giá theo tháng", 130000.0,
+                                                                                "month", "m3")))));
                 WarehouseResponseDTO wh11Res = ownerService.createWarehouse(owner2.getId(), wh11Dto,
                                 List.of(warehouse_image_url_1),
                                 List.of(new WarehouseCertCreateDTO(iso9001.getId(), ISO9001_link)));
@@ -338,8 +339,8 @@ public class DataInitializer implements CommandLineRunner {
                                 "Số 88, Đường Đinh Tiên Hoàng, Phường Minh Khai", "Hải Phòng", "Lê Chân",
                                 106.6880, 20.8499, "18000",
                                 List.of(new WarehouseSectionDTO(null, 1, 200.0, 200.0, 2.0, 8.0, 45.0, true,
-                                                List.of(new PriceTierDTO(null, "tháng",
-                                                                650000.0, "year", "m3")))));
+                                                List.of(new PriceTierDTO(null, "Giá theo tháng",
+                                                                650000.0, "month", "m3")))));
                 WarehouseResponseDTO wh12Res = ownerService.createWarehouse(owner3.getId(), wh12Dto,
                                 List.of(warehouse_image_url_1),
                                 List.of(new WarehouseCertCreateDTO(haccp.getId(), HACCP_link),
@@ -357,12 +358,12 @@ public class DataInitializer implements CommandLineRunner {
                                 List.of(
                                                 new WarehouseSectionDTO(null, 1, 500.0, 500.0, 5.0, 12.0, 85.0, false,
                                                                 List.of(new PriceTierDTO(null,
-                                                                                "tháng", 120000.0,
-                                                                                "year", "m3"))),
+                                                                                "Giá theo tháng", 120000.0,
+                                                                                "month", "m3"))),
                                                 new WarehouseSectionDTO(null, 2, 400.0, 400.0, 8.0, 15.0, 75.0, false,
                                                                 List.of(new PriceTierDTO(null,
-                                                                                "tháng",
-                                                                                100000.0, "year", "m3")))));
+                                                                                "Giá theo tháng",
+                                                                                100000.0, "month", "m3")))));
                 WarehouseResponseDTO wh13Res = ownerService.createWarehouse(owner1.getId(), wh13Dto,
                                 List.of(warehouse_image_url_1), new ArrayList<>());
                 employeeService.verifyWarehouse(wh13Res.id(), WarehouseStatus.ACTIVE);

@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -52,6 +51,13 @@ public class AiService {
             "week", 4.0,
             "year", 1.0 / 12.0);
 
+    // Maps English priceType (from AI JSON) to the Vietnamese label stored in DB
+    private static final Map<String, String> PRICE_TYPE_TO_TIER_LABEL = Map.of(
+            "day", "Giá theo ngày",
+            "week", "Giá theo tuần",
+            "month", "Giá theo tháng",
+            "year", "Giá theo năm");
+
     @Transactional
     public void saveConversation(Long userId, SaveConversationRequestDTO dto) {
         User user = userRepository.findById(userId)
@@ -82,11 +88,12 @@ public class AiService {
 
     /**
      * Search warehouses using the AI criteria format:
+     * 
      * <pre>
      * {
      *   "location": [{"province": "Hồ Chí Minh"}],
-     *   "minPrice": 4050000,
-     *   "maxPrice": 4950000,
+     *   "minPrice": null,
+     *   "maxPrice": null,
      *   "priceType": ["month"],
      *   "areaUnit": "m3",
      *   "name": null,
@@ -98,21 +105,24 @@ public class AiService {
      *   "sort": null
      * }
      * </pre>
+     * 
      * Prices are normalized to monthly equivalents before querying the DB.
      *
      * @param criteria search criteria in AI JSON format
      * @return list of matching warehouses (no pagination)
      */
     public List<WarehouseResponseDTO> searchWarehouse(SearchCriteriaDTO criteria) {
-        log.info("[AiService/searchWarehouse] raw criteria — province='{}' priceType={} minPrice={} maxPrice={}",
+        log.info(
+                "[AiService/searchWarehouse] raw criteria — province='{}' priceType={} priceTier='{}' minPrice={} maxPrice={}",
                 criteria.location() != null && !criteria.location().isEmpty()
-                        ? criteria.location().get(0).province() : "null",
-                criteria.priceType(), criteria.minPrice(), criteria.maxPrice());
+                        ? criteria.location().get(0).province()
+                        : "null",
+                criteria.priceType(), criteria.priceTier(), criteria.minPrice(), criteria.maxPrice());
 
         SearchCriteriaDTO normalized = normalizeCriteriaForSearch(criteria);
 
-        log.info("[AiService/searchWarehouse] normalized — minPrice={} maxPrice={}",
-                normalized.minPrice(), normalized.maxPrice());
+        log.info("[AiService/searchWarehouse] normalized — priceTier='{}' minPrice={} maxPrice={}",
+                normalized.priceTier(), normalized.minPrice(), normalized.maxPrice());
 
         return warehouseService.searchWarehousesByCriteria(normalized, Pageable.unpaged()).getContent();
     }
@@ -167,7 +177,8 @@ public class AiService {
             int outputTokens = clarification.length() / 4;
             int remaining = balance - outputTokens;
             boolean tokenExhausted = remaining < 0;
-            if (tokenExhausted) remaining = 0;
+            if (tokenExhausted)
+                remaining = 0;
             user.getAiTier().setTokenOutput(remaining);
             userRepository.save(user);
             AiConversation convo = AiConversation.builder()
@@ -188,7 +199,7 @@ public class AiService {
         if (isInitialHandshake || query == null || query.isBlank()) {
             // Initial handshake: FE already searched — just summarize and return its
             // candidates (capped at 12)
-            warehousePage = toPageFromFeCandidates(matchingWarehouses, 12);
+            warehousePage = toPageFromFeCandidates(matchingWarehouses, 9999);
             criteriaJson = feCriteria != null ? safeToJson(feCriteria) : "{\"initial_handshake\": true}";
             run1OutputTokens = 0;
             log.info("[AI/chat] handshake — FE candidates: {}", warehousePage.getTotalElements());
@@ -201,6 +212,7 @@ public class AiService {
                 log.info("[AI/chat] handshake with 0 FE candidates and non-blank query — falling back to DB search");
                 AiFilterMetaResponseDTO meta = warehouseService.getAiFilterMeta();
                 String run1Prompt = buildCriteriaExtractionPrompt(query, conversationHistory, meta);
+                log.info("[AI/chat] fallback — prompt ({} chars):\n{}", run1Prompt.length(), run1Prompt);
                 log.info("[AI/chat] fallback — calling agent for criteria extraction...");
                 String rawJson = callAgent(run1Prompt, conversationHistory);
                 log.info("[AI/chat] fallback — raw criteria JSON: {}", rawJson);
@@ -214,13 +226,28 @@ public class AiService {
                     log.info("[AI/chat] fallback — normalized JSON: {}", normalizedJson);
                     criteria = objectMapper.readValue(normalizedJson, SearchCriteriaDTO.class);
                 } catch (JsonProcessingException e) {
-                    log.warn("[AI/chat] fallback — failed to parse criteria JSON, using empty criteria: {}", e.getMessage());
-                    criteria = new SearchCriteriaDTO(null, null, null, null, "m3", null, null, null, null, null, null, null);
+                    log.warn("[AI/chat] fallback — failed to parse criteria JSON, using empty criteria: {}",
+                            e.getMessage());
+                    criteria = new SearchCriteriaDTO(null, null, null, null, "m3", null, null, null, null, null, null,
+                            null, null, null, null);
                 }
                 criteria = sanitizeCriteria(query, criteria);
-                log.info("[AI/chat] fallback — sanitized criteria: province={} minPrice={} maxPrice={}",
-                        criteria.location() != null && !criteria.location().isEmpty() ? criteria.location().get(0).province() : "null",
+                log.info("[AI/chat] fallback — sanitized criteria: province={} priceTier='{}' minPrice={} maxPrice={}",
+                        criteria.location() != null && !criteria.location().isEmpty()
+                                ? criteria.location().get(0).province()
+                                : "null",
+                        criteria.priceTier(),
                         criteria.minPrice(), criteria.maxPrice());
+
+                // Merge FE pre-filtered criteria (mount state) on top of AI criteria
+                // so user-selected filters (e.g. price range from slider) are never
+                // silently dropped by AI hallucination.
+                criteria = mergeFeCriteria(feCriteria, criteria);
+                log.info("[AI/chat] fallback — merged criteria: province={} minPrice={} maxPrice={} priceTier='{}'",
+                        criteria.location() != null && !criteria.location().isEmpty()
+                                ? criteria.location().get(0).province()
+                                : "null",
+                        criteria.minPrice(), criteria.maxPrice(), criteria.priceTier());
 
                 List<WarehouseResponseDTO> results = searchWarehouse(criteria);
                 warehousePage = new PageImpl<>(results, Pageable.unpaged(), results.size());
@@ -241,7 +268,8 @@ public class AiService {
             int convOutputTokens = convAnswer.length() / 4;
             int remaining = balance - convOutputTokens;
             boolean tokenExhausted = remaining < 0;
-            if (tokenExhausted) remaining = 0;
+            if (tokenExhausted)
+                remaining = 0;
             user.getAiTier().setTokenOutput(remaining);
             userRepository.save(user);
             int inputTokens = query.length() / 4;
@@ -256,6 +284,7 @@ public class AiService {
             // Follow-up: extract criteria via AI and search DB
             AiFilterMetaResponseDTO meta = warehouseService.getAiFilterMeta();
             String run1Prompt = buildCriteriaExtractionPrompt(query, conversationHistory, meta);
+            log.info("[AI/chat] prompt ({} chars):\n{}", run1Prompt.length(), run1Prompt);
             log.info("[AI/chat] calling agent for criteria extraction...");
             String rawJson = callAgent(run1Prompt, conversationHistory);
             log.info("[AI/chat] raw criteria JSON: {}", rawJson);
@@ -270,29 +299,20 @@ public class AiService {
                 criteria = objectMapper.readValue(normalizedJson, SearchCriteriaDTO.class);
             } catch (JsonProcessingException e) {
                 // ── Safety net: AI returned plain text instead of JSON ────────────
-                // Treat the raw response as a conversational answer and return it
-                // directly (keep the current FE warehouse list unchanged).
-                log.warn("[AI/chat] JSON parse failed — returning raw AI text as conversational answer");
-                String fallbackText = "Xin lỗi bạn, mình chưa hiểu rõ yêu cầu. Bạn có thể diễn đạt lại về khu vực, nhiệt độ hoặc ngân sách cụ thể hơn không?";
-                warehousePage = new PageImpl<>(Collections.emptyList(), Pageable.unpaged(), 0);
-                int fbOutputTokens = rawJson.length() / 4;
-                int remaining = balance - fbOutputTokens;
-                boolean tokenExhausted = remaining < 0;
-                if (tokenExhausted) remaining = 0;
-                user.getAiTier().setTokenOutput(remaining);
-                userRepository.save(user);
-                int inputTokens = query.length() / 4;
-                AiConversation convo = AiConversation.builder()
-                        .user(user).criteria(query).message(fallbackText)
-                        .totalInputTokens(inputTokens).totalOutputTokens(fbOutputTokens)
-                        .build();
-                aiConversationRepository.save(convo);
-                return new AiSearchResponseDTO(fallbackText, warehousePage, List.of(),
-                        "{\"conversational\": true}", inputTokens, fbOutputTokens, tokenExhausted);
+                // Instead of giving up, fall back to FE-supplied criteria (which
+                // represents the user's actual filter state from the UI) so we
+                // still return meaningful warehouse results.
+                log.warn("[AI/chat] JSON parse failed — falling back to FE criteria: {}", e.getMessage());
+                criteria = new SearchCriteriaDTO(null, null, null, null, "m3", null, null, null, null, null,
+                        null, null, null, null, null);
+                run1OutputTokens = rawJson.length() / 4;
             }
             criteria = sanitizeCriteria(query, criteria);
-            log.info("[AI/chat] sanitized criteria: province={} minPrice={} maxPrice={}",
-                    criteria.location() != null && !criteria.location().isEmpty() ? criteria.location().get(0).province() : "null",
+            criteria = mergeFeCriteria(feCriteria, criteria);
+            log.info("[AI/chat] sanitized+merged criteria: province={} minPrice={} maxPrice={}",
+                    criteria.location() != null && !criteria.location().isEmpty()
+                            ? criteria.location().get(0).province()
+                            : "null",
                     criteria.minPrice(), criteria.maxPrice());
 
             List<WarehouseResponseDTO> results = searchWarehouse(criteria);
@@ -301,7 +321,8 @@ public class AiService {
         }
 
         String run2Prompt = buildSummaryPrompt(query, warehousePage);
-        log.info("[AI/chat] calling agent for summary ({} warehouses in prompt)...", warehousePage.getNumberOfElements());
+        log.info("[AI/chat] calling agent for summary ({} warehouses in prompt)...",
+                warehousePage.getNumberOfElements());
         String summary = callAgent(run2Prompt, null);
         log.info("[AI/chat] summary: {}", summary);
         int run2OutputTokens = summary.length() / 4;
@@ -363,15 +384,18 @@ public class AiService {
         List<WarehouseResponseDTO> warehouseList = toListFromFeCandidates(warehouses);
         log.info("[AI/contextChat] received {} warehouse candidates from FE", warehouseList.size());
 
-        // ── Out-of-coverage check: skip AI call entirely for unsupported cities ───────
+        // ── Out-of-coverage check: skip AI call entirely for unsupported cities
+        // ───────
         String outOfCoverageCity = detectOutOfCoverageCity(query);
         if (outOfCoverageCity != null) {
-            log.info("[AI/contextChat] query targets unsupported city '{}' — returning friendly message", outOfCoverageCity);
+            log.info("[AI/contextChat] query targets unsupported city '{}' — returning friendly message",
+                    outOfCoverageCity);
             int inputTokens = (query == null ? 0 : query.length()) / 4;
             int outputTokens = 0;
             int remaining = balance - outputTokens;
             boolean tokenExhausted = remaining < 0;
-            if (tokenExhausted) remaining = 0;
+            if (tokenExhausted)
+                remaining = 0;
             user.getAiTier().setTokenOutput(remaining);
             userRepository.save(user);
             aiConversationRepository.save(AiConversation.builder()
@@ -390,7 +414,8 @@ public class AiService {
 
         // ── Pre-filter warehouses before sending to AI ──────────────────────────────
         // Apply hard constraints (capacity minimum, required certs) so the AI works on
-        // a candidate set that definitely satisfies the user's non-negotiable requirements.
+        // a candidate set that definitely satisfies the user's non-negotiable
+        // requirements.
         List<WarehouseResponseDTO> filteredWarehouses = applyHardFilters(query, warehouseList);
         log.info("[AI/contextChat] hard filters: {} of {} warehouses remain",
                 filteredWarehouses.size(), warehouseList.size());
@@ -415,19 +440,24 @@ public class AiService {
                     .collect(Collectors.toList());
         } catch (Exception e) {
             log.warn("[AI/contextChat] JSON parse failed — friendly fallback: {}", e.getMessage());
-            responseText = "Xin lỗi bạn, mình chưa hiểu rõ yêu cầu. Bạn có thể diễn đạt lại về khu vực, nhiệt độ hoặc ngân sách cụ thể hơn không?";
+            responseText = cleaned;
+            if (cleaned.trim().startsWith("{") || cleaned.trim().startsWith("[")) {
+                responseText = "Xin lỗi bạn, hệ thống đang gặp lỗi khi xử lý yêu cầu. Bạn có thể thử lại không?";
+            }
             refinedIds = List.of();
         }
 
         // Fetch authoritative warehouse data from DB in ranked order
         List<WarehouseResponseDTO> rankedWarehouses = warehouseService.getWarehousesByIds(refinedIds);
-        log.info("[AI/context] AI returned {} ids, DB resolved {} warehouses", refinedIds.size(), rankedWarehouses.size());
+        log.info("[AI/context] AI returned {} ids, DB resolved {} warehouses", refinedIds.size(),
+                rankedWarehouses.size());
 
         int outputTokens = rawResponse.length() / 4;
         int inputTokens = (query == null ? 0 : query.length()) / 4;
         int remaining = balance - outputTokens;
         boolean tokenExhausted = remaining < 0;
-        if (tokenExhausted) remaining = 0;
+        if (tokenExhausted)
+            remaining = 0;
 
         user.getAiTier().setTokenOutput(remaining);
         userRepository.save(user);
@@ -463,12 +493,13 @@ public class AiService {
 
         StringBuilder sb = new StringBuilder();
         sb.append("Bạn là trợ lý tư vấn kho lạnh cho người dùng Việt Nam.\n")
-          .append("QUAN TRỌNG: Không bắt đầu phản hồi bằng lời chào (\'Chào bạn!\', \'Xin chào!\', ...). Hãy đi thẳng vào nội dung.\n\n");
+                .append("QUAN TRỌNG: Không bắt đầu phản hồi bằng lời chào (\'Chào bạn!\', \'Xin chào!\', ...). Hãy đi thẳng vào nội dung.\n\n");
         sb.append("Yêu cầu người dùng: \"").append(query == null ? "" : query).append("\"\n\n");
         sb.append("Phân tích danh sách ").append(warehouses.size())
-          .append(" kho lạnh dưới đây và trả lời theo định dạng JSON sau:\n");
+                .append(" kho lạnh dưới đây và trả lời theo định dạng JSON sau:\n");
         sb.append("{\n");
-        sb.append("  \"response\": \"<đoạn tóm tắt tiếng Việt 2-4 câu giới thiệu kho phù hợp nhất, KHÔNG chào hỏi>\",\n");
+        sb.append(
+                "  \"response\": \"<đoạn tóm tắt tiếng Việt 2-4 câu giới thiệu kho phù hợp nhất, KHÔNG chào hỏi>\",\n");
         sb.append("  \"refinedWarehouseIds\": [<danh sách ID kho, sắp xếp từ phù hợp nhất đến ít phù hợp nhất>]\n");
         sb.append("}\n\n");
         sb.append("Chỉ trả về JSON hợp lệ — không markdown, không giải thích thêm.\n");
@@ -479,17 +510,17 @@ public class AiService {
         for (int i = 0; i < warehouses.size(); i++) {
             WarehouseResponseDTO w = warehouses.get(i);
             sb.append(i + 1).append(". ID: ").append(w.id())
-              .append(" | Tên: ").append(w.name())
-              .append(" | Tỉnh/TP: ").append(w.locationProvince())
-              .append(", ").append(w.locationCommune())
-              .append(" | Trạng thái: ").append(w.status());
+                    .append(" | Tên: ").append(w.name())
+                    .append(" | Tỉnh/TP: ").append(w.locationProvince())
+                    .append(", ").append(w.locationCommune())
+                    .append(" | Trạng thái: ").append(w.status());
             if (w.averageRating() != null && w.averageRating() > 0) {
                 sb.append(" | Đánh giá: ").append(String.format("%.1f", w.averageRating()))
-                  .append("/5 (").append(w.totalReviews()).append(" lượt)");
+                        .append("/5 (").append(w.totalReviews()).append(" lượt)");
             }
             if (w.sponsorTier() != null) {
                 sb.append(" | Sponsor: ").append(w.sponsorTier().label())
-                  .append(" (Hạng ").append(w.sponsorTier().priorityLevel()).append(")");
+                        .append(" (Hạng ").append(w.sponsorTier().priorityLevel()).append(")");
             }
             sb.append("\n");
 
@@ -501,9 +532,9 @@ public class AiService {
                     sb.append(", Tổng: ").append(s.totalCapacity()).append("m³");
                     if (s.priceTiers() != null && !s.priceTiers().isEmpty()) {
                         sb.append(", Giá: ");
-                        s.priceTiers().forEach(pt ->
-                            sb.append(pt.label()).append(": ").append(pt.value())
-                              .append(" ").append(pt.unit()).append("/").append(pt.areaUnit()).append(" "));
+                        s.priceTiers().forEach(pt -> sb.append(pt.label()).append(": ").append(pt.value())
+                                .append(" VND/").append(labelToPriceType(pt.label()))
+                                .append("/").append(pt.areaUnit()).append(" "));
                     }
                     sb.append("\n");
                 }
@@ -516,7 +547,8 @@ public class AiService {
             }
 
             if (w.description() != null && !w.description().isBlank()) {
-                String desc = w.description().length() > 200 ? w.description().substring(0, 200) + "..." : w.description();
+                String desc = w.description().length() > 200 ? w.description().substring(0, 200) + "..."
+                        : w.description();
                 sb.append("   Mô tả: ").append(desc).append("\n");
             }
             sb.append("\n");
@@ -576,9 +608,10 @@ public class AiService {
         return warehouses.stream().filter(w -> {
             // Capacity check
             if (minCapacity != null) {
-                double totalAvail = w.sections() == null ? 0 : w.sections().stream()
-                        .mapToDouble(s -> s.availableCapacity() != null ? s.availableCapacity() : 0)
-                        .sum();
+                double totalAvail = w.sections() == null ? 0
+                        : w.sections().stream()
+                                .mapToDouble(s -> s.availableCapacity() != null ? s.availableCapacity() : 0)
+                                .sum();
                 if (totalAvail < minCapacity)
                     return false;
             }
@@ -600,18 +633,19 @@ public class AiService {
     }
 
     private Double extractMinCapacity(String query) {
-        if (query == null) return null;
+        if (query == null)
+            return null;
         String q = query.toLowerCase();
         if (!q.contains("m³") && !q.contains("m3") && !q.contains("diện tích")
                 && !q.contains("sức chứa") && !q.contains("mét"))
             return null;
 
         // Match patterns like:
-        //   "trên 500m³", "hơn 500 m³", "above 500 m³"
-        //   "500m³ trở lên", "500 m³ trở nên"
+        // "trên 500m³", "hơn 500 m³", "above 500 m³"
+        // "500m³ trở lên", "500 m³ trở nên"
         java.util.regex.Pattern p = java.util.regex.Pattern.compile(
                 "(?:trên|hơn|above|over)\\s*(\\d+(?:[.,]\\d+)?)\\s*m[³3]|"
-                + "(\\d+(?:[.,]\\d+)?)\\s*m[³3]\\s*(?:trở lên|trở nên)",
+                        + "(\\d+(?:[.,]\\d+)?)\\s*m[³3]\\s*(?:trở lên|trở nên)",
                 java.util.regex.Pattern.CASE_INSENSITIVE);
         java.util.regex.Matcher m = p.matcher(q);
         if (m.find()) {
@@ -625,17 +659,25 @@ public class AiService {
     }
 
     private Set<String> extractRequiredCerts(String query) {
-        if (query == null) return Set.of();
+        if (query == null)
+            return Set.of();
         String q = query.toLowerCase();
         Set<String> required = new java.util.HashSet<>();
         // Map common cert abbreviations/names
-        if (q.contains("haccp")) required.add("haccp");
-        if (q.contains("iso 22000")) required.add("iso 22000");
-        if (q.contains("iso 9001")) required.add("iso 9001");
-        if (q.contains("gmp")) required.add("gmp");
-        if (q.contains("gsp")) required.add("gsp");
-        if (q.contains("cos") || q.contains("certificate of origin")) required.add("certificate of origin");
-        if (q.contains("fda")) required.add("fda");
+        if (q.contains("haccp"))
+            required.add("haccp");
+        if (q.contains("iso 22000"))
+            required.add("iso 22000");
+        if (q.contains("iso 9001"))
+            required.add("iso 9001");
+        if (q.contains("gmp"))
+            required.add("gmp");
+        if (q.contains("gsp"))
+            required.add("gsp");
+        if (q.contains("cos") || q.contains("certificate of origin"))
+            required.add("certificate of origin");
+        if (q.contains("fda"))
+            required.add("fda");
         return required;
     }
 
@@ -664,31 +706,33 @@ public class AiService {
     }
 
     private List<WarehouseResponseDTO> toListFromFeCandidates(Object obj) {
-        if (!(obj instanceof List<?> list)) return Collections.emptyList();
-        
+        if (!(obj instanceof List<?> list))
+            return Collections.emptyList();
+
         // Use a lenient mapper so FE-specific fields don't break the mapping
         ObjectMapper lenientMapper = objectMapper.copy()
                 .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-                
+
         List<WarehouseResponseDTO> result = new ArrayList<>();
         for (Object o : list) {
-            if (!(o instanceof Map<?, ?> raw)) continue;
+            if (!(o instanceof Map<?, ?> raw))
+                continue;
             try {
                 // FE uses different field names than the backend DTO — normalise before
                 // converting so rating, id, and certifications map correctly.
                 Map<String, Object> m = new HashMap<>();
                 raw.forEach((k, v) -> m.put(String.valueOf(k), v));
-                m.putIfAbsent("id",             m.remove("id_warehouse"));
-                m.putIfAbsent("averageRating",  m.remove("ratingScore"));
-                m.putIfAbsent("totalReviews",   m.remove("ratingCount"));
-                m.putIfAbsent("certificates",   m.remove("certifications"));
+                m.putIfAbsent("id", m.remove("id_warehouse"));
+                m.putIfAbsent("averageRating", m.remove("ratingScore"));
+                m.putIfAbsent("totalReviews", m.remove("ratingCount"));
+                m.putIfAbsent("certificates", m.remove("certifications"));
                 m.putIfAbsent("locationProvince", m.remove("location_province"));
-                m.putIfAbsent("locationCommune",  m.remove("location_commune"));
+                m.putIfAbsent("locationCommune", m.remove("location_commune"));
                 m.putIfAbsent("locationAddressText", m.remove("location_address_text"));
                 // stats sub-object — pull aggregated rating if top-level is still missing
-                if (m.get("averageRating") == null && m.get("stats") instanceof Map<?,?> stats) {
+                if (m.get("averageRating") == null && m.get("stats") instanceof Map<?, ?> stats) {
                     m.put("averageRating", stats.get("rating"));
-                    m.put("totalReviews",  stats.get("reviews"));
+                    m.put("totalReviews", stats.get("reviews"));
                 }
                 result.add(lenientMapper.convertValue(m, WarehouseResponseDTO.class));
             } catch (Exception e) {
@@ -714,8 +758,17 @@ public class AiService {
                 .collect(Collectors.joining(", "));
 
         String certList = meta.certifications().stream()
-                .map(c -> "label=\"" + c.label() + "\"" + (c.description() != null ? " description=\"" + c.description() + "\"" : ""))
+                .map(c -> "label=\"" + c.label() + "\""
+                        + (c.description() != null ? " description=\"" + c.description() + "\"" : ""))
                 .collect(Collectors.joining(", "));
+
+        String sectionLabelList = meta.warehouseSectionLabels() != null && !meta.warehouseSectionLabels().isEmpty()
+                ? meta.warehouseSectionLabels().stream().map(s -> "\"" + s + "\"").collect(Collectors.joining(", "))
+                : "(none available)";
+
+        String priceTierLabelList = meta.priceTierLabels() != null && !meta.priceTierLabels().isEmpty()
+                ? meta.priceTierLabels().stream().map(p -> "\"" + p + "\"").collect(Collectors.joining(", "))
+                : "Giá theo ngày, Giá theo tháng, Giá theo tuần, Giá theo năm";
 
         String historyBlock = (history != null && !history.isBlank())
                 ? "\n## Conversation History\n" + history + "\n"
@@ -725,16 +778,18 @@ public class AiService {
 
                 + "## Available Database Values\n"
                 + "Provinces (use EXACT string): [" + provinceList + "]\n"
+                + "Warehouse section labels: [" + sectionLabelList + "]\n"
+                + "Price tier labels: [" + priceTierLabelList + "]\n"
                 + "Certifications: [" + certList + "]\n"
                 + "Temperature range in DB: " + meta.tempMin() + "°C to " + meta.tempMax() + "°C\n"
-                + "Available capacity range in DB: " + meta.capacityMin() + " to " + meta.capacityMax() + " m³\n"
-                + "Price range in DB: " + meta.priceMin() + " to " + meta.priceMax() + " VND/month\n\n"
+                + "Available capacity range in DB: " + meta.capacityMin() + " to " + meta.capacityMax() + " m³\n\n"
 
                 + "## Region → Province Mapping (apply when user mentions a region, not a specific city)\n"
                 + "When the user says a REGION word, return ALL MATCHING provinces from the province list above.\n"
                 + "Use these mappings as guidance (only use provinces that appear in the list above):\n"
+                + "Note: The city and province may have prefix Tỉnh/Thành phố like: Thành Phố Hồ Chí Minh, TP Hồ Chí Minh, Tỉnh Cà Mau \n"
                 + "- North / miền Bắc / phía Bắc / northern → include: Hà Nội, Hải Phòng, Quảng Ninh, Hải Dương, Bắc Ninh, Hưng Yên\n"
-                + "- South / miền Nam / phía Nam / southern → include: Hồ Chí Minh, Bình Dương, Đồng Nai, Long An, Tiền Giang\n"
+                + "- South / miền Nam / phía Nam / southern → include: Hồ Chí Minh, Bình Dương, Đồng Nai, Đồng Tháp, Long An, Tiền Giang\n"
                 + "- Central / miền Trung / phía Trung → include: Đà Nẵng, Thừa Thiên Huế, Quảng Nam, Bình Định, Khánh Hòa\n"
                 + "- Example: If the user says 'north', return ALL northern provinces that exist in the DB list inside the \"location\" array of the JSON Schema.\n\n"
 
@@ -754,14 +809,19 @@ public class AiService {
                 + "    - availableCapacity, totalCapacity: Double (m³)\n"
                 + "    - humidity: Double (%)\n"
                 + "    - priceTiers: List with:\n"
-                + "        - value: Double (VND)\n"
-                + "        - unit: 'month' | 'week' | 'day' | 'year'\n"
+                + "        - label: String in Vietnamese, e.g. 'Giá theo tháng', 'Giá theo ngày', 'Giá theo tuần', 'Giá theo năm' (determines time period)\n"
+                + "        - value: Double (price in VND)\n"
+                + "        - unit: String currency unit (always 'VND')\n"
+                + "        - timeUnit (derived from label): 'month' | 'week' | 'day' | 'year'\n"
                 + "        - areaUnit: 'm3' | 'pallet' | 'chuyến'\n"
-                + "- certificates: List of verified certifications (matches cert list above)\n\n"
+                + "- warehouseSection: List of section labels from the warehouse's sections (e.g. 'Phòng Đông Lạnh A1', 'Kho Mát Tầng 2'). Filter warehouses that have ALL listed section labels.\n"
+                + "- priceTier: The rental price tier label — one of the priceTierLabels values from metadata (e.g. 'Giá theo ngày', 'Giá theo tháng', 'Giá theo tuần', 'Giá theo năm'). When the user mentions 'theo ngày', 'theo tháng', etc., map to this field.\n"
 
                 + "## Output Requirements\n"
-                + "- Return ONLY valid JSON — no markdown, no explanations.\n"
-                + "- Every field must be present (use null if not applicable).\n\n"
+                + "⚠️  YOU MUST RETURN ONLY A VALID JSON OBJECT. No Vietnamese text, no explanations, no markdown, no apologies.\n"
+                + "Even if you cannot determine specific values, return the JSON schema with null fields.\n"
+                + "Example of a valid response (for a generic query):\n"
+                + "{\"location\":[{\"province\":null}],\"minPrice\":null,\"maxPrice\":null,\"priceType\":null,\"areaUnit\":\"m3\",\"name\":null,\"tempMin\":null,\"tempMax\":null,\"availableCapacity\":{\"min_range\":null,\"max_range\":null},\"totalCapacity\":{\"min_range\":null,\"max_range\":null},\"rating\":{\"min_range\":null,\"max_range\":null},\"certificates\":null,\"sort\":{\"type\":null},\"warehouseSection\":null,\"priceTier\":null}\n\n"
 
                 + "## JSON Schema\n"
                 + "{\n"
@@ -776,14 +836,17 @@ public class AiService {
                 + "  \"availableCapacity\": {\"min_range\": <number | null>, \"max_range\": <number | null>},\n"
                 + "  \"totalCapacity\": {\"min_range\": <number | null>, \"max_range\": <number | null>},\n"
                 + "  \"rating\": {\"min_range\": <number 0-5 | null>, \"max_range\": <number 0-5 | null>},\n"
-                + "  \"sort\": {\"type\": \"price\" | \"rating\" | null}\n"
+                + "  \"certificates\": [\"<certificate label string>\"],\n"
+                + "  \"sort\": {\"type\": \"price\" | \"rating\" | null},\n"
+                + "  \"warehouseSection\": [\"<section label from metadata>\"],\n"
+                + "  \"priceTier\": \"<price tier label from metadata — Giá theo ngày | Giá theo tháng | Giá theo tuần | Giá theo năm | null>\"\n"
                 + "}\n\n"
 
                 + "## Field Rules\n"
-                + "1. location — pick the EXACT province string from the list above.\n"
+                + "1. location — ONLY include provinces if the user explicitly names a city or region. The default is [{\"province\": null}].\n"
                 + "   - If user mentions a SPECIFIC city/province: use that exact string.\n"
                 + "   - If user mentions a REGION (north/south/central/miền Bắc/miền Nam/miền Trung): use the Region→Province Mapping above to return MULTIPLE province objects for all matching provinces FROM THE LIST.\n"
-                + "   - If no location mentioned at all: [{\"province\": null}].\n"
+                + "   - If no location mentioned at all: [{\"province\": null}]. Do NOT guess or infer provinces based on the topic (e.g. \"cold storage\" or \"kho lạnh\" does not imply any particular province).\n"
                 + "2. minPrice/maxPrice — VND. null if not mentioned.\n"
                 + "3. priceType — e.g. [\"month\"]. null if not mentioned.\n"
                 + "4. areaUnit — always \"m3\".\n"
@@ -791,7 +854,10 @@ public class AiService {
                 + "6. tempMin/tempMax — °C. Use DB range as guide. null if not mentioned.\n"
                 + "7. availableCapacity/totalCapacity — m³. null fields if not mentioned.\n"
                 + "8. rating — 0–5 range. null if not mentioned.\n"
-                + "9. sort — \"price\" when user wants cheapest, \"rating\" when user wants highest rated, null otherwise.\n\n"
+                + "9. certificates — list of certification labels mentioned by user (MUST exactly match labels from Certifications list above). null if not mentioned.\n"
+                + "10. sort — \"price\" when user wants cheapest, \"rating\" when user wants highest rated, null otherwise.\n"
+                + "11. warehouseSection — filter by section labels (e.g. 'Phòng Đông Lạnh A1'). null if user did not mention a specific section.\n"
+                + "12. priceTier — when the user mentions a rental duration in ANY form — whether compact (e.g. 'tuần', 'tháng', 'ngày', 'năm', 'thuê tuần', 'cho thuê theo tuần') or a full phrase ('theo ngày', 'theo tháng', 'theo tuần', 'theo năm') — map it to the matching label from priceTierLabels (e.g. 'Giá theo ngày', 'Giá theo tháng', 'Giá theo tuần', 'Giá theo năm'). null if no duration is specified.\n\n"
 
                 + historyBlock
                 + "\nUser: \"" + (userQuery == null ? "" : userQuery) + "\"";
@@ -801,7 +867,7 @@ public class AiService {
         StringBuilder sb = new StringBuilder();
         sb.append(
                 "Bạn là trợ lý tư vấn kho lạnh. Dựa trên kết quả tìm kiếm dưới đây, hãy viết một đoạn tóm tắt ngắn gọn (2-4 câu) bằng tiếng Việt giới thiệu các kho phù hợp nhất với yêu cầu của người dùng.\n"
-                + "QUAN TRỌNG: Không bắt đầu bằng lời chào (\'Chào bạn!\', \'Xin chào!\', ...). Hãy đi thẳng vào nội dung.\n\n");
+                        + "QUAN TRỌNG: Không bắt đầu bằng lời chào (\'Chào bạn!\', \'Xin chào!\', ...). Hãy đi thẳng vào nội dung.\n\n");
         sb.append("Yêu cầu người dùng: \"").append(userQuery == null ? "" : userQuery).append("\"\n\n");
         sb.append("Kết quả tìm được (").append(warehouses.getTotalElements()).append(" kho, hiển thị ")
                 .append(warehouses.getNumberOfElements()).append("):\n\n");
@@ -816,16 +882,18 @@ public class AiService {
                     .append(w.locationCommune())
                     .append(sponsorInfo).append("\n");
             if (w.sections() != null && !w.sections().isEmpty()) {
-                double minTemp = w.sections().stream().mapToDouble(s -> s.tempMin() != null ? s.tempMin() : 0).min()
-                        .orElse(0);
-                double maxTemp = w.sections().stream().mapToDouble(s -> s.tempMax() != null ? s.tempMax() : 0).max()
-                        .orElse(0);
-                double totalAvail = w.sections().stream()
-                        .mapToDouble(s -> s.availableCapacity() != null ? s.availableCapacity() : 0).sum();
-                sb.append("   Nhiệt độ: ").append(String.format("%.1f", minTemp))
-                        .append("°~").append(String.format("%.1f", maxTemp)).append("°C | ");
-                sb.append("Còn trống: ").append(String.format("%.0f", totalAvail))
-                        .append("m³\n");
+                sb.append("   Phòng kho:\n");
+                for (WarehouseSectionDTO s : w.sections()) {
+                    sb.append("   - Nhiệt độ: ").append(s.tempMin()).append("~").append(s.tempMax()).append("°C");
+                    sb.append(", Còn trống: ").append(s.availableCapacity()).append("m³");
+                    if (s.priceTiers() != null && !s.priceTiers().isEmpty()) {
+                        sb.append(", Giá: ");
+                        s.priceTiers().forEach(pt -> sb.append(pt.label()).append(": ").append(pt.value())
+                                .append(" VND/").append(labelToPriceType(pt.label()))
+                                .append("/").append(pt.areaUnit()).append(" "));
+                    }
+                    sb.append("\n");
+                }
             }
             if (w.averageRating() != null && w.averageRating() > 0) {
                 sb.append("   Rating: ").append(String.format("%.1f", w.averageRating()))
@@ -836,8 +904,8 @@ public class AiService {
 
         sb.append(
                 "\nKhi đề xuất kho, ưu tiên các kho có Sponsor (hạng càng thấp càng cao cấp). "
-                + "Nếu nhiều kho có cùng mức độ phù hợp, ưu tiên kho có hạng Sponsor tốt hơn.\n"
-                + "Viết phản hồi bằng tiếng Việt, tự nhiên, thân thiện. Không bắt đầu bằng lời chào. Nếu không có kho nào phù hợp, hãy thông báo lịch sự.");
+                        + "Nếu nhiều kho có cùng mức độ phù hợp, ưu tiên kho có hạng Sponsor tốt hơn.\n"
+                        + "Viết phản hồi bằng tiếng Việt, tự nhiên, thân thiện. Không bắt đầu bằng lời chào. Nếu không có kho nào phù hợp, hãy thông báo lịch sự.");
         return sb.toString();
     }
 
@@ -852,14 +920,22 @@ public class AiService {
             "tại sao", "why", "how", "như thế nào",
             "hướng dẫn", "guide", "help", "giúp");
 
-    /** Keywords that signal the user is asking about price/affordability.
-        Must be SPECIFIC to price — generic rental intent is NOT included. */
+    /**
+     * Keywords that signal the user is asking about price/affordability.
+     * Must be SPECIFIC to price — generic rental intent is NOT included.
+     */
     private static final List<String> AFFORDABILITY_KEYWORDS = List.of(
             "giá rẻ", "rẻ nhất", "giá thấp", "giá bình dân", "giá mềm",
-            "kho lạnh rẻ", "kho giá rẻ", "tìm kho giá", "tìm kho rẻ", "giá mắc" ,"mắc tiền",
-            "kho bình dân", "kho giá thấp", "kho giá mềm");
+            "kho lạnh rẻ", "kho giá rẻ", "tìm kho giá", "tìm kho rẻ", "giá mắc", "gia mac", "kho mac", "mac tien",
+            "mắc tiền", "gia re", "gia re nhat", "gia thap", "gia binh dan", "gia mem",
+            "kho bình dân", "kho giá thấp", "kho giá mềm", "kho gia re", "kho gia re nhat", "kho gia thap",
+            "kho gia binh dan", "kho gia mem", "kho gia re", "kho gia re nhat", "kho gia thap",
+            "kho gia binh dan", "kho gia mem");
 
-    /** Time-unit keywords that make a price query specific enough to search directly. */
+    /**
+     * Time-unit keywords that make a price query specific enough to search
+     * directly.
+     */
     private static final List<String> TIME_UNIT_KEYWORDS = List.of(
             "ngày", "day", "days",
             "tuần", "week", "weeks",
@@ -885,32 +961,38 @@ public class AiService {
      * message rather than a new warehouse-search request.
      */
     private boolean isConversationalQuery(String query) {
-        if (query == null || query.isBlank()) return false;
+        if (query == null || query.isBlank())
+            return false;
         String q = query.toLowerCase();
         return CONVERSATIONAL_KEYWORDS.stream().anyMatch(q::contains);
     }
 
     /**
-     * Returns true when the query mentions price (affordability keyword or numeric amount)
+     * Returns true when the query mentions price (affordability keyword or numeric
+     * amount)
      * but does NOT specify a rental duration unit (day/week/month/year).
      * Fires for:
-     *   - Affordability: "kho lạnh giá rẻ", "tìm kho giá thấp"  (no time unit)
-     *   - Numeric price:  "giá dưới 30 triệu", "dưới 500k"       (no time unit)
+     * - Affordability: "kho lạnh giá rẻ", "tìm kho giá thấp" (no time unit)
+     * - Numeric price: "giá dưới 30 triệu", "dưới 500k" (no time unit)
      * Does NOT fire when the query already specifies ngày/tuần/tháng/năm.
      */
     private boolean isMissingPriceType(String query) {
-        if (query == null || query.isBlank()) return false;
+        if (query == null || query.isBlank())
+            return false;
         String q = query.toLowerCase();
 
         // Check 1: contains an affordability keyword
         boolean hasAffordability = AFFORDABILITY_KEYWORDS.stream().anyMatch(q::contains);
 
-        // Check 2: contains a numeric price amount (e.g. "30 triệu", "500k", "1 triệu đồng")
+        // Check 2: contains a numeric price amount (e.g. "30 triệu", "500k", "1 triệu
+        // đồng")
         boolean hasNumericPrice = PRICE_AMOUNT_PATTERN.matcher(q).find();
 
-        if (!hasAffordability && !hasNumericPrice) return false;
+        if (!hasAffordability && !hasNumericPrice)
+            return false;
 
-        // Check 3: contains a time-unit keyword as a standalone word → clarification not needed
+        // Check 3: contains a time-unit keyword as a standalone word → clarification
+        // not needed
         for (String unit : TIME_UNIT_KEYWORDS) {
             int idx = q.indexOf(unit);
             if (idx >= 0) {
@@ -924,10 +1006,9 @@ public class AiService {
         return true; // price mentioned, no duration unit → ask user
     }
 
-    private static final java.util.regex.Pattern PRICE_AMOUNT_PATTERN =
-            java.util.regex.Pattern.compile(
-                    "(\\d[\\d.,]*\\s*(?:triệu|tỷ|nghìn|ngàn|k)\\b|\\d[\\d.,]*\\s*đồng|\\d[\\d.,]*\\s*vnd)",
-                    java.util.regex.Pattern.CASE_INSENSITIVE);
+    private static final java.util.regex.Pattern PRICE_AMOUNT_PATTERN = java.util.regex.Pattern.compile(
+            "(\\d[\\d.,]*\\s*(?:triệu|tỷ|nghìn|ngàn|k)\\b|\\d[\\d.,]*\\s*đồng|\\d[\\d.,]*\\s*vnd)",
+            java.util.regex.Pattern.CASE_INSENSITIVE);
 
     /**
      * Build a prompt for a conversational (non-search) follow-up turn.
@@ -950,8 +1031,11 @@ public class AiService {
         Double maxPrice = criteria.maxPrice();
 
         if (criteria.priceType() != null && !criteria.priceType().isEmpty() && (minPrice != null || maxPrice != null)) {
-            String unit = criteria.priceType().get(0);
+            // Normalise Vietnamese priceType values to English before lookup
+            String unit = vietnamesePriceTypeToEnglish(criteria.priceType().get(0));
             Double multiplier = PRICE_MULTIPLIER.getOrDefault(unit.toLowerCase(), 1.0);
+            log.info("[AI/normalize] priceType='{}' → unit='{}' multiplier={}", criteria.priceType().get(0), unit,
+                    multiplier);
             if (!"month".equalsIgnoreCase(unit)) {
                 minPrice = minPrice != null ? minPrice * multiplier : null;
                 maxPrice = maxPrice != null ? maxPrice * multiplier : null;
@@ -960,6 +1044,13 @@ public class AiService {
 
         // Rebuild with normalized prices and null priceType (backend always works in
         // monthly)
+        String priceTier = criteria.priceTier();
+        if (priceTier == null && criteria.priceType() != null && !criteria.priceType().isEmpty()) {
+            priceTier = PRICE_TYPE_TO_TIER_LABEL.get(criteria.priceType().get(0).toLowerCase());
+            log.info("[AI/normalize] priceTier derived from priceType '{}' → '{}'",
+                    criteria.priceType().get(0), priceTier);
+        }
+
         return new SearchCriteriaDTO(
                 criteria.location(),
                 minPrice, maxPrice,
@@ -970,15 +1061,37 @@ public class AiService {
                 criteria.availableCapacity(),
                 criteria.totalCapacity(),
                 criteria.rating(),
-                criteria.sort());
+                criteria.certificates(),
+                criteria.sort(),
+                criteria.warehouseSection(),
+                priceTier);
     }
 
     // ─── Price/capacity hallucination guard ───────────────────────────────────
     // Vietnamese keywords that indicate the user actually specified a price.
-    private static final List<String> PRICE_KEYWORDS = List.of(
-            "giá", "tiền", "vnđ", "vnd", "đồng", "đ/", "rẻ", "rẻ nhất",
-            "đắt", "phí", "ngân sách", "budget", "price", "cost",
-            "triệu", "nghìn", "ngàn", "tháng", "tuần", "ngày", "năm");
+    /**
+     * Keywords that signal the user is asking about a PRICE AMOUNT (not just a
+     * time-unit like "tháng" / "tuần"). Used to decide whether to keep or clear
+     * minPrice/maxPrice after AI extraction.
+     */
+    private static final List<String> PRICE_VALUE_KEYWORDS = List.of(
+            "giá", "tiền", "vnđ", "vnd", "đồng", "đ/",
+            "rẻ", "rẻ nhất", "đắt",
+            "phí", "ngân sách", "budget", "price", "cost",
+            "triệu", "nghìn", "ngàn");
+
+    /**
+     * Time-unit keywords that pair with a price (e.g. "tháng", "tuần") to form
+     * a complete price-filter signal, but on their own are NOT enough to keep
+     * a hallucinated minPrice/maxPrice.
+     */
+    private static final List<String> PRICE_TIME_UNIT_KEYWORDS = List.of(
+            "tháng", "tuần", "ngày", "năm",
+            "/tháng", "/tuần", "/ngày", "/năm",
+            "theo tháng", "theo tuần", "theo ngày", "theo năm",
+            "vnd/tháng", "vnd/tuần", "vnd/ngày", "vnd/năm",
+            "đ/tháng", "đ/tuần", "đ/ngày", "đ/năm");
+
     private static final List<String> TEMP_KEYWORDS = List.of(
             "nhiệt độ", "°c", "lạnh", "đông", "mát", "ấm", "temp", "temperature",
             "âm", "độ c");
@@ -994,28 +1107,38 @@ public class AiService {
      * "Tìm kho ở HCM".
      */
     private SearchCriteriaDTO sanitizeCriteria(String query, SearchCriteriaDTO c) {
-        if (query == null || query.isBlank()) return c;
+        if (query == null || query.isBlank())
+            return c;
         String q = query.toLowerCase();
 
-        boolean mentionsPrice    = PRICE_KEYWORDS.stream().anyMatch(q::contains);
-        boolean mentionsTemp     = TEMP_KEYWORDS.stream().anyMatch(q::contains);
+        // A price filter should only be kept when the user mentions an actual
+        // price value (e.g. "giá 5 triệu", "rẻ", "budget"). Time-unit words
+        // alone ("tháng", "tuần", "ngày", "năm") signal priceTier/priceType
+        // but do NOT imply a price range — clearing them prevents AI from
+        // hallucinating minPrice/maxPrice from the DB price-range hint.
+        boolean mentionsPriceValue = PRICE_VALUE_KEYWORDS.stream().anyMatch(q::contains);
+        boolean mentionsTemp = TEMP_KEYWORDS.stream().anyMatch(q::contains);
         boolean mentionsCapacity = CAPACITY_KEYWORDS.stream().anyMatch(q::contains);
 
         Double minPrice = c.minPrice();
         Double maxPrice = c.maxPrice();
-        Double tempMin  = c.tempMin();
-        Double tempMax  = c.tempMax();
+        Double tempMin = c.tempMin();
+        Double tempMax = c.tempMax();
         SearchCriteriaDTO.CapacityRange avail = c.availableCapacity();
         SearchCriteriaDTO.CapacityRange total = c.totalCapacity();
 
-        if (!mentionsPrice) {
-            log.info("[AI/sanitize] no price keyword in query — clearing minPrice/maxPrice ({}/{})", minPrice, maxPrice);
+        if (!mentionsPriceValue) {
+            log.info("[AI/sanitize] no price VALUE in query — clearing minPrice/maxPrice ({}/{})", minPrice,
+                    maxPrice);
             minPrice = null;
             maxPrice = null;
         } else {
-            // Even when user mentions price, treat 0/0 as hallucinated (no real warehouse is free)
-            if (minPrice != null && minPrice == 0.0) minPrice = null;
-            if (maxPrice != null && maxPrice == 0.0) maxPrice = null;
+            // Even when user mentions price, treat 0/0 as hallucinated (no real warehouse
+            // is free)
+            if (minPrice != null && minPrice == 0.0)
+                minPrice = null;
+            if (maxPrice != null && maxPrice == 0.0)
+                maxPrice = null;
         }
         if (!mentionsTemp) {
             log.info("[AI/sanitize] no temp keyword in query — clearing tempMin/tempMax ({}/{})", tempMin, tempMax);
@@ -1028,25 +1151,168 @@ public class AiService {
             total = null;
         }
 
+        // Location backstop: if the query does not reference any province / city /
+        // region / location-hint token, drop any province values the AI invented.
+        List<SearchCriteriaDTO.LocationDTO> location = c.location();
+        if (!WarehouseService.queryMentionsLocation(query)
+                && location != null && !location.isEmpty()) {
+            log.info("[AI/sanitize] no location keyword in query — clearing location list (AI returned {})",
+                    location.stream().map(SearchCriteriaDTO.LocationDTO::province).toList());
+            location = null;
+        }
+
         return new SearchCriteriaDTO(
-                c.location(), minPrice, maxPrice,
+                location, minPrice, maxPrice,
                 null, c.areaUnit(), c.name(),
                 tempMin, tempMax, avail, total,
-                c.rating(), c.sort());
+                c.rating(), c.certificates(), c.sort(),
+                c.warehouseSection(), c.priceTier());
+    }
+
+    /**
+     * Merges FE-supplied criteria (from mount/filter state) into AI-extracted
+     * criteria. FE values represent explicit user selections and therefore
+     * take priority over AI-inferred values for sensitive filter fields
+     * (price range, price tier, location, certificates, warehouse section).
+     *
+     * @param feCriteria raw FE object (may be null or a Map from the JSON body)
+     * @param ai         criteria extracted (and sanitized) by the AI
+     * @return a new SearchCriteriaDTO with FE overrides applied where present
+     */
+    private SearchCriteriaDTO mergeFeCriteria(Object feCriteria, SearchCriteriaDTO ai) {
+        if (feCriteria == null)
+            return ai;
+        @SuppressWarnings("unchecked")
+        Map<String, Object> feMap;
+        try {
+            feMap = objectMapper.convertValue(feCriteria, Map.class);
+        } catch (Exception e) {
+            log.warn("[AI/merge] failed to parse FE criteria, using AI-only: {}", e.getMessage());
+            return ai;
+        }
+        if (feMap == null || feMap.isEmpty())
+            return ai;
+
+        Double minPrice = ai.minPrice();
+        Double maxPrice = ai.maxPrice();
+        List<String> priceType = ai.priceType();
+        String priceTier = ai.priceTier();
+        List<SearchCriteriaDTO.LocationDTO> location = ai.location();
+        List<String> certificates = ai.certificates();
+        List<String> warehouseSection = ai.warehouseSection();
+        Double tempMin = ai.tempMin();
+        Double tempMax = ai.tempMax();
+        SearchCriteriaDTO.CapacityRange avail = ai.availableCapacity();
+        SearchCriteriaDTO.CapacityRange total = ai.totalCapacity();
+        SearchCriteriaDTO.RatingRange rating = ai.rating();
+        SearchCriteriaDTO.SortType sort = ai.sort();
+        String name = ai.name();
+        String areaUnit = ai.areaUnit();
+
+        // ── minPrice / maxPrice: FE wins if present (user explicitly set a range) ──
+        Object feMin = feMap.get("minPrice");
+        Object feMax = feMap.get("maxPrice");
+        if (feMin instanceof Number n)
+            minPrice = n.doubleValue();
+        if (feMax instanceof Number n)
+            maxPrice = n.doubleValue();
+
+        // ── priceTier: FE wins if non-null/non-empty ──
+        Object feTier = feMap.get("priceTier");
+        if (feTier instanceof String s && !s.isBlank() && !"null".equalsIgnoreCase(s.trim())) {
+            priceTier = s.trim();
+        }
+
+        // ── priceType: FE wins if non-null ──
+        Object fePriceType = feMap.get("priceType");
+        if (fePriceType instanceof List<?> l && !l.isEmpty()) {
+            priceType = l.stream().map(Object::toString).toList();
+        }
+
+        // ── location: FE wins if list has at least one non-null province ──
+        Object feLoc = feMap.get("location");
+        if (feLoc instanceof List<?> locList && !locList.isEmpty()) {
+            List<SearchCriteriaDTO.LocationDTO> feLocations = locList.stream()
+                    .filter(o -> o instanceof Map)
+                    .map(o -> (Map<String, Object>) o)
+                    .map(m -> {
+                        Object p = m.get("province");
+                        String prov = (p instanceof String s) ? s.trim() : null;
+                        if (prov != null && !prov.isBlank() && !"null".equalsIgnoreCase(prov))
+                            return new SearchCriteriaDTO.LocationDTO(prov);
+                        return null;
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .toList();
+            if (!feLocations.isEmpty())
+                location = feLocations;
+        }
+
+        // ── certificates: FE wins if list is non-null and non-empty ──
+        Object feCerts = feMap.get("certificates");
+        if (feCerts instanceof List<?> certList && !certList.isEmpty()) {
+            certificates = certList.stream().map(Object::toString).toList();
+        }
+
+        // ── warehouseSection: FE wins if list is non-null and non-empty ──
+        Object feSection = feMap.get("warehouseSection");
+        if (feSection instanceof List<?> secList && !secList.isEmpty()) {
+            warehouseSection = secList.stream().map(Object::toString).toList();
+        }
+
+        // ── tempMin / tempMax: FE wins if present ──
+        Object feTempMin = feMap.get("tempMin");
+        Object feTempMax = feMap.get("tempMax");
+        if (feTempMin instanceof Number n)
+            tempMin = n.doubleValue();
+        if (feTempMax instanceof Number n)
+            tempMax = n.doubleValue();
+
+        // ── rating: FE wins if present ──
+        Object feRating = feMap.get("rating");
+        if (feRating instanceof Map<?, ?> rMap) {
+            Double rm = null, rx = null;
+            Object rMin = rMap.get("min_range");
+            Object rMax = rMap.get("max_range");
+            if (rMin instanceof Number n)
+                rm = n.doubleValue();
+            if (rMax instanceof Number n)
+                rx = n.doubleValue();
+            if (rm != null || rx != null)
+                rating = new SearchCriteriaDTO.RatingRange(rm, rx);
+        }
+
+        // ── sort: FE wins if present ──
+        Object feSort = feMap.get("sort");
+        if (feSort instanceof Map<?, ?> sMap) {
+            Object st = sMap.get("type");
+            if (st instanceof String s && !s.isBlank() && !"null".equalsIgnoreCase(s.trim())) {
+                sort = new SearchCriteriaDTO.SortType(s.trim());
+            }
+        }
+
+        return new SearchCriteriaDTO(
+                location, minPrice, maxPrice,
+                priceType, areaUnit, name,
+                tempMin, tempMax, avail, total,
+                rating, certificates, sort,
+                warehouseSection, priceTier);
     }
 
     /**
      * Normalise common AI schema deviations before Jackson deserialisation.
      * <ul>
-     *   <li>Unwraps array wrapper: {@code [{...}]} → {@code {...}}</li>
-     *   <li>{@code "sort": "price"}  → {@code "sort": {"type": "price"}}</li>
-     *   <li>{@code "sort": "rating"} → {@code "sort": {"type": "rating"}}</li>
-     *   <li>{@code "sort": null}     → {@code "sort": {"type": null}}</li>
-     *   <li>{@code "rating": null}   → {@code "rating": {"min_range": null, "max_range": null}}</li>
+     * <li>Unwraps array wrapper: {@code [{...}]} → {@code {...}}</li>
+     * <li>{@code "sort": "price"} → {@code "sort": {"type": "price"}}</li>
+     * <li>{@code "sort": "rating"} → {@code "sort": {"type": "rating"}}</li>
+     * <li>{@code "sort": null} → {@code "sort": {"type": null}}</li>
+     * <li>{@code "rating": null} →
+     * {@code "rating": {"min_range": null, "max_range": null}}</li>
      * </ul>
      */
     private String normalizeAiJson(String json) {
-        if (json == null) return json;
+        if (json == null)
+            return json;
         String trimmed = json.trim();
 
         // Unwrap array: AI sometimes returns [{...}] instead of {...}
@@ -1057,7 +1323,8 @@ public class AiService {
             }
         }
 
-        // Fix "sort": "<value>" or "sort": null  → "sort": {"type": "<value>"} / {"type": null}
+        // Fix "sort": "<value>" or "sort": null → "sort": {"type": "<value>"} /
+        // {"type": null}
         trimmed = trimmed.replaceAll(
                 "\"sort\"\\s*:\\s*\"([^\"]+)\"",
                 "\"sort\": {\"type\": \"$1\"}");
@@ -1065,10 +1332,21 @@ public class AiService {
                 "\"sort\"\\s*:\\s*null",
                 "\"sort\": {\"type\": null}");
 
-        // Fix "rating": null  → proper object (only when it's a plain null, not already {}
+        // Fix "rating": null → proper object (only when it's a plain null, not already
+        // {}
         trimmed = trimmed.replaceAll(
                 "\"rating\"\\s*:\\s*null",
                 "\"rating\": {\"min_range\": null, \"max_range\": null}");
+
+        // Fix "priceType": "month" → "priceType": ["month"]
+        trimmed = trimmed.replaceAll(
+                "\"priceType\"\\s*:\\s*\"([^\"]+)\"",
+                "\"priceType\": [\"$1\"]");
+
+        // Fix "warehouseSection": [{...}] → unwrap to just the labels array
+        trimmed = trimmed.replaceAll(
+                "\"warehouseSection\"\\s*:\\s*\\[\\s*\\{\"label\"\\s*:\\s*\"([^\"]+)\"\\s*\\}\\s*\\]",
+                "\"warehouseSection\": [\"$1\"]");
 
         return trimmed;
 
@@ -1100,6 +1378,57 @@ public class AiService {
             log.error("[AI/agent] connection error: {}", e.getMessage());
             throw new RuntimeException("Lỗi kết nối đến máy chủ AI: " + e.getMessage());
         }
+    }
+
+    /**
+     * Derives the English time-unit key from a Vietnamese PriceTier label.
+     * <ul>
+     * <li>{@code "Thuê tháng"} → {@code "month"}</li>
+     * <li>{@code "Thuê ngày"} → {@code "day"}</li>
+     * <li>{@code "Thuê tuần"} → {@code "week"}</li>
+     * <li>{@code "Thuê năm"} → {@code "year"}</li>
+     * </ul>
+     *
+     * @param label the Vietnamese label stored in
+     *              {@link com.ailogis.api.entity.PriceTier#getLabel()}
+     * @return English time unit string compatible with {@link #PRICE_MULTIPLIER}
+     */
+    private String labelToPriceType(String label) {
+        if (label == null)
+            return "month";
+        String l = label.toLowerCase();
+        if (l.contains("ngày"))
+            return "ngày";
+        if (l.contains("tuần"))
+            return "tuần";
+        if (l.contains("năm"))
+            return "năm";
+        if (l.contains("tháng"))
+            return "tháng";
+        return "tháng"; // safe default
+    }
+
+    /**
+     * Normalises a priceType value that may arrive in Vietnamese (from the AI or
+     * FE)
+     * to the English key expected by {@link #PRICE_MULTIPLIER}.
+     *
+     * @param priceType raw value, e.g. {@code "tháng"}, {@code "month"},
+     *                  {@code "day"}
+     * @return canonical English key: {@code "month"}, {@code "day"},
+     *         {@code "week"}, or {@code "year"}
+     */
+    private String vietnamesePriceTypeToEnglish(String priceType) {
+        if (priceType == null)
+            return "month";
+        String p = priceType.trim().toLowerCase();
+        return switch (p) {
+            case "tháng", "thang", "month" -> "tháng";
+            case "ngày", "ngay", "day" -> "ngày";
+            case "tuần", "tuan", "week" -> "tuần";
+            case "năm", "nam", "year" -> "năm";
+            default -> p; // pass through — PRICE_MULTIPLIER.getOrDefault will fallback to 1.0
+        };
     }
 
     /**
