@@ -5,8 +5,11 @@ import java.util.List;
 
 public record RentRequestResponseDTO(
         Long id,
+        Long warehouseId,
         String warehouseName,
         String renterName,
+        String renterCompanyName,
+        String renterCompanyTaxCode,
         String ownerName,
         String cargoDescription,
         Integer duration,
@@ -20,6 +23,7 @@ public record RentRequestResponseDTO(
         Double offeredPrice,
         Double renterOfferedPrice,
         String ownerNote,
+        String renterNote,
 
         List<RentRequestDetailResponseDTO> details
 ) {}

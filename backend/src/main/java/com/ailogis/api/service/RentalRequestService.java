@@ -70,14 +70,17 @@ public class RentalRequestService {
     }
 
     private RentRequestResponseDTO mapToResponseDTO(RentalRequest r) {
-        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().map(d ->
-                new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit())
+        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().<RentRequestDetailResponseDTO>map(d ->
+                new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit(), d.getSection().getTempMin(), d.getSection().getTempMax(), d.getSection().getHumidity())
         ).toList();
 
         return new RentRequestResponseDTO(
                 r.getId(),
+                r.getWarehouse().getId(),
                 r.getWarehouse().getName(),
                 r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
+                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
                 r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                 r.getCargoDescription(),
                 r.getDuration(),
@@ -91,6 +94,7 @@ public class RentalRequestService {
                 r.getOfferedPrice(),
                 r.getRenterOfferedPrice(),
                 r.getOwnerNote(),
+                r.getRenterNote(),
                 detailDTOs
         );
     }
@@ -104,12 +108,62 @@ public class RentalRequestService {
             throw new RuntimeException("Bạn không có quyền thao tác!");
         }
 
-        if (request.getStatus() != com.ailogis.api.enums.RequestStatus.PENDING) {
-            throw new RuntimeException("Chỉ có thể hủy yêu cầu khi đang chờ duyệt!");
+        if (request.getStatus() != com.ailogis.api.enums.RequestStatus.PENDING &&
+            request.getStatus() != com.ailogis.api.enums.RequestStatus.NEGOTIATING) {
+            throw new RuntimeException("Chỉ có thể hủy yêu cầu khi đang chờ duyệt hoặc đang thương lượng!");
         }
 
         request.setStatus(com.ailogis.api.enums.RequestStatus.REJECTED);
         request.setRenterRejectionReason(reason != null ? reason : "Người thuê tự hủy");
+
+        return mapToResponseDTO(requestRepository.save(request));
+    }
+
+    @Transactional
+    public RentRequestResponseDTO acceptOffer(Long renterId, Long requestId) {
+        RentalRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê!"));
+
+        if (!request.getRenter().getId().equals(renterId)) {
+            throw new RuntimeException("Bạn không có quyền thao tác!");
+        }
+
+        if (request.getStatus() != com.ailogis.api.enums.RequestStatus.PENDING &&
+            request.getStatus() != com.ailogis.api.enums.RequestStatus.NEGOTIATING) {
+            throw new RuntimeException("Yêu cầu này không thể được chấp nhận!");
+        }
+
+        if (request.getOfferedPrice() == null) {
+            throw new RuntimeException("Không có giá đề xuất nào để chấp nhận!");
+        }
+
+        request.setStatus(com.ailogis.api.enums.RequestStatus.APPROVED);
+        return mapToResponseDTO(requestRepository.save(request));
+    }
+
+    @Transactional
+    public RentRequestResponseDTO counterOffer(Long renterId, Long requestId, String note, Double newPrice) {
+        RentalRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê!"));
+
+        if (!request.getRenter().getId().equals(renterId)) {
+            throw new RuntimeException("Bạn không có quyền thao tác!");
+        }
+
+        if (request.getStatus() != com.ailogis.api.enums.RequestStatus.PENDING &&
+            request.getStatus() != com.ailogis.api.enums.RequestStatus.NEGOTIATING) {
+            throw new RuntimeException("Yêu cầu này không thể phản đề xuất!");
+        }
+
+        if (newPrice == null || newPrice <= 0) {
+            throw new RuntimeException("Giá mới là bắt buộc!");
+        }
+
+        // Clear owner's offered price and set renter's new counter price
+        request.setOfferedPrice(null);
+        request.setRenterOfferedPrice(newPrice);
+        request.setRenterNote(note);
+        request.setStatus(com.ailogis.api.enums.RequestStatus.NEGOTIATING);
 
         return mapToResponseDTO(requestRepository.save(request));
     }

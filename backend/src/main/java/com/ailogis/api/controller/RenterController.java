@@ -56,6 +56,32 @@ public class RenterController {
         return ResponseEntity.ok(requestService.cancelRequestByRenter(userDetails.getUser().getId(), id, reason));
     }
 
+    @PatchMapping("/requests/{id}/accept-offer")
+    public ResponseEntity<RentRequestResponseDTO> acceptOffer(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long renterId = userDetails.getUser().getId();
+        return ResponseEntity.ok(requestService.acceptOffer(renterId, id));
+    }
+
+    @PatchMapping("/requests/{id}/counter-offer")
+    public ResponseEntity<RentRequestResponseDTO> counterOffer(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long renterId = userDetails.getUser().getId();
+        String note = body != null ? (String) body.get("note") : null;
+        Double newPrice = null;
+        if (body != null && body.get("newPrice") != null) {
+            if (body.get("newPrice") instanceof Number) {
+                newPrice = ((Number) body.get("newPrice")).doubleValue();
+            } else {
+                newPrice = Double.parseDouble(body.get("newPrice").toString());
+            }
+        }
+        return ResponseEntity.ok(requestService.counterOffer(renterId, id, note, newPrice));
+    }
+
     @PatchMapping("/contracts/{id}/sign")
     public ResponseEntity<ContractResponseDTO> signContract(
             @PathVariable Long id,

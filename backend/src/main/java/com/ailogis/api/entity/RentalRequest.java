@@ -58,6 +58,10 @@ public class RentalRequest {
     @Column(columnDefinition = "TEXT")
     private String ownerNote;
 
+    // Lời nhắn của Khách thuê gửi lại cho Chủ kho khi từ chối giá đề xuất (phản đề xuất)
+    @Column(columnDefinition = "TEXT")
+    private String renterNote;
+
     // Lý do hủy/từ chối của renter
     private String renterRejectionReason;
 

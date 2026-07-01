@@ -288,8 +288,11 @@ public class EmployeeService {
         List<RentRequestResponseDTO> requests = rentalRequestRepository.findByRenterIdWithFilter(userId, null).stream()
                 .map(r -> new RentRequestResponseDTO(
                         r.getId(),
+                        r.getWarehouse().getId(),
                         r.getWarehouse().getName(),
                         r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
+                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
                         r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                         r.getCargoDescription(),
                         r.getDuration(),
@@ -303,6 +306,7 @@ public class EmployeeService {
                         r.getOfferedPrice(),
                         r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
+                        r.getRenterNote(),
                         new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();
 
@@ -342,8 +346,11 @@ public class EmployeeService {
         List<RentRequestResponseDTO> requests = rentalRequestRepository.findByWarehouseOwnerIdWithFilter(userId, null).stream()
                 .map(r -> new RentRequestResponseDTO(
                         r.getId(),
+                        r.getWarehouse().getId(),
                         r.getWarehouse().getName(),
                         r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
+                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
                         r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                         r.getCargoDescription(),
                         r.getDuration(),
@@ -357,6 +364,7 @@ public class EmployeeService {
                         r.getOfferedPrice(),
                         r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
+                        r.getRenterNote(),
                         new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();
 

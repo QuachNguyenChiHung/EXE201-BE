@@ -8,5 +8,8 @@ public record RentRequestDetailResponseDTO(
         String priceTierLabel,
         Double priceTierValue,
         Double rentedArea,
-        String areaUnit
+        String areaUnit,
+        Double tempMin,
+        Double tempMax,
+        Double humidity
 ) {}

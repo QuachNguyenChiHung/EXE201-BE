@@ -423,7 +423,7 @@ public class DataInitializer implements CommandLineRunner {
                                 "Rau củ Đà Lạt nhập kho chờ phân phối", null, 2, "Tuần",
                                 LocalDate.now().minusWeeks(5), LocalDate.now().plusWeeks(2),
                                 4800000.0,
-                                List.of(new RentRequestDetailCreateDTO(sec2Id, pt2Id, 1.0, "sector")));
+                                List.of(new RentRequestDetailCreateDTO(sec2Id, pt2Id, 1.0, "m3")));
 
                 RentRequestResponseDTO req2Res = rentalRequestService.createRequest(renter2.getId(), req2Dto);
                 ownerService.updateRequestStatus(owner2.getId(), req2Res.id(), new RequestStatusUpdateDTO(
