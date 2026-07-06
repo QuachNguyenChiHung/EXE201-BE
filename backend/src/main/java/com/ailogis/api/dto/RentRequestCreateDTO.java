@@ -11,6 +11,5 @@ public record RentRequestCreateDTO(
         String durationUnit,
         LocalDate startDate,
         LocalDate endDate,
-        Double renterOfferedPrice,
         List<RentRequestDetailCreateDTO> details // Thuê nhiều phòng cùng lúc
 ) {}

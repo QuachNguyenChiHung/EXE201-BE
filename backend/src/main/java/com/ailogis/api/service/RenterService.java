@@ -136,4 +136,32 @@ public class RenterService {
                 review.getComment()
         );
     }
+
+    @Transactional
+    public PaymentResponseDTO payForRentalRequest(Long renterId, Long requestId, jakarta.servlet.http.HttpServletRequest request) {
+        RentalRequest rentalRequest = rentalRequestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê!"));
+
+        if (!rentalRequest.getRenter().getId().equals(renterId)) {
+            throw new RuntimeException("Không có quyền thanh toán cho yêu cầu này!");
+        }
+
+        if (rentalRequest.getStatus() != com.ailogis.api.enums.RequestStatus.PENDING_PAYMENT) {
+            throw new RuntimeException("Yêu cầu thuê không ở trạng thái chờ thanh toán!");
+        }
+
+        Transaction transaction = Transaction.builder()
+                .buyer(rentalRequest.getRenter())
+                .rentalRequest(rentalRequest)
+                .amount(100000.0)
+                .type("RENTAL_FEE")
+                .status("PENDING")
+                .createdAt(LocalDateTime.now())
+                .invoiceDate(LocalDateTime.now())
+                .build();
+        transaction = transactionRepository.save(transaction);
+
+        String paymentUrl = paymentService.createVNPayUrl(transaction, request);
+        return new PaymentResponseDTO(paymentUrl);
+    }
 }

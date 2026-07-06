@@ -399,7 +399,6 @@ public class DataInitializer implements CommandLineRunner {
                 RentRequestCreateDTO req1Dto = new RentRequestCreateDTO(wh1Entity.getId(),
                                 "Hải sản cá ngừ đại dương xuất khẩu", null, 6, "Tháng",
                                 LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(6),
-                                125000000.0,
                                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 500.0, "m3")));
 
                 RentRequestResponseDTO req1Res = rentalRequestService.createRequest(renter1.getId(), req1Dto);
@@ -422,7 +421,6 @@ public class DataInitializer implements CommandLineRunner {
                 RentRequestCreateDTO req2Dto = new RentRequestCreateDTO(wh2Entity.getId(),
                                 "Rau củ Đà Lạt nhập kho chờ phân phối", null, 2, "Tuần",
                                 LocalDate.now().minusWeeks(5), LocalDate.now().plusWeeks(2),
-                                4800000.0,
                                 List.of(new RentRequestDetailCreateDTO(sec2Id, pt2Id, 1.0, "sector")));
 
                 RentRequestResponseDTO req2Res = rentalRequestService.createRequest(renter2.getId(), req2Dto);
@@ -434,7 +432,6 @@ public class DataInitializer implements CommandLineRunner {
                 RentRequestCreateDTO req3Dto = new RentRequestCreateDTO(wh1Entity.getId(),
                                 "Thịt bò Kobe nhập khẩu đông lạnh", null, 3, "Tháng",
                                 LocalDate.now(), LocalDate.now().plusMonths(3),
-                                50000000.0,
                                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 200.0, "m3")));
                 rentalRequestService.createRequest(renter3.getId(), req3Dto);
 

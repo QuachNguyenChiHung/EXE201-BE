@@ -301,7 +301,6 @@ public class EmployeeService {
                         r.getRenterRejectionReason(),
                         r.getRejectionReason(),
                         r.getOfferedPrice(),
-                        r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
                         new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();
@@ -355,7 +354,6 @@ public class EmployeeService {
                         r.getRenterRejectionReason(),
                         r.getRejectionReason(),
                         r.getOfferedPrice(),
-                        r.getRenterOfferedPrice(),
                         r.getOwnerNote(),
                         new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();

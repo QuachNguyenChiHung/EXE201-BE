@@ -18,4 +18,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Double sumTotalBillingByBuyerId(@Param("buyerId") Long buyerId);
 
     List<Transaction> findByStatus(String status);
+
+    Transaction findByRentalRequestIdAndStatus(Long rentalRequestId, String status);
 }

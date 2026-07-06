@@ -22,6 +22,7 @@ public class RentalRequestService {
     private final UserRepository userRepository;
     private final WarehouseSectionRepository sectionRepository;
     private final PriceTierRepository priceTierRepository;
+    private final PaymentService paymentService;
 
     @Transactional
     public RentRequestResponseDTO createRequest(Long renterId, RentRequestCreateDTO dto) {
@@ -38,8 +39,7 @@ public class RentalRequestService {
                 .otherDetail(dto.otherDetail()).duration(dto.duration()).durationUnit(dto.durationUnit())
                 .startDate(dto.startDate())
                 .endDate(dto.endDate())
-                .renterOfferedPrice(dto.renterOfferedPrice())
-                .status(RequestStatus.PENDING).build();
+                .status(RequestStatus.PENDING_PAYMENT).build();
 
         List<RentRequestDetail> details = dto.details().stream().map(dDto -> {
             WarehouseSection section = sectionRepository.findById(dDto.sectionId())
@@ -89,7 +89,6 @@ public class RentalRequestService {
                 r.getRenterRejectionReason(),
                 r.getRejectionReason(),
                 r.getOfferedPrice(),
-                r.getRenterOfferedPrice(),
                 r.getOwnerNote(),
                 detailDTOs
         );
@@ -125,6 +124,40 @@ public class RentalRequestService {
         verifyAccess(userDetails, ownerId, renterId);
 
         return mapToResponseDTO(request);
+    }
+
+    @Transactional
+    public ContactInfoResponseDTO acceptRentalRequest(Long ownerId, Long requestId) {
+        RentalRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê này"));
+
+        if (!request.getWarehouse().getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Không có quyền truy cập");
+        }
+
+        request.setStatus(RequestStatus.APPROVED);
+        requestRepository.save(request);
+
+        String renterPhone = request.getRenter().getPhone();
+        String ownerPhone = request.getWarehouse().getOwner().getPhone();
+
+        return new ContactInfoResponseDTO(renterPhone, ownerPhone, "Chấp nhận thành công, hệ thống đã mở khóa thông tin liên hệ.");
+    }
+
+    @Transactional
+    public void rejectRentalRequest(Long ownerId, Long requestId, String reason) {
+        RentalRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê này"));
+
+        if (!request.getWarehouse().getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Không có quyền truy cập");
+        }
+
+        request.setStatus(RequestStatus.REJECTED);
+        request.setRejectionReason(reason);
+        requestRepository.save(request);
+
+        paymentService.refundTransaction(request.getId());
     }
 
     private void verifyAccess(CustomUserDetails userDetails, Long ownerId, Long renterId) {

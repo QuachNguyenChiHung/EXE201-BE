@@ -4,6 +4,7 @@ import com.ailogis.api.dto.*;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.FileStorageService;
 import com.ailogis.api.service.OwnerService;
+import com.ailogis.api.service.RentalRequestService;
 import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/owners")
@@ -26,6 +28,7 @@ public class OwnerController {
     private final OwnerService ownerService;
     private final FileStorageService fileStorageService;
     private final WarehouseService warehouseService;
+    private final RentalRequestService rentalRequestService;
 
     // 1. Lấy danh sách kho bãi của CHÍNH Chủ kho đang đăng nhập
     @GetMapping("/warehouses")
@@ -210,5 +213,25 @@ public class OwnerController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.getSponsorTiersForOwner(ownerId));
+    }
+
+    @PutMapping("/requests/{requestId}/accept")
+    public ResponseEntity<ContactInfoResponseDTO> acceptRequest(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(rentalRequestService.acceptRentalRequest(ownerId, requestId));
+    }
+
+    @PutMapping("/requests/{requestId}/reject")
+    public ResponseEntity<String> rejectRequest(
+            @PathVariable Long requestId,
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        String reason = (body != null && body.containsKey("reason")) ? body.get("reason") : "Chủ kho từ chối yêu cầu";
+
+        rentalRequestService.rejectRentalRequest(ownerId, requestId, reason);
+        return ResponseEntity.ok("Đã từ chối yêu cầu thuê và tự động hoàn tiền cho Renter qua VNPay.");
     }
 }

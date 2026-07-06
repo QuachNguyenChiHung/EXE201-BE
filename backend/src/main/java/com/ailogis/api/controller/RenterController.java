@@ -121,4 +121,13 @@ public class RenterController {
         Long renterId = userDetails.getUser().getId();
         return ResponseEntity.ok(renterService.createReview(renterId, warehouseId, dto));
     }
+
+    @PostMapping("/requests/{id}/pay")
+    public ResponseEntity<PaymentResponseDTO> payForRentalRequest(
+            @PathVariable Long id,
+            HttpServletRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long renterId = userDetails.getUser().getId();
+        return ResponseEntity.ok(renterService.payForRentalRequest(renterId, id, request));
+    }
 }

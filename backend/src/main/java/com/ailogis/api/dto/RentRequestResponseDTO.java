@@ -18,7 +18,6 @@ public record RentRequestResponseDTO(
         String renterRejectionReason,
         String rejectionReason,
         Double offeredPrice,
-        Double renterOfferedPrice,
         String ownerNote,
 
         List<RentRequestDetailResponseDTO> details

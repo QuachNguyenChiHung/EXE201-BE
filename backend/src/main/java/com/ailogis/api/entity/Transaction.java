@@ -27,15 +27,20 @@ public class Transaction {
     @JoinColumn(name = "id_sponsor")
     private SponsorTier sponsor;
 
-    private String status;
-    private String type;
-
-    private LocalDateTime createdAt;
-    private LocalDateTime invoiceDate;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_warehouse")
     private Warehouse warehouse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_rental_request")
+    private RentalRequest rentalRequest;
+
+    private String status;
+    private String type;
+    private LocalDateTime createdAt;
+    private LocalDateTime invoiceDate;
     private Double amount;
+    private String vnpTxnRef;
+    private String vnpTransactionNo;
+    private String vnpPayDate;
 }
