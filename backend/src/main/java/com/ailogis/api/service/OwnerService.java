@@ -97,13 +97,16 @@ public class OwnerService {
     }
 
     private RentRequestResponseDTO mapToRequestDTO(RentalRequest r) {
-        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().map(d ->
-                new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit())
+        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().<RentRequestDetailResponseDTO>map(d ->
+                new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit(), d.getSection().getTempMin(), d.getSection().getTempMax(), d.getSection().getHumidity())
         ).toList();
         return new RentRequestResponseDTO(
                 r.getId(),
+                r.getWarehouse().getId(),
                 r.getWarehouse().getName(),
                 r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
+                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
+                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
                 r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                 r.getCargoDescription(),
                 r.getDuration(),
@@ -116,6 +119,7 @@ public class OwnerService {
                 r.getRejectionReason(),
                 r.getOfferedPrice(),
                 r.getOwnerNote(),
+                r.getRenterNote(),
                 detailDTOs
         );
     }

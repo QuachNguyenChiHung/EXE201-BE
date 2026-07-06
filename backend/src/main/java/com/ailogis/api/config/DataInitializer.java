@@ -399,6 +399,7 @@ public class DataInitializer implements CommandLineRunner {
                 RentRequestCreateDTO req1Dto = new RentRequestCreateDTO(wh1Entity.getId(),
                                 "Hải sản cá ngừ đại dương xuất khẩu", null, 6, "Tháng",
                                 LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(6),
+                                125000000.0,
                                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 500.0, "m3")));
 
                 RentRequestResponseDTO req1Res = rentalRequestService.createRequest(renter1.getId(), req1Dto);

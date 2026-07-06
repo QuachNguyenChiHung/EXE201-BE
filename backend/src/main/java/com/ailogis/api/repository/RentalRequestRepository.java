@@ -11,15 +11,20 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.util.List;
+
 @Repository
 public interface RentalRequestRepository extends JpaRepository<RentalRequest, Long> {
     @Query("SELECT r FROM RentalRequest r WHERE r.renter.id = :renterId AND (:status IS NULL OR r.status = :status)")
-    List<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId, @Param("status") RequestStatus status);
+    List<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId,
+            @Param("status") RequestStatus status);
 
     @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.owner.id = :ownerId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
-    Page<RentalRequest> findByWarehouseOwnerIdWithFilter(@Param("ownerId") Long ownerId, @Param("status") RequestStatus status, Pageable pageable);
+    Page<RentalRequest> findByWarehouseOwnerIdWithFilter(@Param("ownerId") Long ownerId,
+            @Param("status") RequestStatus status, Pageable pageable);
+
     @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.owner.id = :ownerId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
-    List<RentalRequest> findByWarehouseOwnerIdWithFilter(@Param("ownerId") Long ownerId, @Param("status") RequestStatus status);
+    List<RentalRequest> findByWarehouseOwnerIdWithFilter(@Param("ownerId") Long ownerId,
+            @Param("status") RequestStatus status);
 
     long countByStatus(RequestStatus status);
 
@@ -31,14 +36,17 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
     List<RentalRequest> findByWarehouseIdAndStatus(Long warehouseId, RequestStatus status);
 
     @Query("SELECT r FROM RentalRequest r WHERE r.warehouse.id = :warehouseId AND (:status IS NULL OR r.status = :status) ORDER BY r.id DESC")
-    Page<RentalRequest> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") RequestStatus status, Pageable pageable);
+    Page<RentalRequest> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId,
+            @Param("status") RequestStatus status, Pageable pageable);
 
     @Query("SELECT r FROM RentalRequest r WHERE r.renter.id = :renterId AND (:status IS NULL OR r.status = :status) ORDER BY r.submitAt DESC")
-    Page<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId, @Param("status") RequestStatus status, Pageable pageable);
+    Page<RentalRequest> findByRenterIdWithFilter(@Param("renterId") Long renterId,
+            @Param("status") RequestStatus status, Pageable pageable);
 
     long countByRenterId(Long renterId);
 
-    // Đếm các đơn bị Owner đổi giá (offeredPrice != null) và đang chờ Renter phản hồi
+    // Đếm các đơn bị Owner đổi giá (offeredPrice != null) và đang chờ Renter phản
+    // hồi
     @Query("SELECT COUNT(r) FROM RentalRequest r WHERE r.renter.id = :renterId AND r.status = 'PENDING' AND r.offeredPrice IS NOT NULL")
     long countOwnerUpdatedRequests(@Param("renterId") Long renterId);
 
