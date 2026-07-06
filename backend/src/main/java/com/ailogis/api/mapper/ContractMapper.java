@@ -15,7 +15,9 @@ public class ContractMapper {
         return new ContractResponseDTO(
                 c.getId(),
                 c.getRequest() != null ? c.getRequest().getId() : null,
-                (c.getRequest() != null && c.getRequest().getWarehouse() != null) ? c.getRequest().getWarehouse().getName() : "N/A",
+                (c.getRequest() != null && c.getRequest().getWarehouse() != null)
+                        ? c.getRequest().getWarehouse().getName()
+                        : "N/A",
                 c.getCargoDescription(),
                 c.getStartAt(),
                 c.getEndAt(),
@@ -39,7 +41,6 @@ public class ContractMapper {
                 c.getRenterAddress(),
 
                 c.getTotalPrice(),
-                c.getStatus() != null ? c.getStatus().name() : null
-        );
+                c.getStatus() != null ? c.getStatus().name() : null);
     }
 }

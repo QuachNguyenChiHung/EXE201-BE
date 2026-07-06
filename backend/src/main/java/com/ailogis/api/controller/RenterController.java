@@ -56,6 +56,14 @@ public class RenterController {
         return ResponseEntity.ok(requestService.cancelRequestByRenter(userDetails.getUser().getId(), id, reason));
     }
 
+    @GetMapping("/requests/{id}/contact")
+    public ResponseEntity<ContactInfoResponseDTO> getContactInfo(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long renterId = userDetails.getUser().getId();
+        return ResponseEntity.ok(requestService.getContactInfo(id, renterId));
+    }
+
     @PatchMapping("/contracts/{id}/sign")
     public ResponseEntity<ContractResponseDTO> signContract(
             @PathVariable Long id,

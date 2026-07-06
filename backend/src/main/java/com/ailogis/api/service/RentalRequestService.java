@@ -113,6 +113,28 @@ public class RentalRequestService {
         return mapToResponseDTO(requestRepository.save(request));
     }
 
+    public ContactInfoResponseDTO getContactInfo(Long requestId, Long userId) {
+        RentalRequest request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy yêu cầu thuê!"));
+
+        if (request.getStatus() != RequestStatus.APPROVED) {
+            throw new RuntimeException("Chỉ có thể xem liên hệ khi yêu cầu đã được chấp nhận");
+        }
+
+        Long renterId = request.getRenter().getId();
+        Long ownerId = request.getWarehouse().getOwner().getId();
+
+        if (!userId.equals(renterId) && !userId.equals(ownerId)) {
+            throw new RuntimeException("Bạn không có quyền xem thông tin liên hệ!");
+        }
+
+        return new ContactInfoResponseDTO(
+                request.getRenter().getPhone(),
+                request.getWarehouse().getOwner().getPhone(),
+                "Thông tin liên hệ đã được mở khóa"
+        );
+    }
+
     // Kiểm tra xem có phải là Employee hoặc Owner/Renter liên quan đến Data
     public RentRequestResponseDTO getRequestDetail(Long id, CustomUserDetails userDetails) {
         RentalRequest request = requestRepository.findById(id)
