@@ -399,12 +399,11 @@ public class DataInitializer implements CommandLineRunner {
                 RentRequestCreateDTO req1Dto = new RentRequestCreateDTO(wh1Entity.getId(),
                                 "Hải sản cá ngừ đại dương xuất khẩu", null, 6, "Tháng",
                                 LocalDate.now().minusMonths(1), LocalDate.now().plusMonths(6),
-                                125000000.0,
                                 List.of(new RentRequestDetailCreateDTO(sec1Id, pt1Id, 500.0, "m3")));
 
                 RentRequestResponseDTO req1Res = rentalRequestService.createRequest(renter1.getId(), req1Dto);
                 ownerService.updateRequestStatus(owner1.getId(), req1Res.id(), new RequestStatusUpdateDTO(
-                                RequestStatus.APPROVED, null, null, "Đồng ý cho thuê giá gốc"));
+                                RequestStatus.APPROVED, null, "Đồng ý cho thuê giá gốc"));
 
                 ContractResponseDTO c1Res = contractService.createContract(owner1.getId(), new ContractCreateDTO(
                                 req1Res.id(),
@@ -426,7 +425,7 @@ public class DataInitializer implements CommandLineRunner {
 
                 RentRequestResponseDTO req2Res = rentalRequestService.createRequest(renter2.getId(), req2Dto);
                 ownerService.updateRequestStatus(owner2.getId(), req2Res.id(), new RequestStatusUpdateDTO(
-                                RequestStatus.APPROVED, null, null, "Kho lạnh Tân Bình xác nhận yêu cầu."));
+                                RequestStatus.APPROVED, null, "Kho lạnh Tân Bình xác nhận yêu cầu."));
 
                 // Renter 3 gửi yêu cầu thuê Kho 1 nhưng Owner chưa duyệt (Tổng giá gốc: 200m3 *
                 // 260k = 52tr/tháng), Renter trả giá 50tr

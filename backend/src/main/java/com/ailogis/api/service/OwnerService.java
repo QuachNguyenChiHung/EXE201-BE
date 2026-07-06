@@ -83,11 +83,6 @@ public class OwnerService {
             request.setRejectionReason(dto.rejectionReason());
         }
 
-        // Cập nhật giá thương lượng
-        if (dto.offeredPrice() != null) {
-            request.setOfferedPrice(dto.offeredPrice());
-        }
-
         // Lời nhắn của Owner
         if (dto.ownerNote() != null) {
             request.setOwnerNote(dto.ownerNote());
