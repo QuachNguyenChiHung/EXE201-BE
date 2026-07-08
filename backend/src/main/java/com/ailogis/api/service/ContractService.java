@@ -27,6 +27,7 @@ public class ContractService {
     private final RentalRequestRepository requestRepository;
     private final WarehouseSectionRepository sectionRepository;
     private final ContractMapper contractMapper;
+    private final NotificationService notificationService;
 
     @Transactional
     public ContractResponseDTO createContract(Long ownerId, ContractCreateDTO dto) {
@@ -92,6 +93,9 @@ public class ContractService {
                 .build();
 
         Contract saved = contractRepository.save(contract);
+
+        notificationService.saveAndNotify(renter.getId(),
+                "Chủ kho đã gửi hợp đồng thuê cho kho '" + request.getWarehouse().getName() + "'. Vui lòng xem và ký xác nhận.");
 
         if (initialStatus == ContractStatus.PENDING) {
             request.setStatus(RequestStatus.APPROVED);
@@ -259,7 +263,12 @@ public class ContractService {
                 .parentContractId(oldContract.getId())
                 .build();
 
-        return contractMapper.toContractResponseDTO(contractRepository.save(newContract));
+        Contract saved = contractRepository.save(newContract);
+
+        notificationService.saveAndNotify(oldContract.getRenter().getId(),
+                "Chủ kho đã gửi phụ lục sửa đổi hợp đồng cho kho '" + oldContract.getRequest().getWarehouse().getName() + "'. Vui lòng xem và ký xác nhận.");
+
+        return contractMapper.toContractResponseDTO(saved);
     }
 
     @Transactional
@@ -290,7 +299,13 @@ public class ContractService {
             }
         }
 
-        return contractMapper.toContractResponseDTO(contractRepository.save(contract));
+        contractRepository.save(contract);
+
+        String warehouseName = contract.getRequest().getWarehouse().getName();
+        notificationService.saveAndNotify(contract.getOwner().getId(),
+                "Khách thuê đã ký hợp đồng cho kho '" + warehouseName + "'");
+
+        return contractMapper.toContractResponseDTO(contract);
     }
 
     @Transactional
@@ -309,7 +324,45 @@ public class ContractService {
         contract.setStatus(ContractStatus.CANCELED);
         contract.setCancelReason(reason != null ? "Khách thuê từ chối ký: " + reason : "Khách thuê không đồng ý với các điều khoản trong hợp đồng.");
 
-        return contractMapper.toContractResponseDTO(contractRepository.save(contract));
+        Contract saved = contractRepository.save(contract);
+
+        notificationService.saveAndNotify(contract.getOwner().getId(),
+                "Khách thuê đã từ chối hợp đồng cho kho '" + contract.getRequest().getWarehouse().getName() + "'"
+                        + (reason != null && !reason.isBlank() ? ": " + reason : ""));
+
+        return contractMapper.toContractResponseDTO(saved);
+    }
+
+    @Transactional
+    public ContractResponseDTO cancelContract(Long renterId, Long contractId, String reason) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        if (!contract.getRenter().getId().equals(renterId)) {
+            throw new RuntimeException("Lỗi bảo mật: Chỉ Khách thuê của hợp đồng này mới có quyền hủy!");
+        }
+
+        if (contract.getStatus() != ContractStatus.ACTIVE) {
+            throw new RuntimeException("Chỉ có thể hủy hợp đồng đang có hiệu lực (ACTIVE)!");
+        }
+
+        // Hoàn trả diện tích đã thuê
+        for (RentRequestDetail detail : contract.getRequest().getDetails()) {
+            WarehouseSection section = detail.getSection();
+            section.setAvailableCapacity(section.getAvailableCapacity() + detail.getRentedArea());
+            sectionRepository.save(section);
+        }
+
+        contract.setStatus(ContractStatus.CANCELED);
+        contract.setCancelReason(reason != null ? "Khách thuê hủy: " + reason : "Khách thuê yêu cầu hủy hợp đồng.");
+
+        Contract saved = contractRepository.save(contract);
+
+        notificationService.saveAndNotify(contract.getOwner().getId(),
+                "Khách thuê đã hủy hợp đồng cho kho '" + contract.getRequest().getWarehouse().getName() + "'"
+                        + (reason != null && !reason.isBlank() ? ": " + reason : ""));
+
+        return contractMapper.toContractResponseDTO(saved);
     }
 
     public ContractMetaDataResponseDTO getMetaDataForContract(Long requestId) {

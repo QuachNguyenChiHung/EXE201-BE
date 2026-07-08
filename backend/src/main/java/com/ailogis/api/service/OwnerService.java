@@ -37,6 +37,7 @@ public class OwnerService {
     private final PaymentService paymentService;
     private final ContractMapper contractMapper;
     private final FileStorageService fileStorageService;
+    private final NotificationService notificationService;
 
     public Page<WarehouseResponseDTO> getMyWarehouses(Long ownerId, String statusStr, Pageable pageable) {
         WarehouseStatus statusEnum = null;
@@ -115,6 +116,8 @@ public class OwnerService {
                 r.getOfferedPrice(),
                 r.getOwnerNote(),
                 r.getRenterNote(),
+                r.getRenter() != null ? r.getRenter().getPhone() : null,
+                r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getPhone() : null,
                 detailDTOs
         );
     }
@@ -488,7 +491,21 @@ public class OwnerService {
                         .build());
             }
         }
-        return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+
+        warehouseRepository.save(warehouse);
+
+        // Notify all renters who have a pending/approved request on this warehouse
+        List<Long> renterIds = requestRepository.findDistinctRenterIdsByWarehouseIdAndStatusIn(
+                warehouseId,
+                List.of(RequestStatus.PENDING, RequestStatus.PENDING_PAYMENT, RequestStatus.APPROVED)
+        );
+        String ownerName = warehouse.getOwner().getFullName();
+        for (Long renterId : renterIds) {
+            notificationService.saveAndNotify(renterId,
+                    "Chủ kho '" + ownerName + "' đã cập nhật kho '" + warehouse.getName() + "'");
+        }
+
+        return warehouseMapper.toWarehouseResponseDTO(warehouse);
     }
 
     // Trong OwnerService.java (Nhớ Inject thêm PaymentService)

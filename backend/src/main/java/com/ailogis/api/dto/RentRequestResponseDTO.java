@@ -23,6 +23,8 @@ public record RentRequestResponseDTO(
         Double offeredPrice,
         String ownerNote,
         String renterNote,
+        String renterPhone,
+        String ownerPhone,
 
         List<RentRequestDetailResponseDTO> details
 ) {}

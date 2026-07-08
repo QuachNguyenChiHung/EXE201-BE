@@ -23,6 +23,7 @@ public class RentalRequestService {
     private final WarehouseSectionRepository sectionRepository;
     private final PriceTierRepository priceTierRepository;
     private final PaymentService paymentService;
+    private final NotificationService notificationService;
 
     @Transactional
     public RentRequestResponseDTO createRequest(Long renterId, RentRequestCreateDTO dto) {
@@ -58,7 +59,15 @@ public class RentalRequestService {
         }).toList();
 
         request.setDetails(details);
-        return mapToResponseDTO(requestRepository.save(request));
+        RentalRequest saved = requestRepository.save(request);
+
+        // Notify the warehouse owner
+        User owner = warehouse.getOwner();
+        notificationService.saveAndNotify(owner.getId(),
+                "Yêu cầu thuê mới từ " + renter.getFullName() +
+                " cho kho '" + warehouse.getName() + "'");
+
+        return mapToResponseDTO(saved);
     }
 
     public Page<RentRequestResponseDTO> getRequestsByRenter(Long renterId, String statusStr, Pageable pageable) {
@@ -70,6 +79,10 @@ public class RentalRequestService {
     }
 
     private RentRequestResponseDTO mapToResponseDTO(RentalRequest r) {
+        // Re-fetch users to get the latest phone numbers
+        User freshRenter = userRepository.findById(r.getRenter().getId()).orElse(r.getRenter());
+        User freshOwner = userRepository.findById(r.getWarehouse().getOwner().getId()).orElse(r.getWarehouse().getOwner());
+
         List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().<RentRequestDetailResponseDTO>map(d ->
                 new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit(), d.getSection().getTempMin(), d.getSection().getTempMax(), d.getSection().getHumidity())
         ).toList();
@@ -94,6 +107,8 @@ public class RentalRequestService {
                 r.getOfferedPrice(),
                 r.getOwnerNote(),
                 r.getRenterNote(),
+                freshRenter.getPhone(),
+                freshOwner.getPhone(),
                 detailDTOs
         );
     }
@@ -128,9 +143,13 @@ public class RentalRequestService {
             throw new RuntimeException("Bạn không có quyền xem thông tin liên hệ!");
         }
 
+        // Re-fetch to get the latest phone (may not have been persisted at registration time)
+        User freshRenter = userRepository.findById(renterId).orElse(request.getRenter());
+        User freshOwner = userRepository.findById(ownerId).orElse(request.getWarehouse().getOwner());
+
         return new ContactInfoResponseDTO(
-                request.getRenter().getPhone(),
-                request.getWarehouse().getOwner().getPhone(),
+                freshRenter.getPhone(),
+                freshOwner.getPhone(),
                 "Thông tin liên hệ đã được mở khóa"
         );
     }
@@ -160,8 +179,15 @@ public class RentalRequestService {
         request.setStatus(RequestStatus.APPROVED);
         requestRepository.save(request);
 
-        String renterPhone = request.getRenter().getPhone();
-        String ownerPhone = request.getWarehouse().getOwner().getPhone();
+        notificationService.saveAndNotify(request.getRenter().getId(),
+                "Yêu cầu thuê kho '" + request.getWarehouse().getName() + "' đã được chấp nhận");
+
+        // Re-fetch renter from DB to ensure we have the latest phone (it may not have been persisted at registration time)
+        User freshRenter = userRepository.findById(request.getRenter().getId()).orElse(request.getRenter());
+        User freshOwner = userRepository.findById(request.getWarehouse().getOwner().getId()).orElse(request.getWarehouse().getOwner());
+
+        String renterPhone = freshRenter.getPhone();
+        String ownerPhone = freshOwner.getPhone();
 
         return new ContactInfoResponseDTO(renterPhone, ownerPhone, "Chấp nhận thành công, hệ thống đã mở khóa thông tin liên hệ.");
     }
@@ -178,6 +204,10 @@ public class RentalRequestService {
         request.setStatus(RequestStatus.REJECTED);
         request.setRejectionReason(reason);
         requestRepository.save(request);
+
+        notificationService.saveAndNotify(request.getRenter().getId(),
+                "Yêu cầu thuê kho '" + request.getWarehouse().getName() + "' đã bị từ chối"
+                        + (reason != null && !reason.isBlank() ? ": " + reason : ""));
 
         paymentService.refundTransaction(request.getId());
     }

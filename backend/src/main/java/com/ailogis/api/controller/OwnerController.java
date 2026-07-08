@@ -229,9 +229,17 @@ public class OwnerController {
             @RequestBody(required = false) Map<String, String> body,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long ownerId = userDetails.getUser().getId();
-        String reason = (body != null && body.containsKey("reason")) ? body.get("reason") : "Chủ kho từ chối yêu cầu";
+        String reason = body != null && body.get("reason") != null ? body.get("reason") : "Chủ kho từ chối yêu cầu";
 
         rentalRequestService.rejectRentalRequest(ownerId, requestId, reason);
         return ResponseEntity.ok("Đã từ chối yêu cầu thuê và tự động hoàn tiền cho Renter qua VNPay.");
+    }
+
+    @GetMapping("/requests/{requestId}/contact")
+    public ResponseEntity<ContactInfoResponseDTO> getRequestContactInfo(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(rentalRequestService.getContactInfo(requestId, ownerId));
     }
 }

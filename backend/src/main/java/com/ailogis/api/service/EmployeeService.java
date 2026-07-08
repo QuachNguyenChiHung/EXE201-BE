@@ -306,6 +306,8 @@ public class EmployeeService {
                         r.getOfferedPrice(),
                         r.getOwnerNote(),
                         r.getRenterNote(),
+                        r.getRenter() != null ? r.getRenter().getPhone() : null,
+                        r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getPhone() : null,
                         new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();
 
@@ -363,6 +365,8 @@ public class EmployeeService {
                         r.getOfferedPrice(),
                         r.getOwnerNote(),
                         r.getRenterNote(),
+                        r.getRenter() != null ? r.getRenter().getPhone() : null,
+                        r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getPhone() : null,
                         new java.util.ArrayList<RentRequestDetailResponseDTO>()
                 )).toList();
 

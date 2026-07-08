@@ -85,6 +85,17 @@ public class RenterController {
         return ResponseEntity.ok(contractService.rejectContract(renterId, id, reason));
     }
 
+    @PatchMapping("/contracts/{id}/cancel")
+    public ResponseEntity<ContractResponseDTO> cancelContract(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+
+        Long renterId = userDetails.getUser().getId();
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(contractService.cancelContract(renterId, id, reason));
+    }
+
     @GetMapping("/statistics")
     public ResponseEntity<RenterStatisticResponseDTO> getDashboardStatistics(
             @RequestParam(defaultValue = "30") int expireDays,

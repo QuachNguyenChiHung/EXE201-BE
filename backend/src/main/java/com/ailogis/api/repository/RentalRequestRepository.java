@@ -51,4 +51,9 @@ public interface RentalRequestRepository extends JpaRepository<RentalRequest, Lo
     long countOwnerUpdatedRequests(@Param("renterId") Long renterId);
 
     List<RentalRequest> findByStatusAndUpdatedAtBefore(RequestStatus status, java.time.LocalDate cutoffDate);
+
+    @Query("SELECT DISTINCT r.renter.id FROM RentalRequest r WHERE r.warehouse.id = :warehouseId AND r.status IN :statuses")
+    List<Long> findDistinctRenterIdsByWarehouseIdAndStatusIn(
+            @Param("warehouseId") Long warehouseId,
+            @Param("statuses") List<RequestStatus> statuses);
 }
