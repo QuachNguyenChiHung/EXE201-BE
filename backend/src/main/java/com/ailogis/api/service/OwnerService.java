@@ -62,7 +62,8 @@ public class OwnerService {
                 throw new RuntimeException("Trạng thái Request không hợp lệ!");
             }
         }
-        return requestRepository.findByWarehouseOwnerIdWithFilter(ownerId, statusEnum, pageable).map(this::mapToRequestDTO);
+        return requestRepository.findByWarehouseOwnerIdWithFilter(ownerId, statusEnum, pageable)
+                .map(this::mapToRequestDTO);
     }
 
     @Transactional
@@ -93,16 +94,23 @@ public class OwnerService {
     }
 
     private RentRequestResponseDTO mapToRequestDTO(RentalRequest r) {
-        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().<RentRequestDetailResponseDTO>map(d ->
-                new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit(), d.getSection().getTempMin(), d.getSection().getTempMax(), d.getSection().getHumidity())
-        ).toList();
+        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream()
+                .<RentRequestDetailResponseDTO>map(d -> new RentRequestDetailResponseDTO(d.getId(),
+                        d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(),
+                        d.getRentedArea(), d.getAreaUnit(), d.getSection().getTempMin(), d.getSection().getTempMax(),
+                        d.getSection().getHumidity()))
+                .toList();
         return new RentRequestResponseDTO(
                 r.getId(),
                 r.getWarehouse().getId(),
                 r.getWarehouse().getName(),
                 r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
-                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
-                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
+                r.getRenter() != null && r.getRenter().getCompany() != null
+                        ? r.getRenter().getCompany().getCompanyName()
+                        : null,
+                r.getRenter() != null && r.getRenter().getCompany() != null
+                        ? r.getRenter().getCompany().getCompanyTaxCode()
+                        : null,
                 r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                 r.getCargoDescription(),
                 r.getDuration(),
@@ -118,12 +126,12 @@ public class OwnerService {
                 r.getRenterNote(),
                 r.getRenter() != null ? r.getRenter().getPhone() : null,
                 r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getPhone() : null,
-                detailDTOs
-        );
+                detailDTOs);
     }
 
     @Transactional
-    public WarehouseResponseDTO createWarehouse(Long ownerId, WarehouseCreateDTO dto, List<String> imageUrls, List<WarehouseCertCreateDTO> certificates) {
+    public WarehouseResponseDTO createWarehouse(Long ownerId, WarehouseCreateDTO dto, List<String> imageUrls,
+            List<WarehouseCertCreateDTO> certificates) {
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new RuntimeException("Chủ kho không tồn tại!"));
 
@@ -161,15 +169,13 @@ public class OwnerService {
                         .build();
 
                 if (secDto.priceTiers() != null) {
-                    List<PriceTier> priceTiers = secDto.priceTiers().stream().map(ptDto ->
-                            PriceTier.builder()
-                                    .section(section)
-                                    .label(ptDto.label())
-                                    .value(ptDto.value())
-                                    .unit(ptDto.unit())
-                                    .areaUnit(ptDto.areaUnit())
-                                    .build()
-                    ).toList();
+                    List<PriceTier> priceTiers = secDto.priceTiers().stream().map(ptDto -> PriceTier.builder()
+                            .section(section)
+                            .label(ptDto.label())
+                            .value(ptDto.value())
+                            .unit(ptDto.unit())
+                            .areaUnit(ptDto.areaUnit())
+                            .build()).toList();
                     section.getPriceTiers().addAll(priceTiers);
                 }
                 return section;
@@ -193,7 +199,8 @@ public class OwnerService {
         if (certificates != null && !certificates.isEmpty()) {
             for (WarehouseCertCreateDTO certDto : certificates) {
                 CertificationType type = certificationTypeRepository.findById(certDto.certTypeId())
-                        .orElseThrow(() -> new RuntimeException("Loại chứng chỉ với ID " + certDto.certTypeId() + " không tồn tại!"));
+                        .orElseThrow(() -> new RuntimeException(
+                                "Loại chứng chỉ với ID " + certDto.certTypeId() + " không tồn tại!"));
 
                 warehouse.getCertificationSubmits().add(CertificationSubmit.builder()
                         .warehouse(warehouse)
@@ -232,15 +239,15 @@ public class OwnerService {
             occupancyRate = ((totalCapacity - totalAvailable) / totalCapacity) * 100.0;
         }
 
-        // 2. Thống kê Request (Chỉ đếm các Request Pending tạo/cập nhật trong 30 ngày gần đây)
+        // 2. Thống kê Request (Chỉ đếm các Request Pending tạo/cập nhật trong 30 ngày
+        // gần đây)
         LocalDate thirtyDaysAgo = LocalDate.now().minusDays(30);
         long pendingRequests = requestRepository.countPendingRequestsByOwner(ownerId, thirtyDaysAgo);
 
         // 3. Thống kê Contract
         long activeContracts = contractRepository.countByOwnerIdAndStatus(
                 ownerId,
-                ContractStatus.ACTIVE
-        );
+                ContractStatus.ACTIVE);
 
         LocalDate thirtyDaysFromNow = LocalDate.now().plusDays(30);
         long endingContracts = contractRepository.countEndingContracts(ownerId, thirtyDaysFromNow);
@@ -252,8 +259,7 @@ public class OwnerService {
         Double billing = transactionRepository.sumSponsorBillingByDateRange(
                 ownerId,
                 startOfMonth,
-                endOfMonth
-        );
+                endOfMonth);
 
         return new OwnerStatisticResponseDTO(
                 totalWarehouses,
@@ -263,8 +269,7 @@ public class OwnerService {
                 pendingRequests,
                 activeContracts,
                 billing != null ? billing : 0.0,
-                endingContracts
-        );
+                endingContracts);
     }
 
     public WarehouseRatingResponseDTO getWarehouseRatings(Long ownerId, Long warehouseId) {
@@ -283,14 +288,12 @@ public class OwnerService {
                 r.getId(),
                 r.getUser() != null ? r.getUser().getFullName() : "Khách hàng ẩn danh",
                 r.getRating(),
-                r.getComment()
-        )).toList();
+                r.getComment())).toList();
 
         return new WarehouseRatingResponseDTO(
                 Math.round(avg * 10.0) / 10.0,
                 reviews.size(),
-                dtos
-        );
+                dtos);
     }
 
     @Transactional
@@ -308,7 +311,8 @@ public class OwnerService {
 
         warehouse.setStatus(WarehouseStatus.INACTIVE);
 
-        List<RentalRequest> pendingRequests = requestRepository.findByWarehouseIdAndStatus(warehouseId, RequestStatus.PENDING);
+        List<RentalRequest> pendingRequests = requestRepository.findByWarehouseIdAndStatus(warehouseId,
+                RequestStatus.PENDING);
         for (RentalRequest req : pendingRequests) {
             req.setStatus(RequestStatus.REJECTED);
             req.setRejectionReason("Hệ thống tự động hủy: Kho bãi đã ngừng hoạt động hoặc bị chủ kho gỡ bỏ.");
@@ -335,18 +339,20 @@ public class OwnerService {
 
         // Kiểm tra xem kho có đang bị full bởi các hợp đồng cũ không
         boolean isFull = warehouse.getSections() != null && !warehouse.getSections().isEmpty() &&
-                warehouse.getSections().stream().allMatch(s -> s.getAvailableCapacity() != null && s.getAvailableCapacity() <= 0);
+                warehouse.getSections().stream()
+                        .allMatch(s -> s.getAvailableCapacity() != null && s.getAvailableCapacity() <= 0);
 
         // Nếu full thì chuyển sang RENTED, nếu còn trống thì ACTIVE
-        warehouse.setStatus(isFull ? com.ailogis.api.enums.WarehouseStatus.RENTED : com.ailogis.api.enums.WarehouseStatus.ACTIVE);
+        warehouse.setStatus(
+                isFull ? com.ailogis.api.enums.WarehouseStatus.RENTED : com.ailogis.api.enums.WarehouseStatus.ACTIVE);
 
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
     }
 
     @Transactional
     public WarehouseResponseDTO updateWarehouse(Long ownerId, Long warehouseId, WarehouseUpdateDTO dto, Boolean force,
-                                                List<String> newImageUrls, List<Long> deletedImageIds,
-                                                List<WarehouseCertCreateDTO> newCertificates, List<Long> deletedCertIds) {
+            List<String> newImageUrls, List<Long> deletedImageIds,
+            List<WarehouseCertCreateDTO> newCertificates, List<Long> deletedCertIds) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -354,19 +360,28 @@ public class OwnerService {
             throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền thao tác trên kho này!");
         }
 
-        List<Contract> activeContracts = contractRepository.findByWarehouseIdWithFilter(warehouseId, ContractStatus.ACTIVE);
+        List<Contract> activeContracts = contractRepository.findByWarehouseIdWithFilter(warehouseId,
+                ContractStatus.ACTIVE);
         if (!activeContracts.isEmpty() && (force == null || !force)) {
-            throw new RuntimeException("Cảnh báo: Kho bãi này đang có " + activeContracts.size() + " hợp đồng vận hành. Việc thay đổi cấu trúc hoặc giá tiền có thể ảnh hưởng đến trải nghiệm của khách thuê. Vui lòng gửi lại Request kèm theo tham số ?force=true để xác nhận cập nhật.");
+            throw new RuntimeException("Cảnh báo: Kho bãi này đang có " + activeContracts.size()
+                    + " hợp đồng vận hành. Việc thay đổi cấu trúc hoặc giá tiền có thể ảnh hưởng đến trải nghiệm của khách thuê. Vui lòng gửi lại Request kèm theo tham số ?force=true để xác nhận cập nhật.");
         }
 
         // 1. Cập nhật thông tin cơ bản
-        if (dto.name() != null) warehouse.setName(dto.name());
-        if (dto.description() != null) warehouse.setDescription(dto.description());
-        if (dto.locationAddressText() != null) warehouse.setLocationAddressText(dto.locationAddressText());
-        if (dto.locationProvince() != null) warehouse.setLocationProvince(dto.locationProvince());
-        if (dto.locationCommune() != null) warehouse.setLocationCommune(dto.locationCommune());
-        if (dto.locationLong() != null) warehouse.setLocationLong(dto.locationLong());
-        if (dto.locationLat() != null) warehouse.setLocationLat(dto.locationLat());
+        if (dto.name() != null)
+            warehouse.setName(dto.name());
+        if (dto.description() != null)
+            warehouse.setDescription(dto.description());
+        if (dto.locationAddressText() != null)
+            warehouse.setLocationAddressText(dto.locationAddressText());
+        if (dto.locationProvince() != null)
+            warehouse.setLocationProvince(dto.locationProvince());
+        if (dto.locationCommune() != null)
+            warehouse.setLocationCommune(dto.locationCommune());
+        if (dto.locationLong() != null)
+            warehouse.setLocationLong(dto.locationLong());
+        if (dto.locationLat() != null)
+            warehouse.setLocationLat(dto.locationLat());
 
         // 2. Cập nhật Sections và PriceTiers
         if (dto.sections() != null && !dto.sections().isEmpty()) {
@@ -380,11 +395,16 @@ public class OwnerService {
                             .findFirst()
                             .orElseThrow(() -> new RuntimeException("Không tìm thấy phân khu với ID: " + secDto.id()));
 
-                    if (secDto.totalCapacity() != null) section.setTotalCapacity(secDto.totalCapacity());
-                    if (secDto.tempMin() != null) section.setTempMin(secDto.tempMin());
-                    if (secDto.tempMax() != null) section.setTempMax(secDto.tempMax());
-                    if (secDto.humidity() != null) section.setHumidity(secDto.humidity());
-                    if (secDto.hasCertification() != null) section.setHasCertification(secDto.hasCertification());
+                    if (secDto.totalCapacity() != null)
+                        section.setTotalCapacity(secDto.totalCapacity());
+                    if (secDto.tempMin() != null)
+                        section.setTempMin(secDto.tempMin());
+                    if (secDto.tempMax() != null)
+                        section.setTempMax(secDto.tempMax());
+                    if (secDto.humidity() != null)
+                        section.setHumidity(secDto.humidity());
+                    if (secDto.hasCertification() != null)
+                        section.setHasCertification(secDto.hasCertification());
 
                     // Price tier versioning
                     if (secDto.priceTiers() != null && !secDto.priceTiers().isEmpty()) {
@@ -392,16 +412,14 @@ public class OwnerService {
                         section.getPriceTiers().forEach(pt -> pt.setIsActive(false));
 
                         // Thêm danh sách giá mới vào
-                        List<PriceTier> newTiers = secDto.priceTiers().stream().map(ptDto ->
-                                PriceTier.builder()
-                                        .section(section)
-                                        .label(ptDto.label())
-                                        .value(ptDto.value())
-                                        .unit(ptDto.unit())
-                                        .areaUnit(ptDto.areaUnit())
-                                        .isActive(true) // Giá mới được active
-                                        .build()
-                        ).toList();
+                        List<PriceTier> newTiers = secDto.priceTiers().stream().map(ptDto -> PriceTier.builder()
+                                .section(section)
+                                .label(ptDto.label())
+                                .value(ptDto.value())
+                                .unit(ptDto.unit())
+                                .areaUnit(ptDto.areaUnit())
+                                .isActive(true) // Giá mới được active
+                                .build()).toList();
                         section.getPriceTiers().addAll(newTiers);
                     }
                 } else {
@@ -419,11 +437,9 @@ public class OwnerService {
                             .build();
 
                     if (secDto.priceTiers() != null) {
-                        List<PriceTier> newTiers = secDto.priceTiers().stream().map(ptDto ->
-                                PriceTier.builder()
-                                        .section(section).label(ptDto.label()).value(ptDto.value())
-                                        .unit(ptDto.unit()).areaUnit(ptDto.areaUnit()).isActive(true).build()
-                        ).toList();
+                        List<PriceTier> newTiers = secDto.priceTiers().stream().map(ptDto -> PriceTier.builder()
+                                .section(section).label(ptDto.label()).value(ptDto.value())
+                                .unit(ptDto.unit()).areaUnit(ptDto.areaUnit()).isActive(true).build()).toList();
                         section.getPriceTiers().addAll(newTiers);
                     }
                     warehouse.getSections().add(section);
@@ -481,7 +497,8 @@ public class OwnerService {
         if (newCertificates != null && !newCertificates.isEmpty()) {
             for (WarehouseCertCreateDTO certDto : newCertificates) {
                 CertificationType type = certificationTypeRepository.findById(certDto.certTypeId())
-                        .orElseThrow(() -> new RuntimeException("Loại chứng chỉ ID " + certDto.certTypeId() + " không tồn tại!"));
+                        .orElseThrow(() -> new RuntimeException(
+                                "Loại chứng chỉ ID " + certDto.certTypeId() + " không tồn tại!"));
 
                 warehouse.getCertificationSubmits().add(CertificationSubmit.builder()
                         .warehouse(warehouse)
@@ -494,11 +511,10 @@ public class OwnerService {
 
         warehouseRepository.save(warehouse);
 
-        // Notify all renters who have a pending/approved request on this warehouse
+        // Notify all renters who have a pending/approved/active request on this warehouse
         List<Long> renterIds = requestRepository.findDistinctRenterIdsByWarehouseIdAndStatusIn(
                 warehouseId,
-                List.of(RequestStatus.PENDING, RequestStatus.PENDING_PAYMENT, RequestStatus.APPROVED)
-        );
+                List.of(RequestStatus.PENDING, RequestStatus.PENDING_PAYMENT, RequestStatus.APPROVED, RequestStatus.ACTIVE));
         String ownerName = warehouse.getOwner().getFullName();
         for (Long renterId : renterIds) {
             notificationService.saveAndNotify(renterId,
@@ -510,7 +526,8 @@ public class OwnerService {
 
     // Trong OwnerService.java (Nhớ Inject thêm PaymentService)
     @Transactional
-    public PaymentResponseDTO buySponsorTier(Long ownerId, Long warehouseId, BuySponsorRequestDTO dto, HttpServletRequest request) {
+    public PaymentResponseDTO buySponsorTier(Long ownerId, Long warehouseId, BuySponsorRequestDTO dto,
+            HttpServletRequest request) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -541,7 +558,8 @@ public class OwnerService {
         return new PaymentResponseDTO(paymentUrl);
     }
 
-    public Page<RentRequestResponseDTO> getWarehouseRentRequests(Long ownerId, Long warehouseId, String statusStr, Pageable pageable) {
+    public Page<RentRequestResponseDTO> getWarehouseRentRequests(Long ownerId, Long warehouseId, String statusStr,
+            Pageable pageable) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -558,10 +576,12 @@ public class OwnerService {
             }
         }
 
-        return requestRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum, pageable).map(this::mapToRequestDTO);
+        return requestRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum, pageable)
+                .map(this::mapToRequestDTO);
     }
 
-    public Page<ContractResponseDTO> getWarehouseContracts(Long ownerId, Long warehouseId, String statusStr, Pageable pageable) {
+    public Page<ContractResponseDTO> getWarehouseContracts(Long ownerId, Long warehouseId, String statusStr,
+            Pageable pageable) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -578,7 +598,8 @@ public class OwnerService {
             }
         }
 
-        return contractRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum, pageable).map(contractMapper::toContractResponseDTO);
+        return contractRepository.findByWarehouseIdWithFilter(warehouseId, statusEnum, pageable)
+                .map(contractMapper::toContractResponseDTO);
     }
 
     public List<SponsorTierDTO> getSponsorTiersForOwner(Long ownerId) {

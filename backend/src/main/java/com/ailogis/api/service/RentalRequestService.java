@@ -28,7 +28,8 @@ public class RentalRequestService {
     @Transactional
     public RentRequestResponseDTO createRequest(Long renterId, RentRequestCreateDTO dto) {
         User renter = userRepository.findById(renterId).orElseThrow(() -> new RuntimeException("Renter không tồn tại"));
-        Warehouse warehouse = warehouseRepository.findById(dto.warehouseId()).orElseThrow(() -> new RuntimeException("Kho không tồn tại"));
+        Warehouse warehouse = warehouseRepository.findById(dto.warehouseId())
+                .orElseThrow(() -> new RuntimeException("Kho không tồn tại"));
 
         if (warehouse.getStatus() == com.ailogis.api.enums.WarehouseStatus.INACTIVE ||
                 warehouse.getStatus() == com.ailogis.api.enums.WarehouseStatus.REJECTED) {
@@ -65,7 +66,7 @@ public class RentalRequestService {
         User owner = warehouse.getOwner();
         notificationService.saveAndNotify(owner.getId(),
                 "Yêu cầu thuê mới từ " + renter.getFullName() +
-                " cho kho '" + warehouse.getName() + "'");
+                        " cho kho '" + warehouse.getName() + "'");
 
         return mapToResponseDTO(saved);
     }
@@ -81,19 +82,27 @@ public class RentalRequestService {
     private RentRequestResponseDTO mapToResponseDTO(RentalRequest r) {
         // Re-fetch users to get the latest phone numbers
         User freshRenter = userRepository.findById(r.getRenter().getId()).orElse(r.getRenter());
-        User freshOwner = userRepository.findById(r.getWarehouse().getOwner().getId()).orElse(r.getWarehouse().getOwner());
+        User freshOwner = userRepository.findById(r.getWarehouse().getOwner().getId())
+                .orElse(r.getWarehouse().getOwner());
 
-        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream().<RentRequestDetailResponseDTO>map(d ->
-                new RentRequestDetailResponseDTO(d.getId(), d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(), d.getRentedArea(), d.getAreaUnit(), d.getSection().getTempMin(), d.getSection().getTempMax(), d.getSection().getHumidity())
-        ).toList();
+        List<RentRequestDetailResponseDTO> detailDTOs = r.getDetails().stream()
+                .<RentRequestDetailResponseDTO>map(d -> new RentRequestDetailResponseDTO(d.getId(),
+                        d.getSection().getSector(), d.getPriceTier().getLabel(), d.getPriceTier().getValue(),
+                        d.getRentedArea(), d.getAreaUnit(), d.getSection().getTempMin(), d.getSection().getTempMax(),
+                        d.getSection().getHumidity()))
+                .toList();
 
         return new RentRequestResponseDTO(
                 r.getId(),
                 r.getWarehouse().getId(),
                 r.getWarehouse().getName(),
                 r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
-                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
-                r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
+                r.getRenter() != null && r.getRenter().getCompany() != null
+                        ? r.getRenter().getCompany().getCompanyName()
+                        : null,
+                r.getRenter() != null && r.getRenter().getCompany() != null
+                        ? r.getRenter().getCompany().getCompanyTaxCode()
+                        : null,
                 r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                 r.getCargoDescription(),
                 r.getDuration(),
@@ -109,8 +118,7 @@ public class RentalRequestService {
                 r.getRenterNote(),
                 freshRenter.getPhone(),
                 freshOwner.getPhone(),
-                detailDTOs
-        );
+                detailDTOs);
     }
 
     @Transactional
@@ -143,15 +151,15 @@ public class RentalRequestService {
             throw new RuntimeException("Bạn không có quyền xem thông tin liên hệ!");
         }
 
-        // Re-fetch to get the latest phone (may not have been persisted at registration time)
+        // Re-fetch to get the latest phone (may not have been persisted at registration
+        // time)
         User freshRenter = userRepository.findById(renterId).orElse(request.getRenter());
         User freshOwner = userRepository.findById(ownerId).orElse(request.getWarehouse().getOwner());
 
         return new ContactInfoResponseDTO(
                 freshRenter.getPhone(),
                 freshOwner.getPhone(),
-                "Thông tin liên hệ đã được mở khóa"
-        );
+                "Thông tin liên hệ đã được mở khóa");
     }
 
     // Kiểm tra xem có phải là Employee hoặc Owner/Renter liên quan đến Data
@@ -182,14 +190,17 @@ public class RentalRequestService {
         notificationService.saveAndNotify(request.getRenter().getId(),
                 "Yêu cầu thuê kho '" + request.getWarehouse().getName() + "' đã được chấp nhận");
 
-        // Re-fetch renter from DB to ensure we have the latest phone (it may not have been persisted at registration time)
+        // Re-fetch renter from DB to ensure we have the latest phone (it may not have
+        // been persisted at registration time)
         User freshRenter = userRepository.findById(request.getRenter().getId()).orElse(request.getRenter());
-        User freshOwner = userRepository.findById(request.getWarehouse().getOwner().getId()).orElse(request.getWarehouse().getOwner());
+        User freshOwner = userRepository.findById(request.getWarehouse().getOwner().getId())
+                .orElse(request.getWarehouse().getOwner());
 
         String renterPhone = freshRenter.getPhone();
         String ownerPhone = freshOwner.getPhone();
 
-        return new ContactInfoResponseDTO(renterPhone, ownerPhone, "Chấp nhận thành công, hệ thống đã mở khóa thông tin liên hệ.");
+        return new ContactInfoResponseDTO(renterPhone, ownerPhone,
+                "Chấp nhận thành công, hệ thống đã mở khóa thông tin liên hệ.");
     }
 
     @Transactional
@@ -217,10 +228,12 @@ public class RentalRequestService {
         Role role = userDetails.getUser().getRole();
 
         // 1. Employee được xem mọi thứ
-        if (role == Role.EMPLOYEE) return;
+        if (role == Role.EMPLOYEE)
+            return;
 
         // 2. Owner hoặc Renter liên quan trực tiếp đến Data này mới được xem
-        if (currentUserId.equals(ownerId) || currentUserId.equals(renterId)) return;
+        if (currentUserId.equals(ownerId) || currentUserId.equals(renterId))
+            return;
 
         // 3. Các trường hợp còn lại sẽ bị chặn tại đây (Chống IDOR)
         throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền truy cập vào dữ liệu này!");

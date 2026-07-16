@@ -22,7 +22,8 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
 
     // Cho Owner/Renter
     @Query("SELECT c FROM Contract c WHERE (c.owner.id = :userId OR c.renter.id = :userId) AND (:status IS NULL OR c.status = :status)")
-    List<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId, @Param("status") ContractStatus status);
+    List<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId,
+            @Param("status") ContractStatus status);
 
     long countByOwnerIdAndStatus(Long ownerId, ContractStatus status);
 
@@ -33,15 +34,19 @@ public interface ContractRepository extends JpaRepository<Contract, Long> {
     Double sumActiveRentedAreaBySection(@Param("sectionId") Long sectionId);
 
     @Query("SELECT c FROM Contract c WHERE c.request.warehouse.id = :warehouseId AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
-    Page<Contract> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") ContractStatus status, Pageable pageable);
+    Page<Contract> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId,
+            @Param("status") ContractStatus status, Pageable pageable);
+
     @Query("SELECT c FROM Contract c WHERE c.request.warehouse.id = :warehouseId AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
-    List<Contract> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId, @Param("status") ContractStatus status);
+    List<Contract> findByWarehouseIdWithFilter(@Param("warehouseId") Long warehouseId,
+            @Param("status") ContractStatus status);
 
     @Query("SELECT c FROM Contract c WHERE (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
     Page<Contract> findAllWithFilter(@Param("status") ContractStatus status, Pageable pageable);
 
     @Query("SELECT c FROM Contract c WHERE (c.owner.id = :userId OR c.renter.id = :userId) AND (:status IS NULL OR c.status = :status) ORDER BY c.id DESC")
-    Page<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId, @Param("status") ContractStatus status, Pageable pageable);
+    Page<Contract> findByOwnerIdOrRenterIdWithFilter(@Param("userId") Long userId,
+            @Param("status") ContractStatus status, Pageable pageable);
 
     long countByRenterIdAndStatus(Long renterId, com.ailogis.api.enums.ContractStatus status);
 
