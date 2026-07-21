@@ -17,5 +17,14 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu
-            ./deploy.sh
+            # 1. Di chuyển vào đúng thư mục dự án
+            cd /home/ubuntu/EXE201-BE
+            
+            # 2. Pull code mới nhất từ nhánh đang deploy
+            git pull origin AI-Warehouse-Backend-Hung
+            
+            # 3. Di chuyển vào thư mục backend chứa docker-compose
+            cd backend
+            
+            # 4. Ép Docker build lại image mới và khởi động (Lệnh quan trọng nhất)
+            docker compose up -d --build
