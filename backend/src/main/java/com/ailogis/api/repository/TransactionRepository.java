@@ -20,4 +20,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findByStatus(String status);
 
     Transaction findByRentalRequestIdAndStatus(Long rentalRequestId, String status);
+
+    List<Transaction> findByBuyerIdOrderByIdDesc(Long buyerId);
 }

@@ -1,6 +1,7 @@
 package com.ailogis.api.service;
 
 import com.ailogis.api.config.VNPayConfig;
+import com.ailogis.api.dto.TransactionResponseDTO;
 import com.ailogis.api.entity.RentalRequest;
 import com.ailogis.api.entity.Transaction;
 import com.ailogis.api.entity.User;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -285,5 +287,36 @@ public class PaymentService {
         } catch (Exception e) {
             log.error("Ngoại lệ khi gọi API hoàn tiền VNPay: ", e);
         }
+    }
+
+    public List<TransactionResponseDTO> getTransactionHistory(Long userId) {
+        return transactionRepository.findByBuyerIdOrderByIdDesc(userId)
+                .stream()
+                .map(this::mapToTransactionResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    private TransactionResponseDTO mapToTransactionResponseDTO(Transaction tx) {
+        String description = "Giao dịch hệ thống";
+
+        if ("SPONSOR_SUBSCRIPTION".equals(tx.getType()) && tx.getSponsor() != null) {
+            description = "Gói Sponsor: " + tx.getSponsor().getLabel();
+        } else if ("AI_SUBSCRIPTION".equals(tx.getType()) && tx.getSubscription() != null) {
+            description = "Gói AI: " + tx.getSubscription().getLabel();
+        } else if ("RENTAL_FEE".equals(tx.getType()) && tx.getRentalRequest() != null) {
+            description = "Phí liên hệ kho: " + tx.getRentalRequest().getWarehouse().getName();
+        }
+
+        return new TransactionResponseDTO(
+                tx.getId(),
+                tx.getAmount(),
+                tx.getType(),
+                tx.getStatus(),
+                tx.getCreatedAt(),
+                tx.getVnpTxnRef(),
+                tx.getVnpTransactionNo(),
+                tx.getVnpPayDate(),
+                description
+        );
     }
 }
