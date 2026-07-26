@@ -62,15 +62,14 @@ public class UserController {
     @GetMapping("/me")
     public ResponseEntity<UserProfileDTO> getMyProfile(@AuthenticationPrincipal CustomUserDetails userDetails) {
         User user = userService.findByIdWithCompany(userDetails.getUser().getId());
-        CompanyResponseDTO companyDTO = user.getCompany() != null ?
-                new CompanyResponseDTO(user.getCompany().getId(), user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
+        CompanyResponseDTO companyDTO = user.getCompany() != null ? new CompanyResponseDTO(user.getCompany().getId(),
+                user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
 
         return ResponseEntity.ok(new UserProfileDTO(
                 user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
                 user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(),
                 user.getDateOfBirth(), user.getGender() != null ? user.getGender().name() : null,
-                companyDTO
-        ));
+                companyDTO));
     }
 
     @PatchMapping("/me")

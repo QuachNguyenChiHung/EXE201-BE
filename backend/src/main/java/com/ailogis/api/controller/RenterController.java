@@ -118,6 +118,12 @@ public class RenterController {
         return ResponseEntity.ok(renterService.buyAiSubscription(renterId, id, request));
     }
 
+    @DeleteMapping("/ai-subscription")
+    public ResponseEntity<Void> cancelAiSubscription(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        renterService.cancelAiSubscription(userDetails.getUser().getId());
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/bookmarks/{warehouseId}")
     public ResponseEntity<String> toggleBookmark(
             @PathVariable Long warehouseId,

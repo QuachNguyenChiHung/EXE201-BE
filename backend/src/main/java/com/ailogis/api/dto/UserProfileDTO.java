@@ -10,5 +10,5 @@ public record UserProfileDTO(
         String status,
         String dateOfBirth,
         String gender,
-        CompanyResponseDTO company
-) {}
+        CompanyResponseDTO company) {
+}

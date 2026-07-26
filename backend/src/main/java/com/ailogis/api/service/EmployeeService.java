@@ -48,7 +48,7 @@ public class EmployeeService {
 
         warehouse.setStatus(newStatus);
         Warehouse updated = warehouseRepository.save(warehouse);
-            return warehouseMapper.toWarehouseResponseDTO(updated);
+        return warehouseMapper.toWarehouseResponseDTO(updated);
     }
 
     public StatisticResponseDTO getGlobalStatistics() {
@@ -57,39 +57,35 @@ public class EmployeeService {
         Map<String, Long> usersByRole = Map.of(
                 "renter", userRepository.countByRole(Role.RENTER),
                 "warehouse", userRepository.countByRole(Role.OWNER),
-                "employee", userRepository.countByRole(Role.EMPLOYEE)
-        );
+                "employee", userRepository.countByRole(Role.EMPLOYEE));
 
         Map<String, Long> warehousesByStatus = Map.of(
                 "active", warehouseRepository.countByStatus(WarehouseStatus.ACTIVE),
                 "rented", warehouseRepository.countByStatus(WarehouseStatus.RENTED),
                 "pending", warehouseRepository.countByStatus(WarehouseStatus.PENDING),
                 "rejected", warehouseRepository.countByStatus(WarehouseStatus.REJECTED),
-                "inactive", warehouseRepository.countByStatus(WarehouseStatus.INACTIVE)
-        );
+                "inactive", warehouseRepository.countByStatus(WarehouseStatus.INACTIVE));
 
         Map<String, Long> rentRequestsByStatus = Map.of(
                 "inprogress", rentalRequestRepository.countByStatus(RequestStatus.PENDING),
                 "completed", rentalRequestRepository.countByStatus(RequestStatus.APPROVED),
-                "cancelled", rentalRequestRepository.countByStatus(RequestStatus.REJECTED)
-        );
+                "cancelled", rentalRequestRepository.countByStatus(RequestStatus.REJECTED));
 
         Map<String, Long> contractsByStatus = Map.of(
                 "active", contractRepository.countByStatus(ContractStatus.ACTIVE),
                 "ended", contractRepository.countByStatus(ContractStatus.COMPLETED),
                 "pending", contractRepository.countByStatus(ContractStatus.PENDING),
-                "canceled", contractRepository.countByStatus(ContractStatus.CANCELED)
-        );
+                "canceled", contractRepository.countByStatus(ContractStatus.CANCELED));
 
-        return new StatisticResponseDTO(totalUsers, usersByRole, warehousesByStatus, rentRequestsByStatus, contractsByStatus);
+        return new StatisticResponseDTO(totalUsers, usersByRole, warehousesByStatus, rentRequestsByStatus,
+                contractsByStatus);
     }
 
     public UserStatisticResponseDTO getUsersStatistics() {
         Map<String, Long> usersByRole = Map.of(
                 "renter", userRepository.countByRole(Role.RENTER),
                 "warehouse", userRepository.countByRole(Role.OWNER),
-                "employee", userRepository.countByRole(Role.EMPLOYEE)
-        );
+                "employee", userRepository.countByRole(Role.EMPLOYEE));
         return new UserStatisticResponseDTO(usersByRole);
     }
 
@@ -106,8 +102,7 @@ public class EmployeeService {
         return userRepository.searchUsers(keyword, roleEnum, pageable).map(u -> new UserDTO(
                 u.getId(), u.getEmail(), u.getFullName(),
                 u.getCompany() != null ? u.getCompany().getCompanyName() : "Cá nhân",
-                u.getRole().name(), u.getStatus().name()
-        ));
+                u.getRole().name(), u.getStatus().name()));
     }
 
     @Transactional
@@ -142,11 +137,16 @@ public class EmployeeService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 
-        if (dto.name() != null) user.setFullName(dto.name());
-        if (dto.phone() != null) user.setPhone(dto.phone());
-        if (dto.status() != null) user.setStatus(com.ailogis.api.enums.UserStatus.valueOf(dto.status().toUpperCase()));
-        if (dto.imgLink() != null) user.setAvatarUrl(dto.imgLink());
-        if (dto.hashTaxCode() != null) user.setHashTaxCode(dto.hashTaxCode());
+        if (dto.name() != null)
+            user.setFullName(dto.name());
+        if (dto.phone() != null)
+            user.setPhone(dto.phone());
+        if (dto.status() != null)
+            user.setStatus(com.ailogis.api.enums.UserStatus.valueOf(dto.status().toUpperCase()));
+        if (dto.imgLink() != null)
+            user.setAvatarUrl(dto.imgLink());
+        if (dto.hashTaxCode() != null)
+            user.setHashTaxCode(dto.hashTaxCode());
 
         User updated = userRepository.save(user);
         return new UserDTO(updated.getId(), updated.getEmail(), updated.getFullName(),
@@ -155,8 +155,8 @@ public class EmployeeService {
     }
 
     public Page<WarehouseEmployeeDTO> getWarehousesByStatus(WarehouseStatus status, Pageable pageable) {
-        Page<Warehouse> warehouses = (status == null) ?
-                warehouseRepository.findAll(pageable) : warehouseRepository.findByStatus(status, pageable);
+        Page<Warehouse> warehouses = (status == null) ? warehouseRepository.findAll(pageable)
+                : warehouseRepository.findByStatus(status, pageable);
         return warehouses.map(this::mapToEmployeeDTO);
     }
 
@@ -174,7 +174,8 @@ public class EmployeeService {
     }
 
     public long getActiveUsersCount(int days) {
-        if (days <= 0) days = 1; // Mặc định ít nhất là 1 ngày
+        if (days <= 0)
+            days = 1; // Mặc định ít nhất là 1 ngày
         LocalDateTime since = LocalDateTime.now().minusDays(days);
         return userSessionRepository.countActiveUsersSince(since);
     }
@@ -205,13 +206,13 @@ public class EmployeeService {
                 saved.getType() != null ? saved.getType().getLabel() : "Chưa phân loại",
                 saved.getLink(),
                 saved.getStatus().name(),
-                saved.getRejectReason()
-        );
+                saved.getRejectReason());
     }
 
     @Transactional
     public UserDTO updateUserStatus(Long userId, String status) {
-        User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
         user.setStatus(UserStatus.valueOf(status.toUpperCase()));
         userRepository.save(user);
         return new UserDTO(user.getId(), user.getEmail(), user.getFullName(),
@@ -229,20 +230,22 @@ public class EmployeeService {
         return processTimeSeriesData(rawStats, date, date, false);
     }
 
-    private Map<String, Object> processTimeSeriesData(List<Object[]> rawStats, LocalDate start, LocalDate end, boolean isDaily) {
+    private Map<String, Object> processTimeSeriesData(List<Object[]> rawStats, LocalDate start, LocalDate end,
+            boolean isDaily) {
         List<String> labels = new java.util.ArrayList<>();
         // Sinh mảng labels (các ngày hoặc các giờ 0-23)
         if (isDaily) {
-            for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1)) labels.add(d.toString());
+            for (LocalDate d = start; !d.isAfter(end); d = d.plusDays(1))
+                labels.add(d.toString());
         } else {
-            for (int i = 0; i < 24; i++) labels.add(String.valueOf(i));
+            for (int i = 0; i < 24; i++)
+                labels.add(String.valueOf(i));
         }
 
         Map<String, Map<String, Long>> roleDataMap = Map.of(
                 Role.RENTER.name(), new java.util.HashMap<>(),
                 Role.OWNER.name(), new java.util.HashMap<>(),
-                Role.EMPLOYEE.name(), new java.util.HashMap<>()
-        );
+                Role.EMPLOYEE.name(), new java.util.HashMap<>());
 
         for (Object[] row : rawStats) {
             String label = isDaily ? (String) row[0] : String.valueOf(((Number) row[0]).intValue());
@@ -270,17 +273,17 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public RenterDetailResponseDTO getRenterDetail(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
-        if (user.getRole() != Role.RENTER) throw new RuntimeException("User này không phải là RENTER!");
+        if (user.getRole() != Role.RENTER)
+            throw new RuntimeException("User này không phải là RENTER!");
 
-        CompanyResponseDTO companyDTO = user.getCompany() != null ?
-                new CompanyResponseDTO(user.getCompany().getId(), user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
+        CompanyResponseDTO companyDTO = user.getCompany() != null ? new CompanyResponseDTO(user.getCompany().getId(),
+                user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
 
         UserProfileDTO userProfile = new UserProfileDTO(
                 user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
                 user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(),
                 user.getDateOfBirth(), user.getGender() != null ? user.getGender().name() : null,
-                companyDTO
-        );
+                companyDTO);
 
         String aiPlan = user.getAiTier() != null ? user.getAiTier().getLabel() : "Chưa đăng ký";
 
@@ -291,8 +294,12 @@ public class EmployeeService {
                         r.getWarehouse().getId(),
                         r.getWarehouse().getName(),
                         r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
-                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
-                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
+                        r.getRenter() != null && r.getRenter().getCompany() != null
+                                ? r.getRenter().getCompany().getCompanyName()
+                                : null,
+                        r.getRenter() != null && r.getRenter().getCompany() != null
+                                ? r.getRenter().getCompany().getCompanyTaxCode()
+                                : null,
                         r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                         r.getCargoDescription(),
                         r.getDuration(),
@@ -308,8 +315,8 @@ public class EmployeeService {
                         r.getRenterNote(),
                         r.getRenter() != null ? r.getRenter().getPhone() : null,
                         r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getPhone() : null,
-                        new java.util.ArrayList<RentRequestDetailResponseDTO>()
-                )).toList();
+                        new java.util.ArrayList<RentRequestDetailResponseDTO>()))
+                .toList();
 
         // 2. Lấy Contracts
         List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
@@ -318,9 +325,11 @@ public class EmployeeService {
 
         double totalSpending = 0;
         List<Transaction> transactions = transactionRepository.findByBuyerIdAndStatus(userId, "COMPLETED");
-        for(Transaction t : transactions) {
-            if(t.getSubscription() != null && t.getSubscription().getPrice() != null) totalSpending += t.getSubscription().getPrice();
-            if(t.getSponsor() != null && t.getSponsor().getPricingPerMonth() != null) totalSpending += t.getSponsor().getPricingPerMonth();
+        for (Transaction t : transactions) {
+            if (t.getSubscription() != null && t.getSubscription().getPrice() != null)
+                totalSpending += t.getSubscription().getPrice();
+            if (t.getSponsor() != null && t.getSponsor().getPricingPerMonth() != null)
+                totalSpending += t.getSponsor().getPricingPerMonth();
         }
 
         return new RenterDetailResponseDTO(userProfile, aiPlan, requests, contracts, totalSpending);
@@ -330,28 +339,34 @@ public class EmployeeService {
     @Transactional(readOnly = true)
     public OwnerDetailResponseDTO getOwnerDetail(Long userId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("Không tìm thấy User"));
-        if (user.getRole() != Role.OWNER) throw new RuntimeException("User này không phải là OWNER!");
+        if (user.getRole() != Role.OWNER)
+            throw new RuntimeException("User này không phải là OWNER!");
 
-        CompanyResponseDTO companyDTO = user.getCompany() != null ?
-                new CompanyResponseDTO(user.getCompany().getId(), user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
+        CompanyResponseDTO companyDTO = user.getCompany() != null ? new CompanyResponseDTO(user.getCompany().getId(),
+                user.getCompany().getCompanyName(), user.getCompany().getCompanyTaxCode()) : null;
 
         UserProfileDTO userProfile = new UserProfileDTO(
                 user.getId(), user.getEmail(), user.getFullName(), user.getPhone(),
                 user.getAvatarUrl(), user.getRole().name(), user.getStatus().name(),
                 user.getDateOfBirth(), user.getGender() != null ? user.getGender().name() : null,
-                companyDTO
-        );
+                companyDTO);
 
-        List<WarehouseResponseDTO> warehouses = warehouseRepository.findByOwnerId(userId).stream().map(warehouseMapper::toWarehouseResponseDTO).toList();
+        List<WarehouseResponseDTO> warehouses = warehouseRepository.findByOwnerId(userId).stream()
+                .map(warehouseMapper::toWarehouseResponseDTO).toList();
 
-        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByWarehouseOwnerIdWithFilter(userId, null).stream()
+        List<RentRequestResponseDTO> requests = rentalRequestRepository.findByWarehouseOwnerIdWithFilter(userId, null)
+                .stream()
                 .map(r -> new RentRequestResponseDTO(
                         r.getId(),
                         r.getWarehouse().getId(),
                         r.getWarehouse().getName(),
                         r.getRenter() != null ? r.getRenter().getFullName() : "N/A",
-                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyName() : null,
-                        r.getRenter() != null && r.getRenter().getCompany() != null ? r.getRenter().getCompany().getCompanyTaxCode() : null,
+                        r.getRenter() != null && r.getRenter().getCompany() != null
+                                ? r.getRenter().getCompany().getCompanyName()
+                                : null,
+                        r.getRenter() != null && r.getRenter().getCompany() != null
+                                ? r.getRenter().getCompany().getCompanyTaxCode()
+                                : null,
                         r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getFullName() : "N/A",
                         r.getCargoDescription(),
                         r.getDuration(),
@@ -367,8 +382,8 @@ public class EmployeeService {
                         r.getRenterNote(),
                         r.getRenter() != null ? r.getRenter().getPhone() : null,
                         r.getWarehouse().getOwner() != null ? r.getWarehouse().getOwner().getPhone() : null,
-                        new java.util.ArrayList<RentRequestDetailResponseDTO>()
-                )).toList();
+                        new java.util.ArrayList<RentRequestDetailResponseDTO>()))
+                .toList();
 
         List<ContractResponseDTO> contracts = contractRepository.findAll().stream()
                 .filter(c -> c.getOwner().getId().equals(userId))
@@ -377,12 +392,12 @@ public class EmployeeService {
         return new OwnerDetailResponseDTO(userProfile, warehouses, requests, contracts);
     }
 
-
     public Map<String, Object> getUserActivityStats(Long userId, int days) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 
-        if (days <= 0) days = 7; // Mặc định 7 ngày
+        if (days <= 0)
+            days = 7; // Mặc định 7 ngày
         java.time.LocalDate endDate = java.time.LocalDate.now();
         java.time.LocalDate startDate = endDate.minusDays(days - 1);
 
@@ -413,8 +428,7 @@ public class EmployeeService {
                 "days", days,
                 "totalLoginsInPeriod", totalLogins,
                 "dates", dates,
-                "activityTrend", loginCounts
-        );
+                "activityTrend", loginCounts);
     }
 
     // AI SUBSCRIPTION TIER
@@ -435,7 +449,8 @@ public class EmployeeService {
                 .createdAt(LocalDate.now()).updatedAt(LocalDate.now())
                 .build();
         AiSubscriptionTier saved = aiTierRepository.save(tier);
-        return new AiTierDTO(saved.getId(), saved.getLabel(), saved.getDescription(), saved.getTokenInput(), saved.getTokenOutput(), saved.getPrice(), saved.getUnit(), 0L);
+        return new AiTierDTO(saved.getId(), saved.getLabel(), saved.getDescription(), saved.getTokenInput(),
+                saved.getTokenOutput(), saved.getPrice(), saved.getUnit(), 0L);
     }
 
     @Transactional
@@ -443,17 +458,24 @@ public class EmployeeService {
         AiSubscriptionTier tier = aiTierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy gói AI này!"));
 
-        if (dto.label() != null) tier.setLabel(dto.label());
-        if (dto.description() != null) tier.setDescription(dto.description());
-        if (dto.tokenInput() != null) tier.setTokenInput(dto.tokenInput());
-        if (dto.tokenOutput() != null) tier.setTokenOutput(dto.tokenOutput());
-        if (dto.price() != null) tier.setPrice(dto.price());
-        if (dto.unit() != null) tier.setUnit(dto.unit());
+        if (dto.label() != null)
+            tier.setLabel(dto.label());
+        if (dto.description() != null)
+            tier.setDescription(dto.description());
+        if (dto.tokenInput() != null)
+            tier.setTokenInput(dto.tokenInput());
+        if (dto.tokenOutput() != null)
+            tier.setTokenOutput(dto.tokenOutput());
+        if (dto.price() != null)
+            tier.setPrice(dto.price());
+        if (dto.unit() != null)
+            tier.setUnit(dto.unit());
         tier.setUpdatedAt(LocalDate.now());
 
         AiSubscriptionTier updated = aiTierRepository.save(tier);
         long count = userRepository.countByAiTierId(id);
-        return new AiTierDTO(updated.getId(), updated.getLabel(), updated.getDescription(), updated.getTokenInput(), updated.getTokenOutput(), updated.getPrice(), updated.getUnit(), count);
+        return new AiTierDTO(updated.getId(), updated.getLabel(), updated.getDescription(), updated.getTokenInput(),
+                updated.getTokenOutput(), updated.getPrice(), updated.getUnit(), count);
     }
 
     @Transactional
@@ -482,7 +504,8 @@ public class EmployeeService {
                 .updatedAt(LocalDate.now())
                 .build();
         SponsorTier saved = sponsorTierRepository.save(tier);
-        return new SponsorTierDTO(saved.getId(), saved.getPriorityLevel(), saved.getPricingPerMonth(), saved.getYearPackSale(), saved.getLabel(), 0L, tier.getIsActive());
+        return new SponsorTierDTO(saved.getId(), saved.getPriorityLevel(), saved.getPricingPerMonth(),
+                saved.getYearPackSale(), saved.getLabel(), 0L, tier.getIsActive());
     }
 
     @Transactional
@@ -490,15 +513,20 @@ public class EmployeeService {
         SponsorTier tier = sponsorTierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy gói Tài trợ này!"));
 
-        if (dto.label() != null) tier.setLabel(dto.label());
-        if (dto.priorityLevel() != null) tier.setPriorityLevel(dto.priorityLevel());
-        if (dto.pricingPerMonth() != null) tier.setPricingPerMonth(dto.pricingPerMonth());
-        if (dto.yearPackSale() != null) tier.setYearPackSale(dto.yearPackSale());
+        if (dto.label() != null)
+            tier.setLabel(dto.label());
+        if (dto.priorityLevel() != null)
+            tier.setPriorityLevel(dto.priorityLevel());
+        if (dto.pricingPerMonth() != null)
+            tier.setPricingPerMonth(dto.pricingPerMonth());
+        if (dto.yearPackSale() != null)
+            tier.setYearPackSale(dto.yearPackSale());
         tier.setUpdatedAt(LocalDate.now());
 
         SponsorTier updated = sponsorTierRepository.save(tier);
         long count = warehouseRepository.countBySponsorTypeId(id);
-        return new SponsorTierDTO(updated.getId(), updated.getPriorityLevel(), updated.getPricingPerMonth(), updated.getYearPackSale(), updated.getLabel(), count, tier.getIsActive());
+        return new SponsorTierDTO(updated.getId(), updated.getPriorityLevel(), updated.getPricingPerMonth(),
+                updated.getYearPackSale(), updated.getLabel(), count, tier.getIsActive());
     }
 
     @Transactional
@@ -523,21 +551,24 @@ public class EmployeeService {
             for (WarehouseSection s : w.getSections()) {
                 totalCap += s.getTotalCapacity() != null ? s.getTotalCapacity() : 0;
                 availableCap += s.getAvailableCapacity() != null ? s.getAvailableCapacity() : 0;
-                if (s.getTempMin() != null && s.getTempMin() < tempMin) tempMin = s.getTempMin();
-                if (s.getTempMax() != null && s.getTempMax() > tempMax) tempMax = s.getTempMax();
+                if (s.getTempMin() != null && s.getTempMin() < tempMin)
+                    tempMin = s.getTempMin();
+                if (s.getTempMax() != null && s.getTempMax() > tempMax)
+                    tempMax = s.getTempMax();
 
                 sections.add(Map.of(
                         "id_section", s.getId(),
                         "name", s.getLabel() != null ? s.getLabel() : "Khu " + s.getSector(),
                         "temp_min", s.getTempMin(),
                         "temp_max", s.getTempMax(),
-                        "total_capacity", s.getTotalCapacity()
-                ));
+                        "total_capacity", s.getTotalCapacity()));
             }
         }
 
-        if (tempMin == Double.MAX_VALUE) tempMin = 0.0;
-        if (tempMax == Double.MIN_VALUE) tempMax = 0.0;
+        if (tempMin == Double.MAX_VALUE)
+            tempMin = 0.0;
+        if (tempMax == Double.MIN_VALUE)
+            tempMax = 0.0;
 
         Map<String, Object> stats = Map.of(
                 "totalCapacity", totalCap,
@@ -547,28 +578,27 @@ public class EmployeeService {
                 "securityLevel", "high" // Hardcode tạm thời theo JSON mẫu
         );
 
-        List<CertificationSubmitDTO> certs = w.getCertificationSubmits() != null ?
-                w.getCertificationSubmits().stream().map(c ->
-                        new CertificationSubmitDTO(
-                                c.getId(),
-                                c.getType() != null ? c.getType().getLabel() : "Chưa phân loại",
-                                c.getLink(),
-                                c.getStatus() != null ? c.getStatus().name() : "PENDING",
-                                c.getRejectReason()
-                        )
-                ).toList() : List.of();
+        List<CertificationSubmitDTO> certs = w.getCertificationSubmits() != null ? w.getCertificationSubmits().stream()
+                .map(c -> new CertificationSubmitDTO(
+                        c.getId(),
+                        c.getType() != null ? c.getType().getLabel() : "Chưa phân loại",
+                        c.getLink(),
+                        c.getStatus() != null ? c.getStatus().name() : "PENDING",
+                        c.getRejectReason()))
+                .toList() : List.of();
 
         return new WarehouseEmployeeDTO(
                 w.getId(), w.getOwner().getId(), w.getName(), w.getLocationAddressText(),
                 w.getLocationCommune(), w.getLocationProvince(),
                 w.getStatus().name().toLowerCase(),
-                w.getOwner().getCompany() != null ? w.getOwner().getCompany().getCompanyName() : w.getOwner().getFullName(),
-                minPrice, stats, sections, certs
-        );
+                w.getOwner().getCompany() != null ? w.getOwner().getCompany().getCompanyName()
+                        : w.getOwner().getFullName(),
+                minPrice, stats, sections, certs);
     }
 
     private boolean isFullyRented(Warehouse w) {
-        if (w.getSections() == null || w.getSections().isEmpty()) return false;
+        if (w.getSections() == null || w.getSections().isEmpty())
+            return false;
         return w.getSections().stream()
                 .allMatch(s -> s.getAvailableCapacity() != null && s.getAvailableCapacity() <= 0);
     }

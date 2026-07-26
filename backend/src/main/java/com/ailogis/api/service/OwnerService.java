@@ -609,4 +609,22 @@ public class OwnerService {
                     tier.getYearPackSale(), tier.getLabel(), count, tier.getIsActive());
         }).toList();
     }
+
+    @Transactional
+    public void cancelSponsorTier(Long ownerId, Long warehouseId) {
+        Warehouse warehouse = warehouseRepository.findById(warehouseId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
+
+        if (!warehouse.getOwner().getId().equals(ownerId)) {
+            throw new RuntimeException("Lỗi bảo mật: Bạn không có quyền thao tác trên kho bãi này!");
+        }
+
+        if (!warehouse.getIsSponsor()) {
+            throw new RuntimeException("Kho bãi này không có gói tài trợ để hủy!");
+        }
+
+        warehouse.setIsSponsor(false);
+        warehouse.setSponsorType(null);
+        warehouseRepository.save(warehouse);
+    }
 }

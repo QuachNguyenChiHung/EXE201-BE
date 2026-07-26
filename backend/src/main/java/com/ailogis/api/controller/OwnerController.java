@@ -242,4 +242,13 @@ public class OwnerController {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(rentalRequestService.getContactInfo(requestId, ownerId));
     }
+
+    @DeleteMapping("/warehouses/{warehouseId}/sponsor")
+    public ResponseEntity<Void> cancelSponsorTier(
+            @PathVariable Long warehouseId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        ownerService.cancelSponsorTier(ownerId, warehouseId);
+        return ResponseEntity.noContent().build();
+    }
 }

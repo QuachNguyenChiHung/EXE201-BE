@@ -32,10 +32,14 @@ public class UserService {
         User user = userRepository.findByIdWithCompany(userId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
 
-        if (dto.fullName() != null) user.setFullName(dto.fullName());
-        if (dto.phone() != null) user.setPhone(dto.phone());
-        if (dto.dateOfBirth() != null) user.setDateOfBirth(dto.dateOfBirth());
-        if (dto.gender() != null) user.setGender(Gender.valueOf(dto.gender()));
+        if (dto.fullName() != null)
+            user.setFullName(dto.fullName());
+        if (dto.phone() != null)
+            user.setPhone(dto.phone());
+        if (dto.dateOfBirth() != null)
+            user.setDateOfBirth(dto.dateOfBirth());
+        if (dto.gender() != null)
+            user.setGender(Gender.valueOf(dto.gender()));
         if (dto.companyName() != null || dto.companyTaxCode() != null) {
             Company company = user.getCompany();
             boolean isNew = (company == null);
@@ -43,24 +47,28 @@ public class UserService {
                 company = new Company();
                 user.setCompany(company);
             }
-            if (dto.companyName() != null) company.setCompanyName(dto.companyName());
-            if (dto.companyTaxCode() != null) company.setCompanyTaxCode(dto.companyTaxCode());
-            if (isNew) company.getUsers().add(user);
+            if (dto.companyName() != null)
+                company.setCompanyName(dto.companyName());
+            if (dto.companyTaxCode() != null)
+                company.setCompanyTaxCode(dto.companyTaxCode());
+            if (isNew)
+                company.getUsers().add(user);
             companyRepository.save(company); // persist first so company.id is available
-            user.setCompany(company);       // ensure user -> company FK is set
+            user.setCompany(company); // ensure user -> company FK is set
         }
 
         User updatedUser = userRepository.save(user);
 
-        CompanyResponseDTO companyDTO = updatedUser.getCompany() != null ?
-                new CompanyResponseDTO(updatedUser.getCompany().getId(), updatedUser.getCompany().getCompanyName(), updatedUser.getCompany().getCompanyTaxCode()) : null;
+        CompanyResponseDTO companyDTO = updatedUser.getCompany() != null
+                ? new CompanyResponseDTO(updatedUser.getCompany().getId(), updatedUser.getCompany().getCompanyName(),
+                        updatedUser.getCompany().getCompanyTaxCode())
+                : null;
 
         return new UserProfileDTO(
                 updatedUser.getId(), updatedUser.getEmail(), updatedUser.getFullName(), updatedUser.getPhone(),
                 updatedUser.getAvatarUrl(), updatedUser.getRole().name(), updatedUser.getStatus().name(),
                 updatedUser.getDateOfBirth(), updatedUser.getGender() != null ? updatedUser.getGender().name() : null,
-                companyDTO
-        );
+                companyDTO);
     }
 
     @Transactional
@@ -77,14 +85,15 @@ public class UserService {
 
         User updatedUser = userRepository.save(user);
 
-        CompanyResponseDTO companyDTO = updatedUser.getCompany() != null ?
-                new CompanyResponseDTO(updatedUser.getCompany().getId(), updatedUser.getCompany().getCompanyName(), updatedUser.getCompany().getCompanyTaxCode()) : null;
+        CompanyResponseDTO companyDTO = updatedUser.getCompany() != null
+                ? new CompanyResponseDTO(updatedUser.getCompany().getId(), updatedUser.getCompany().getCompanyName(),
+                        updatedUser.getCompany().getCompanyTaxCode())
+                : null;
 
         return new UserProfileDTO(
                 updatedUser.getId(), updatedUser.getEmail(), updatedUser.getFullName(), updatedUser.getPhone(),
                 updatedUser.getAvatarUrl(), updatedUser.getRole().name(), updatedUser.getStatus().name(),
                 updatedUser.getDateOfBirth(), updatedUser.getGender() != null ? updatedUser.getGender().name() : null,
-                companyDTO
-        );
+                companyDTO);
     }
 }
