@@ -9,6 +9,7 @@ import com.ailogis.api.enums.WarehouseStatus;
 import com.ailogis.api.mapper.ContractMapper;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
+import com.ailogis.api.ws.NotificationWebSocketHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class OwnerService {
     private final ContractMapper contractMapper;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final NotificationWebSocketHandler notificationWebSocketHandler;
 
     public Page<WarehouseResponseDTO> getMyWarehouses(Long ownerId, String statusStr, Pageable pageable) {
         WarehouseStatus statusEnum = null;
@@ -321,7 +323,9 @@ public class OwnerService {
             requestRepository.saveAll(pendingRequests);
         }
 
-        return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+        Warehouse saved = warehouseRepository.save(warehouse);
+        notificationWebSocketHandler.broadcastWarehouseStatusChanged(saved.getId(), saved.getStatus().name());
+        return warehouseMapper.toWarehouseResponseDTO(saved);
     }
 
     @Transactional
@@ -346,7 +350,9 @@ public class OwnerService {
         warehouse.setStatus(
                 isFull ? com.ailogis.api.enums.WarehouseStatus.RENTED : com.ailogis.api.enums.WarehouseStatus.ACTIVE);
 
-        return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
+        Warehouse saved = warehouseRepository.save(warehouse);
+        notificationWebSocketHandler.broadcastWarehouseStatusChanged(saved.getId(), saved.getStatus().name());
+        return warehouseMapper.toWarehouseResponseDTO(saved);
     }
 
     @Transactional
@@ -520,6 +526,10 @@ public class OwnerService {
             notificationService.saveAndNotify(renterId,
                     "Chủ kho '" + ownerName + "' đã cập nhật kho '" + warehouse.getName() + "'");
         }
+
+        // Broadcast so anyone currently viewing this warehouse's detail page
+        // (not just renters with an active/pending request) live-refetches.
+        notificationWebSocketHandler.broadcastWarehouseUpdated(warehouseId);
 
         return warehouseMapper.toWarehouseResponseDTO(warehouse);
     }

@@ -6,6 +6,7 @@ import com.ailogis.api.enums.*;
 import com.ailogis.api.mapper.ContractMapper;
 import com.ailogis.api.mapper.WarehouseMapper;
 import com.ailogis.api.repository.*;
+import com.ailogis.api.ws.NotificationWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,8 @@ public class EmployeeService {
     private final ContractMapper contractMapper;
     private final AiSubscriptionTierRepository aiTierRepository;
     private final SponsorTierRepository sponsorTierRepository;
+    private final NotificationService notificationService;
+    private final NotificationWebSocketHandler notificationWebSocketHandler;
 
     public List<WarehouseResponseDTO> getPendingWarehouses() {
         return warehouseRepository.findByStatus(WarehouseStatus.PENDING).stream()
@@ -48,6 +51,7 @@ public class EmployeeService {
 
         warehouse.setStatus(newStatus);
         Warehouse updated = warehouseRepository.save(warehouse);
+        notificationWebSocketHandler.broadcastWarehouseStatusChanged(updated.getId(), updated.getStatus().name());
         return warehouseMapper.toWarehouseResponseDTO(updated);
     }
 
@@ -170,7 +174,19 @@ public class EmployeeService {
             warehouse.setStatus(WarehouseStatus.RENTED);
         }
 
-        return mapToEmployeeDTO(warehouseRepository.save(warehouse));
+        Warehouse saved = warehouseRepository.save(warehouse);
+
+        if (newStatus == WarehouseStatus.ACTIVE) {
+            notificationService.saveAndNotify(saved.getOwner().getId(),
+                    "Kho '" + saved.getName() + "' đã được duyệt và đang hoạt động.");
+        } else if (newStatus == WarehouseStatus.REJECTED) {
+            notificationService.saveAndNotify(saved.getOwner().getId(),
+                    "Kho '" + saved.getName() + "' đã bị từ chối bởi quản trị viên.");
+        }
+
+        notificationWebSocketHandler.broadcastWarehouseStatusChanged(saved.getId(), saved.getStatus().name());
+
+        return mapToEmployeeDTO(saved);
     }
 
     public long getActiveUsersCount(int days) {
@@ -536,6 +552,223 @@ public class EmployeeService {
             throw new RuntimeException("Không thể xóa! Đang có " + count + " kho bãi sử dụng gói Tài trợ này.");
         }
         sponsorTierRepository.deleteById(id);
+    }
+
+    // ==== EMPLOYEE TRANSACTION ANALYTICS ====
+
+    @Transactional(readOnly = true)
+    public Page<EmployeeTransactionDTO> searchAllTransactions(String type, String status, String buyerRoleStr,
+            LocalDate startDate, LocalDate endDate, Pageable pageable) {
+        Role buyerRole = null;
+        if (buyerRoleStr != null && !buyerRoleStr.isBlank()) {
+            try {
+                buyerRole = Role.valueOf(buyerRoleStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new RuntimeException("Vai trò tìm kiếm không hợp lệ!");
+            }
+        }
+
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end = endDate != null ? endDate.plusDays(1).atStartOfDay() : null;
+
+        return transactionRepository
+                .searchAllTransactions(blankToNull(type), blankToNull(status), buyerRole, start, end, pageable)
+                .map(this::mapToEmployeeTransactionDTO);
+    }
+
+    public TransactionAnalyticsSummaryDTO getTransactionAnalyticsSummary() {
+        List<Object[]> typeRows = transactionRepository.sumAndCountByType();
+
+        double grandTotal = 0;
+        for (Object[] row : typeRows) {
+            grandTotal += ((Number) row[1]).doubleValue();
+        }
+
+        List<TransactionTypeShareDTO> revenueByType = new java.util.ArrayList<>();
+        String topServiceType = "";
+        double topServiceRevenue = 0;
+        String mostCommonType = "";
+        long mostCommonTypeCount = 0;
+
+        for (Object[] row : typeRows) {
+            String type = (String) row[0];
+            double totalAmount = ((Number) row[1]).doubleValue();
+            long count = ((Number) row[2]).longValue();
+            double percentage = grandTotal > 0 ? (totalAmount / grandTotal) * 100 : 0;
+            revenueByType.add(new TransactionTypeShareDTO(type, totalAmount, count, percentage));
+
+            if (totalAmount > topServiceRevenue) {
+                topServiceRevenue = totalAmount;
+                topServiceType = type;
+            }
+            if (count > mostCommonTypeCount) {
+                mostCommonTypeCount = count;
+                mostCommonType = type;
+            }
+        }
+
+        List<Object[]> roleRows = transactionRepository.sumAmountByBuyerRole();
+        String topSpendingRole = "";
+        double topSpendingRoleAmount = 0;
+        for (Object[] row : roleRows) {
+            Role role = (Role) row[0];
+            double totalAmount = row[1] != null ? ((Number) row[1]).doubleValue() : 0;
+            if (totalAmount > topSpendingRoleAmount) {
+                topSpendingRoleAmount = totalAmount;
+                topSpendingRole = role != null ? role.name() : "";
+            }
+        }
+
+        HighestTransactionDTO highestTransaction = transactionRepository
+                .findTopByAmountDesc(org.springframework.data.domain.PageRequest.of(0, 1))
+                .stream().findFirst()
+                .map(t -> new HighestTransactionDTO(
+                        t.getId(), t.getAmount(), t.getType(), t.getStatus(),
+                        t.getBuyer().getId(), t.getBuyer().getFullName(), t.getBuyer().getRole().name(),
+                        t.getCreatedAt()))
+                .orElse(null);
+
+        return new TransactionAnalyticsSummaryDTO(revenueByType, topServiceType, topServiceRevenue,
+                mostCommonType, mostCommonTypeCount, highestTransaction, topSpendingRole, topSpendingRoleAmount);
+    }
+
+    public List<RevenuePointDTO> getTransactionRevenueTimeseries(String granularity, LocalDate startDate,
+            LocalDate endDate) {
+        if (endDate.isAfter(LocalDate.now())) {
+            throw new RuntimeException("Ngày kết thúc không được ở tương lai!");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new RuntimeException("Ngày bắt đầu phải trước hoặc bằng ngày kết thúc!");
+        }
+
+        String gran = granularity != null ? granularity.toLowerCase() : "";
+        if (!gran.equals("day") && !gran.equals("month") && !gran.equals("year")) {
+            throw new RuntimeException("Đơn vị thời gian không hợp lệ! Chỉ chấp nhận: day, month, year.");
+        }
+
+        switch (gran) {
+            case "day" -> {
+                if (java.time.temporal.ChronoUnit.DAYS.between(startDate, endDate) > 730) {
+                    throw new RuntimeException("Khoảng thời gian quá lớn cho đơn vị 'day'. Tối đa: 730 ngày.");
+                }
+            }
+            case "month" -> {
+                if (java.time.temporal.ChronoUnit.MONTHS.between(startDate, endDate) > 120) {
+                    throw new RuntimeException("Khoảng thời gian quá lớn cho đơn vị 'month'. Tối đa: 120 tháng.");
+                }
+            }
+            case "year" -> {
+                if (java.time.temporal.ChronoUnit.YEARS.between(startDate, endDate) > 50) {
+                    throw new RuntimeException("Khoảng thời gian quá lớn cho đơn vị 'year'. Tối đa: 50 năm.");
+                }
+            }
+        }
+
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+
+        List<Object[]> rawStats = transactionRepository.sumRevenueByGranularityAndRole(gran, startDateTime,
+                endDateTime);
+
+        // label -> [renterAmount, ownerAmount, totalAmount] — totalAmount accumulates
+        // across every buyer role (RENTER/OWNER/and any other), so "both" always
+        // reflects true total revenue even if a non-renter/owner role ever buys.
+        Map<String, double[]> dataMap = new java.util.HashMap<>();
+        java.time.format.DateTimeFormatter dayFmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        java.time.format.DateTimeFormatter monthFmt = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM");
+        java.time.format.DateTimeFormatter yearFmt = java.time.format.DateTimeFormatter.ofPattern("yyyy");
+
+        for (Object[] row : rawStats) {
+            LocalDateTime bucketStart = toLocalDateTime(row[0]);
+            String buyerRole = row[1] != null ? row[1].toString() : null;
+            double amount = row[2] != null ? ((Number) row[2]).doubleValue() : 0;
+
+            String label = switch (gran) {
+                case "day" -> bucketStart.format(dayFmt);
+                case "month" -> bucketStart.format(monthFmt);
+                default -> bucketStart.format(yearFmt);
+            };
+            double[] vals = dataMap.computeIfAbsent(label, k -> new double[3]);
+            if ("RENTER".equals(buyerRole)) {
+                vals[0] += amount;
+            } else if ("OWNER".equals(buyerRole)) {
+                vals[1] += amount;
+            }
+            vals[2] += amount;
+        }
+
+        List<RevenuePointDTO> result = new java.util.ArrayList<>();
+        switch (gran) {
+            case "day" -> {
+                for (LocalDate d = startDate; !d.isAfter(endDate); d = d.plusDays(1)) {
+                    String label = d.format(dayFmt);
+                    double[] vals = dataMap.getOrDefault(label, new double[3]);
+                    result.add(new RevenuePointDTO(label, d.atStartOfDay(), vals[0], vals[1], vals[2]));
+                }
+            }
+            case "month" -> {
+                java.time.YearMonth startYm = java.time.YearMonth.from(startDate);
+                java.time.YearMonth endYm = java.time.YearMonth.from(endDate);
+                for (java.time.YearMonth ym = startYm; !ym.isAfter(endYm); ym = ym.plusMonths(1)) {
+                    String label = ym.format(monthFmt);
+                    double[] vals = dataMap.getOrDefault(label, new double[3]);
+                    result.add(new RevenuePointDTO(label, ym.atDay(1).atStartOfDay(), vals[0], vals[1], vals[2]));
+                }
+            }
+            default -> {
+                for (int y = startDate.getYear(); y <= endDate.getYear(); y++) {
+                    String label = String.valueOf(y);
+                    double[] vals = dataMap.getOrDefault(label, new double[3]);
+                    result.add(new RevenuePointDTO(label, LocalDate.of(y, 1, 1).atStartOfDay(), vals[0], vals[1],
+                            vals[2]));
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private LocalDateTime toLocalDateTime(Object value) {
+        if (value instanceof java.sql.Timestamp ts) {
+            return ts.toLocalDateTime();
+        }
+        if (value instanceof LocalDateTime ldt) {
+            return ldt;
+        }
+        if (value instanceof java.time.Instant instant) {
+            return LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault());
+        }
+        throw new RuntimeException("Không thể đọc dữ liệu thời gian từ cơ sở dữ liệu!");
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
+    }
+
+    private EmployeeTransactionDTO mapToEmployeeTransactionDTO(Transaction tx) {
+        String description = "Giao dịch hệ thống";
+
+        if ("SPONSOR_SUBSCRIPTION".equals(tx.getType()) && tx.getSponsor() != null) {
+            description = "Gói Sponsor: " + tx.getSponsor().getLabel();
+        } else if ("AI_SUBSCRIPTION".equals(tx.getType()) && tx.getSubscription() != null) {
+            description = "Gói AI: " + tx.getSubscription().getLabel();
+        } else if ("RENTAL_FEE".equals(tx.getType()) && tx.getRentalRequest() != null) {
+            description = "Phí liên hệ kho: " + tx.getRentalRequest().getWarehouse().getName();
+        }
+
+        User buyer = tx.getBuyer();
+        return new EmployeeTransactionDTO(
+                tx.getId(),
+                buyer != null ? buyer.getId() : null,
+                buyer != null ? buyer.getFullName() : null,
+                buyer != null ? buyer.getEmail() : null,
+                buyer != null && buyer.getRole() != null ? buyer.getRole().name() : null,
+                tx.getType(),
+                tx.getStatus(),
+                tx.getAmount(),
+                tx.getCreatedAt(),
+                tx.getInvoiceDate(),
+                description);
     }
 
     private WarehouseEmployeeDTO mapToEmployeeDTO(Warehouse w) {

@@ -7,6 +7,7 @@ import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,6 +48,37 @@ public class EmployeeController {
             }
         }
         return ResponseEntity.ok(employeeService.getWarehousesByStatus(statusEnum, PageRequest.of(page, size)));
+    }
+
+    // ==== EMPLOYEE TRANSACTION ANALYTICS ====
+
+    @GetMapping("/transactions")
+    public ResponseEntity<Page<EmployeeTransactionDTO>> getAllTransactions(
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String buyerRole,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        LocalDate start = startDate != null ? LocalDate.parse(startDate) : null;
+        LocalDate end = endDate != null ? LocalDate.parse(endDate) : null;
+        return ResponseEntity.ok(employeeService.searchAllTransactions(type, status, buyerRole, start, end,
+                PageRequest.of(page, size, Sort.by("createdAt").descending())));
+    }
+
+    @GetMapping("/transactions/analytics-summary")
+    public ResponseEntity<TransactionAnalyticsSummaryDTO> getTransactionAnalyticsSummary() {
+        return ResponseEntity.ok(employeeService.getTransactionAnalyticsSummary());
+    }
+
+    @GetMapping("/transactions/revenue-timeseries")
+    public ResponseEntity<List<RevenuePointDTO>> getTransactionRevenueTimeseries(
+            @RequestParam String granularity,
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+        return ResponseEntity.ok(employeeService.getTransactionRevenueTimeseries(
+                granularity, LocalDate.parse(startDate), LocalDate.parse(endDate)));
     }
 
     @PatchMapping("/warehouses/{id}/accept")
