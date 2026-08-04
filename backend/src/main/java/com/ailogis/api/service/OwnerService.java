@@ -562,8 +562,8 @@ public class OwnerService {
 
         Transaction savedTx = transactionRepository.save(transaction);
 
-        // Sinh link VNPay
-        String paymentUrl = paymentService.createVNPayUrl(savedTx, request);
+        // Sinh link thanh toán PayOS
+        String paymentUrl = paymentService.createPayOSPaymentLink(savedTx);
 
         return new PaymentResponseDTO(paymentUrl);
     }

@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/warehouses/**").permitAll()
                         .requestMatchers("/api/ai/filter-meta").permitAll()
+                        .requestMatchers("/api/payment/register-webhook").hasRole("EMPLOYEE")
                         .requestMatchers("/api/payment/**").permitAll()
                         .requestMatchers("/api/ws/**").permitAll()
 

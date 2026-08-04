@@ -1,11 +1,11 @@
 package com.ailogis.api.controller;
 
 import com.ailogis.api.dto.TransactionResponseDTO;
-import com.ailogis.api.entity.Transaction;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.PaymentService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/payment")
 @CrossOrigin(origins = "*")
@@ -29,15 +30,46 @@ public class PaymentController {
     @Value("${frontend.payment-fail-url}")
     private String failUrl;
 
-    @GetMapping("/vnpay-return")
-    public void vnpayReturn(@RequestParam Map<String, String> params, HttpServletResponse response) throws IOException {
-        boolean isSuccess = paymentService.processVNPayCallback(params);
+    // Người dùng được PayOS redirect về sau khi thanh toán (hoặc hủy) trên trang checkout
+    @GetMapping("/payos-return")
+    public void payosReturn(@RequestParam(required = false) String orderCode,
+            @RequestParam(required = false) String code,
+            @RequestParam(required = false) String cancel,
+            @RequestParam(required = false) String status,
+            HttpServletResponse response) throws IOException {
+        log.info("PayOS return: orderCode={}, code={}, cancel={}, status={}", orderCode, code, cancel, status);
+
+        boolean isSuccess = false;
+        if (orderCode != null) {
+            try {
+                isSuccess = paymentService.verifyAndApplyByOrderCode(Long.parseLong(orderCode));
+            } catch (NumberFormatException e) {
+                log.warn("orderCode không hợp lệ từ PayOS return-url: {}", orderCode);
+            }
+        }
 
         if (isSuccess) {
             response.sendRedirect(successUrl);
         } else {
             response.sendRedirect(failUrl);
         }
+    }
+
+    // Webhook server-to-server từ PayOS - nguồn xác thực chính cho kết quả thanh toán
+    @PostMapping("/payos-webhook")
+    public ResponseEntity<Void> payosWebhook(@RequestBody Map<String, Object> body) {
+        boolean valid = paymentService.handlePayOSWebhook(body);
+        if (valid) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.badRequest().build();
+    }
+
+    // Đăng ký URL webhook với PayOS - thao tác 1 lần, thực hiện thủ công, KHÔNG gọi tự động lúc khởi động app
+    // Quyền truy cập (EMPLOYEE) được chặn theo path tại SecurityConfig, không dùng @PreAuthorize (method security chưa được bật trong dự án này)
+    @PostMapping("/register-webhook")
+    public ResponseEntity<String> registerWebhook() {
+        return ResponseEntity.ok(paymentService.registerPayOSWebhook());
     }
 
     @GetMapping("/history")

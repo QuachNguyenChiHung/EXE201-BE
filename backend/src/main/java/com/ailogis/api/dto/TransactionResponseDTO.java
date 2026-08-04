@@ -8,8 +8,8 @@ public record TransactionResponseDTO(
         String type,
         String status,
         LocalDateTime createdAt,
-        String vnpTxnRef,
-        String vnpTransactionNo,
-        String vnpPayDate,
+        String providerTxnRef,
+        String providerTransactionNo,
+        String providerPayDate,
         String description
 ) {}
