@@ -1,6 +1,5 @@
 package com.ailogis.api.service;
 
-import com.ailogis.api.config.VNPayConfig;
 import com.ailogis.api.dto.TransactionResponseDTO;
 import com.ailogis.api.entity.RentalRequest;
 import com.ailogis.api.entity.Transaction;
@@ -11,24 +10,25 @@ import com.ailogis.api.repository.RentalRequestRepository;
 import com.ailogis.api.repository.TransactionRepository;
 import com.ailogis.api.repository.UserRepository;
 import com.ailogis.api.repository.WarehouseRepository;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-import lombok.extern.slf4j.Slf4j;
+import vn.payos.PayOS;
+import vn.payos.exception.APIException;
+import vn.payos.exception.WebhookException;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
+import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
+import vn.payos.model.v2.paymentRequests.PaymentLink;
+import vn.payos.model.v2.paymentRequests.PaymentLinkStatus;
+import vn.payos.model.webhooks.WebhookData;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.util.*;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,164 +40,190 @@ public class PaymentService {
     private final WarehouseRepository warehouseRepository;
     private final UserRepository userRepository;
     private final RentalRequestRepository rentalRequestRepository;
-    private final RestTemplate restTemplate;
+    private final NotificationService notificationService;
+    private final PayOS payOS;
 
-    @Value("${vnpay.tmnCode}") private String vnp_TmnCode;
-    @Value("${vnpay.hashSecret}") private String vnp_HashSecret;
-    @Value("${vnpay.payUrl}") private String vnp_PayUrl;
-    @Value("${vnpay.returnUrl}") private String vnp_ReturnUrl;
-    @Value("${vnpay.apiUrl}") private String vnp_ApiUrl;
+    @Value("${payos.return-url}")
+    private String payosReturnUrl;
 
-    public String createVNPayUrl(Transaction transaction, HttpServletRequest request) {
-        String vnp_Version = "2.1.0";
-        String vnp_Command = "pay";
-        String orderType = "other";
+    @Value("${payos.webhook-url}")
+    private String payosWebhookUrl;
 
-        // VNPay yêu cầu số tiền nhân 100
-        long amount = (long) (transaction.getAmount() * 100);
-
-        // Lấy ID giao dịch nội bộ làm mã đơn hàng của VNPay
-        String vnp_TxnRef = transaction.getId() + "_" + System.currentTimeMillis();
-
-        // Cấu hình tham số gửi sang VNPay
-        Map<String, String> vnp_Params = new HashMap<>();
-        vnp_Params.put("vnp_Version", vnp_Version);
-        vnp_Params.put("vnp_Command", vnp_Command);
-        vnp_Params.put("vnp_TmnCode", vnp_TmnCode);
-        vnp_Params.put("vnp_Amount", String.valueOf(amount));
-        vnp_Params.put("vnp_CurrCode", "VND");
-        vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
-        vnp_Params.put("vnp_OrderInfo", "Thanh toan don hang " + vnp_TxnRef);
-        vnp_Params.put("vnp_OrderType", orderType);
-        vnp_Params.put("vnp_Locale", "vn");
-        vnp_Params.put("vnp_ReturnUrl", vnp_ReturnUrl);
-        vnp_Params.put("vnp_IpAddr", request.getRemoteAddr());
-
-        Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        formatter.setTimeZone(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
-        vnp_Params.put("vnp_CreateDate", formatter.format(cld.getTime()));
-
-        cld.add(Calendar.MINUTE, 15);
-        vnp_Params.put("vnp_ExpireDate", formatter.format(cld.getTime()));
-
-        // Build String băm dữ liệu
-        List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
-        Collections.sort(fieldNames);
-        StringBuilder hashData = new StringBuilder();
-        StringBuilder query = new StringBuilder();
-
-        try {
-            for (String fieldName : fieldNames) {
-                String fieldValue = vnp_Params.get(fieldName);
-                if (fieldValue != null && fieldValue.length() > 0) {
-                    hashData.append(fieldName).append('=').append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                    query.append(URLEncoder.encode(fieldName, StandardCharsets.US_ASCII.toString())).append('=')
-                            .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                    if (fieldNames.indexOf(fieldName) != fieldNames.size() - 1) {
-                        query.append('&');
-                        hashData.append('&');
-                    }
-                }
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("Lỗi cấu hình URL VNPay");
+    // Sinh link thanh toán PayOS (thay thế cho createVNPayUrl)
+    public String createPayOSPaymentLink(Transaction transaction) {
+        String description = buildPayOSDescription(transaction);
+        // PayOS gioi han do dai description rat ngan (~25 ky tu), can cat bot neu vuot qua
+        if (description.length() > 25) {
+            description = description.substring(0, 25);
         }
 
-        String queryUrl = query.toString();
-        String vnp_SecureHash = VNPayConfig.hmacSHA512(vnp_HashSecret, hashData.toString());
-        queryUrl += "&vnp_SecureHash=" + vnp_SecureHash;
+        CreatePaymentLinkRequest req = CreatePaymentLinkRequest.builder()
+                .orderCode(transaction.getId())
+                // PayOS nhan so tien VND nguyen goc, KHONG nhan 100 (khac quy uoc cua VNPay)
+                .amount(Math.round(transaction.getAmount()))
+                .description(description)
+                .cancelUrl(payosReturnUrl)
+                .returnUrl(payosReturnUrl)
+                .build();
 
-        return vnp_PayUrl + "?" + queryUrl;
+        try {
+            CreatePaymentLinkResponse resp = payOS.paymentRequests().create(req);
+            transaction.setProviderTxnRef(resp.getPaymentLinkId());
+            transactionRepository.save(transaction);
+            return resp.getCheckoutUrl();
+        } catch (APIException e) {
+            throw new RuntimeException("Lỗi khi tạo link thanh toán PayOS: " + e.getErrorDesc().orElse(e.getMessage()));
+        }
     }
 
-    // XỬ LÝ LOGIC CHUNG KHI VNPAY GỌI LẠI (Dùng chung cho cả Owner và Renter)
+    // Xây nội dung chuyển khoản hiển thị trên trang thanh toán PayOS - toi da 25 ky tu nen chi
+    // ghi loai giao dich viet tat + khoang ngay. Ngay bat dau = ngay tao giao dich; ngay ket thuc
+    // lay tu RentalRequest (da co san) voi RENTAL_FEE, con Sponsor/AI khong luu thoi han nao ca
+    // nen tam tinh +1 thang chi de hien thi (khong ghi xuong DB).
+    private String buildPayOSDescription(Transaction tx) {
+        String prefix = "DH" + tx.getId();
+        LocalDate start = tx.getCreatedAt().toLocalDate();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM");
+
+        String typeAbbr;
+        LocalDate end;
+        if ("RENTAL_FEE".equals(tx.getType()) && tx.getRentalRequest() != null
+                && tx.getRentalRequest().getEndDate() != null) {
+            typeAbbr = "MG";
+            end = tx.getRentalRequest().getEndDate();
+        } else if ("SPONSOR_SUBSCRIPTION".equals(tx.getType())) {
+            typeAbbr = "SP";
+            end = start.plusMonths(1);
+        } else if ("AI_SUBSCRIPTION".equals(tx.getType())) {
+            typeAbbr = "AI";
+            end = start.plusMonths(1);
+        } else {
+            return prefix;
+        }
+
+        return prefix + " " + typeAbbr + " " + start.format(fmt) + "-" + end.format(fmt);
+    }
+
+    // Áp dụng kết quả thanh toán vào Transaction nội bộ (dùng chung cho cả webhook và return-url)
+    // Lưu ý: không tự @Transactional ở đây (self-invocation không đi qua proxy Spring) -
+    // các phương thức public gọi vào đây (handlePayOSWebhook, verifyAndApplyByOrderCode) đã có @Transactional riêng.
+    private void applyPaymentResult(Long transactionId, String providerTxnRef, String providerTransactionNo,
+            String providerPayDate, boolean paid) {
+        if (transactionId == null) {
+            return;
+        }
+
+        Transaction transaction = transactionRepository.findById(transactionId).orElse(null);
+
+        if (transaction == null || !"PENDING".equals(transaction.getStatus())) {
+            return;
+        }
+
+        if (paid) {
+            transaction.setStatus("COMPLETED");
+            if (providerTxnRef != null) {
+                transaction.setProviderTxnRef(providerTxnRef);
+            }
+            if (providerTransactionNo != null) {
+                transaction.setProviderTransactionNo(providerTransactionNo);
+            }
+            if (providerPayDate != null) {
+                transaction.setProviderPayDate(providerPayDate);
+            }
+
+            // 1. Nếu là Giao dịch Mua gói SPONSOR của Chủ Kho
+            if ("SPONSOR_SUBSCRIPTION".equals(transaction.getType())) {
+                Warehouse warehouse = transaction.getWarehouse();
+                warehouse.setIsSponsor(true);
+                warehouse.setSponsorType(transaction.getSponsor());
+                warehouseRepository.save(warehouse);
+            }
+
+            // 2. Nếu là Giao dịch Mua gói AI của Khách thuê (Tương lai)
+            else if ("AI_SUBSCRIPTION".equals(transaction.getType())) {
+                User renter = transaction.getBuyer();
+                renter.setAiTier(transaction.getSubscription());
+                userRepository.save(renter);
+            }
+
+            // 3. Nếu là Giao dịch Thanh toán phí thuê kho của Khách thuê
+            else if ("RENTAL_FEE".equals(transaction.getType())) {
+                RentalRequest req = transaction.getRentalRequest();
+                req.setStatus(RequestStatus.PENDING);
+                rentalRequestRepository.save(req);
+            }
+
+            transactionRepository.save(transaction);
+        } else {
+            // Nếu thất bại (User hủy thanh toán)
+            transaction.setStatus("CANCELED");
+            transactionRepository.save(transaction);
+        }
+    }
+
+    // Xử lý webhook PayOS (server-to-server, nguồn xác thực chính)
     @Transactional
-    public boolean processVNPayCallback(Map<String, String> params) {
-        String secureHash = params.get("vnp_SecureHash");
-        params.remove("vnp_SecureHash");
-        params.remove("vnp_SecureHashType");
-
-        List<String> fieldNames = new ArrayList<>(params.keySet());
-        Collections.sort(fieldNames);
-        StringBuilder hashData = new StringBuilder();
-
+    public boolean handlePayOSWebhook(Map<String, Object> webhookBody) {
+        WebhookData data;
         try {
-            for (String fieldName : fieldNames) {
-                String fieldValue = params.get(fieldName);
-                if ((fieldValue != null) && (fieldValue.length() > 0)) {
-                    hashData.append(fieldName).append('=')
-                            .append(URLEncoder.encode(fieldValue, StandardCharsets.US_ASCII.toString()));
-                    if (fieldNames.indexOf(fieldName) != fieldNames.size() - 1) {
-                        hashData.append('&');
-                    }
-                }
-            }
-        } catch (Exception e) { return false; }
-
-        String checkSum = VNPayConfig.hmacSHA512(vnp_HashSecret, hashData.toString());
-
-        // Kiểm tra chữ ký và mã thành công (00 = Thành công)
-        if (checkSum.equals(secureHash) && "00".equals(params.get("vnp_ResponseCode"))) {
-            String txnRef = params.get("vnp_TxnRef");
-            Long transactionId = Long.parseLong(txnRef.split("_")[0]);
-
-            Transaction transaction = transactionRepository.findById(transactionId).orElse(null);
-
-            if (transaction != null && "PENDING".equals(transaction.getStatus())) {
-                transaction.setStatus("COMPLETED");
-                transaction.setVnpTxnRef(txnRef);
-                transaction.setVnpTransactionNo(params.get("vnp_TransactionNo"));
-                transaction.setVnpPayDate(params.get("vnp_PayDate"));
-
-                // 1. Nếu là Giao dịch Mua gói SPONSOR của Chủ Kho
-                if ("SPONSOR_SUBSCRIPTION".equals(transaction.getType())) {
-                    Warehouse warehouse = transaction.getWarehouse();
-                    warehouse.setIsSponsor(true);
-                    warehouse.setSponsorType(transaction.getSponsor());
-                    warehouseRepository.save(warehouse);
-                }
-
-                // 2. Nếu là Giao dịch Mua gói AI của Khách thuê (Tương lai)
-                else if ("AI_SUBSCRIPTION".equals(transaction.getType())) {
-                    User renter = transaction.getBuyer();
-                    renter.setAiTier(transaction.getSubscription());
-                    userRepository.save(renter);
-                }
-
-                // 3. Nếu là Giao dịch Thanh toán phí thuê kho của Khách thuê
-                else if ("RENTAL_FEE".equals(transaction.getType())) {
-                    RentalRequest req = transaction.getRentalRequest();
-                    req.setStatus(RequestStatus.PENDING);
-                    rentalRequestRepository.save(req);
-                }
-
-                transactionRepository.save(transaction);
-                return true;
-            }
+            data = payOS.webhooks().verify(webhookBody);
+        } catch (WebhookException e) {
+            log.warn("Chữ ký webhook PayOS không hợp lệ: {}", e.getMessage());
+            return false;
         }
 
-        // Nếu thất bại (User hủy thanh toán)
-        try {
-            String txnRef = params.get("vnp_TxnRef");
-            if (txnRef != null) {
-                // Tách lấy ID thật (bỏ phần đuôi _timestamp)
-                Long txId = Long.parseLong(txnRef.split("_")[0]);
-                Transaction txFailed = transactionRepository.findById(txId).orElse(null);
+        boolean paid = "00".equals(data.getCode());
+        applyPaymentResult(data.getOrderCode(), data.getPaymentLinkId(), data.getReference(),
+                data.getTransactionDateTime(), paid);
+        return true;
+    }
 
-                if (txFailed != null && "PENDING".equals(txFailed.getStatus())) {
-                    txFailed.setStatus("CANCELED"); // Chuyển sang Hủy bỏ
-                    transactionRepository.save(txFailed);
-                }
-            }
-        } catch (Exception e) {
-            System.out.println("Lỗi khi cập nhật trạng thái hủy giao dịch: " + e.getMessage());
+    // Xử lý khi người dùng được redirect về từ trang thanh toán PayOS (return-url),
+    // dùng để re-check trạng thái thật với PayOS trước khi hiển thị kết quả cho người dùng
+    @Transactional
+    public boolean verifyAndApplyByOrderCode(Long orderCode) {
+        PaymentLink link;
+        try {
+            link = payOS.paymentRequests().get(orderCode);
+        } catch (APIException e) {
+            log.error("Lỗi khi kiểm tra trạng thái thanh toán PayOS cho orderCode {}: {}", orderCode,
+                    e.getErrorDesc().orElse(e.getMessage()));
+            return false;
         }
 
+        PaymentLinkStatus status = link.getStatus();
+        if (status == PaymentLinkStatus.PAID) {
+            applyPaymentResult(orderCode, link.getId(), null, null, true);
+            return true;
+        }
+
+        // CANCELLED/EXPIRED/FAILED are genuinely terminal - safe to mark CANCELED.
+        // PENDING/PROCESSING/UNDERPAID are NOT failures - the payment simply hasn't
+        // concluded yet (e.g. bank transfer still settling). Marking the transaction
+        // CANCELED here would be premature: if the real webhook later arrives with
+        // paid=true, applyPaymentResult's idempotency guard (status must be PENDING)
+        // would silently no-op against an already-CANCELED transaction, permanently
+        // losing a payment that actually succeeded. So only apply a terminal failure;
+        // otherwise leave the transaction untouched (still PENDING) for the webhook
+        // to resolve authoritatively later.
+        if (status == PaymentLinkStatus.CANCELLED || status == PaymentLinkStatus.EXPIRED
+                || status == PaymentLinkStatus.FAILED) {
+            applyPaymentResult(orderCode, link.getId(), null, null, false);
+        }
         return false;
     }
 
-    // Mỗi 30 phút dọn dẹp các giao dịch PENDING đã bị bỏ rơi (quá hạn thanh toán VNPay)
+    // Đăng ký URL webhook với PayOS (thao tác 1 lần, chạy thủ công qua endpoint riêng, KHÔNG gọi lúc khởi động app)
+    public String registerPayOSWebhook() {
+        try {
+            payOS.webhooks().confirm(payosWebhookUrl);
+            return "Đăng ký webhook PayOS thành công";
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi khi đăng ký webhook PayOS: " + e.getMessage());
+        }
+    }
+
+    // Mỗi 30 phút dọn dẹp các giao dịch PENDING đã bị bỏ rơi (quá hạn thanh toán)
     @Scheduled(cron = "0 0/30 * * * ?")
     @Transactional
     public void cleanupAbandonedTransactions() {
@@ -210,10 +236,18 @@ public class PaymentService {
         int count = 0;
 
         for (Transaction tx : pendingTxs) {
-            // Nếu giao dịch được tạo trước mốc 30 phút -> Đã hết hạn VNPay -> Hủy
+            // Nếu giao dịch được tạo trước mốc 30 phút -> Đã hết hạn -> Hủy
             if (tx.getCreatedAt().isBefore(thirtyMinsAgo)) {
                 tx.setStatus("CANCELED");
                 transactionRepository.save(tx);
+
+                // Best-effort hủy link thanh toán bên PayOS, không để lỗi API chặn việc hủy ở DB nội bộ
+                try {
+                    payOS.paymentRequests().cancel(tx.getId());
+                } catch (Exception e) {
+                    log.warn("Không thể hủy link thanh toán PayOS cho giao dịch {}: {}", tx.getId(), e.getMessage());
+                }
+
                 count++;
             }
         }
@@ -223,70 +257,23 @@ public class PaymentService {
         }
     }
 
+    // Hoàn tiền thủ công: đánh dấu giao dịch đã hoàn và báo cho Renter,
+    // không gọi API PayOS ở bước này (theo quyết định sản phẩm, tiền được xử lý hoàn thủ công)
     @Transactional
     public void refundTransaction(Long rentalRequestId) {
         Transaction tx = transactionRepository.findByRentalRequestIdAndStatus(rentalRequestId, "COMPLETED");
-        if (tx == null || tx.getVnpTxnRef() == null || tx.getVnpTransactionNo() == null) {
+        if (tx == null) {
             log.warn("Không tìm thấy giao dịch hợp lệ để hoàn tiền cho Request ID: {}", rentalRequestId);
             return;
         }
 
-        String vnp_RequestId = UUID.randomUUID().toString();
-        String vnp_Version = "2.1.0";
-        String vnp_Command = "refund";
-        String vnp_TransactionType = "02"; // 02: Hoàn trả toàn phần (Full Refund)
-        long amount = (long) (tx.getAmount() * 100);
-        String vnp_TxnRef = tx.getVnpTxnRef();
-        String vnp_OrderInfo = "Hoan tien phi mo khoa lien he cho Request ID " + rentalRequestId;
-        String vnp_TransactionNo = tx.getVnpTransactionNo();
-        String vnp_TransactionDate = tx.getVnpPayDate();
-        String vnp_CreateBy = "System_Ailogis";
+        tx.setStatus("REFUNDED");
+        transactionRepository.save(tx);
 
-        Calendar cld = Calendar.getInstance(TimeZone.getTimeZone("Asia/Ho_Chi_Minh"));
-        SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-        String vnp_CreateDate = formatter.format(cld.getTime());
-        String vnp_IpAddr = "127.0.0.1"; // IP của server Ailogis
+        notificationService.saveAndNotify(tx.getBuyer().getId(),
+                "Yêu cầu thuê của bạn đã bị từ chối. Khoản thanh toán sẽ được hoàn lại cho bạn trong thời gian sớm nhất.");
 
-        String hashData = vnp_RequestId + "|" + vnp_Version + "|" + vnp_Command + "|" + vnp_TmnCode + "|" +
-                vnp_TransactionType + "|" + vnp_TxnRef + "|" + amount + "|" + vnp_TransactionNo + "|" +
-                vnp_TransactionDate + "|" + vnp_CreateBy + "|" + vnp_CreateDate + "|" + vnp_IpAddr + "|" + vnp_OrderInfo;
-
-        String vnp_SecureHash = VNPayConfig.hmacSHA512(vnp_HashSecret, hashData);
-
-        Map<String, Object> requestParams = new HashMap<>();
-        requestParams.put("vnp_RequestId", vnp_RequestId);
-        requestParams.put("vnp_Version", vnp_Version);
-        requestParams.put("vnp_Command", vnp_Command);
-        requestParams.put("vnp_TmnCode", vnp_TmnCode);
-        requestParams.put("vnp_TransactionType", vnp_TransactionType);
-        requestParams.put("vnp_TxnRef", vnp_TxnRef);
-        requestParams.put("vnp_Amount", amount);
-        requestParams.put("vnp_OrderInfo", vnp_OrderInfo);
-        requestParams.put("vnp_TransactionNo", vnp_TransactionNo);
-        requestParams.put("vnp_TransactionDate", vnp_TransactionDate);
-        requestParams.put("vnp_CreateBy", vnp_CreateBy);
-        requestParams.put("vnp_CreateDate", vnp_CreateDate);
-        requestParams.put("vnp_IpAddr", vnp_IpAddr);
-        requestParams.put("vnp_SecureHash", vnp_SecureHash);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestParams, headers);
-
-        try {
-            ResponseEntity<Map> response = restTemplate.postForEntity(vnp_ApiUrl, requestEntity, Map.class);
-            Map<String, Object> responseBody = response.getBody();
-
-            if (responseBody != null && "00".equals(responseBody.get("vnp_ResponseCode"))) {
-                tx.setStatus("REFUNDED");
-                transactionRepository.save(tx);
-                log.info("Gọi API VNPay hoàn tiền thành công cho Request ID: {}", rentalRequestId);
-            } else {
-                log.error("VNPay từ chối hoàn tiền: {}", responseBody);
-            }
-        } catch (Exception e) {
-            log.error("Ngoại lệ khi gọi API hoàn tiền VNPay: ", e);
-        }
+        log.info("Đã đánh dấu hoàn tiền cho Request ID: {}", rentalRequestId);
     }
 
     public List<TransactionResponseDTO> getTransactionHistory(Long userId) {
@@ -313,9 +300,9 @@ public class PaymentService {
                 tx.getType(),
                 tx.getStatus(),
                 tx.getCreatedAt(),
-                tx.getVnpTxnRef(),
-                tx.getVnpTransactionNo(),
-                tx.getVnpPayDate(),
+                tx.getProviderTxnRef(),
+                tx.getProviderTransactionNo(),
+                tx.getProviderPayDate(),
                 description
         );
     }

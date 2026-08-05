@@ -232,7 +232,7 @@ public class OwnerController {
         String reason = body != null && body.get("reason") != null ? body.get("reason") : "Chủ kho từ chối yêu cầu";
 
         rentalRequestService.rejectRentalRequest(ownerId, requestId, reason);
-        return ResponseEntity.ok("Đã từ chối yêu cầu thuê và tự động hoàn tiền cho Renter qua VNPay.");
+        return ResponseEntity.ok("Đã từ chối yêu cầu thuê. Khoản thanh toán sẽ được hoàn lại cho Renter.");
     }
 
     @GetMapping("/requests/{requestId}/contact")

@@ -3,7 +3,10 @@ package com.ailogis.api.service;
 import com.ailogis.api.dto.NotificationResponseDTO;
 import com.ailogis.api.entity.Notification;
 import com.ailogis.api.repository.NotificationRepository;
+import com.ailogis.api.ws.NotificationWebSocketHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -14,6 +17,7 @@ import java.util.List;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final NotificationWebSocketHandler notificationWebSocketHandler;
 
     public void saveAndNotify(Long userId, String message) {
         Notification notification = Notification.builder()
@@ -22,14 +26,15 @@ public class NotificationService {
                 .createdAt(LocalDateTime.now())
                 .read(false)
                 .build();
-        notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+
+        notificationWebSocketHandler.sendNotificationToUser(userId,
+                new NotificationResponseDTO(saved.getId(), saved.getMessage(), saved.getCreatedAt(), saved.getRead()));
     }
 
-    public List<NotificationResponseDTO> getNotifications(Long userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(n -> new NotificationResponseDTO(n.getId(), n.getMessage(), n.getCreatedAt(), n.getRead()))
-                .toList();
+    public Page<NotificationResponseDTO> getNotifications(Long userId, Pageable pageable) {
+        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(n -> new NotificationResponseDTO(n.getId(), n.getMessage(), n.getCreatedAt(), n.getRead()));
     }
 
     public long getUnreadCount(Long userId) {

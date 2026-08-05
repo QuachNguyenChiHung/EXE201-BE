@@ -92,7 +92,7 @@ public class RenterService {
                                 .build();
 
                 transaction = transactionRepository.save(transaction);
-                String paymentUrl = paymentService.createVNPayUrl(transaction, request);
+                String paymentUrl = paymentService.createPayOSPaymentLink(transaction);
                 return new PaymentResponseDTO(paymentUrl);
         }
 
@@ -182,7 +182,7 @@ public class RenterService {
                                 .build();
                 transaction = transactionRepository.save(transaction);
 
-                String paymentUrl = paymentService.createVNPayUrl(transaction, request);
+                String paymentUrl = paymentService.createPayOSPaymentLink(transaction);
                 return new PaymentResponseDTO(paymentUrl);
         }
 }

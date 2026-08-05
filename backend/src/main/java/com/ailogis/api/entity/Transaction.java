@@ -40,7 +40,7 @@ public class Transaction {
     private LocalDateTime createdAt;
     private LocalDateTime invoiceDate;
     private Double amount;
-    private String vnpTxnRef;
-    private String vnpTransactionNo;
-    private String vnpPayDate;
+    private String providerTxnRef;
+    private String providerTransactionNo;
+    private String providerPayDate;
 }
