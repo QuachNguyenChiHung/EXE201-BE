@@ -25,6 +25,8 @@ import vn.payos.model.v2.paymentRequests.PaymentLink;
 import vn.payos.model.v2.paymentRequests.PaymentLinkStatus;
 import vn.payos.model.webhooks.WebhookData;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,7 +51,7 @@ public class PaymentService {
 
     // Sinh link thanh toán PayOS (thay thế cho createVNPayUrl)
     public String createPayOSPaymentLink(Transaction transaction) {
-        String description = "Thanh toan don hang " + transaction.getId();
+        String description = buildPayOSDescription(transaction);
         // PayOS gioi han do dai description rat ngan (~25 ky tu), can cat bot neu vuot qua
         if (description.length() > 25) {
             description = description.substring(0, 25);
@@ -72,6 +74,34 @@ public class PaymentService {
         } catch (APIException e) {
             throw new RuntimeException("Lỗi khi tạo link thanh toán PayOS: " + e.getErrorDesc().orElse(e.getMessage()));
         }
+    }
+
+    // Xây nội dung chuyển khoản hiển thị trên trang thanh toán PayOS - toi da 25 ky tu nen chi
+    // ghi loai giao dich viet tat + khoang ngay. Ngay bat dau = ngay tao giao dich; ngay ket thuc
+    // lay tu RentalRequest (da co san) voi RENTAL_FEE, con Sponsor/AI khong luu thoi han nao ca
+    // nen tam tinh +1 thang chi de hien thi (khong ghi xuong DB).
+    private String buildPayOSDescription(Transaction tx) {
+        String prefix = "DH" + tx.getId();
+        LocalDate start = tx.getCreatedAt().toLocalDate();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM");
+
+        String typeAbbr;
+        LocalDate end;
+        if ("RENTAL_FEE".equals(tx.getType()) && tx.getRentalRequest() != null
+                && tx.getRentalRequest().getEndDate() != null) {
+            typeAbbr = "MG";
+            end = tx.getRentalRequest().getEndDate();
+        } else if ("SPONSOR_SUBSCRIPTION".equals(tx.getType())) {
+            typeAbbr = "SP";
+            end = start.plusMonths(1);
+        } else if ("AI_SUBSCRIPTION".equals(tx.getType())) {
+            typeAbbr = "AI";
+            end = start.plusMonths(1);
+        } else {
+            return prefix;
+        }
+
+        return prefix + " " + typeAbbr + " " + start.format(fmt) + "-" + end.format(fmt);
     }
 
     // Áp dụng kết quả thanh toán vào Transaction nội bộ (dùng chung cho cả webhook và return-url)
