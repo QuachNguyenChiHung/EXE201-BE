@@ -8,6 +8,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -42,8 +43,15 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        // Khóa tài khoản nếu status là INACTIVE
-        return user.getStatus() == UserStatus.ACTIVE;
+        // Khóa tài khoản nếu status là INACTIVE hoặc đang trong thời gian khóa tạm
+        // vì nhập sai mật khẩu quá nhiều lần.
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            return false;
+        }
+        if (user.getLockUntil() == null) {
+            return true;
+        }
+        return LocalDateTime.now().isAfter(user.getLockUntil());
     }
 
     @Override

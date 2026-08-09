@@ -6,6 +6,8 @@ import com.ailogis.api.enums.UserStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "users")
 @Data
@@ -51,4 +53,21 @@ public class User {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_ai_subscription")
     private AiSubscriptionTier aiTier;
+
+    /** Số lần đăng nhập thất bại liên tiếp; reset về 0 khi đăng nhập thành công. */
+    @Column(name = "failed_attempts")
+    @Builder.Default
+    private Integer failedAttempts = 0;
+
+    /** Thời điểm tài khoản được mở khóa lại sau khi bị khóa do nhập sai mật khẩu quá nhiều lần. */
+    @Column(name = "lock_until")
+    private LocalDateTime lockUntil;
+
+    /**
+     * Thời điểm của lần đăng nhập thất bại gần nhất. Dùng cho idle reset: nếu
+     * lần thử hiện tại cách lần sai trước hơn {@code app.login.lock-duration-minutes}
+     * phút, bộ đếm được reset về 0 và lần thử hiện tại không bị tính.
+     */
+    @Column(name = "last_failed_at")
+    private LocalDateTime lastFailedAt;
 }

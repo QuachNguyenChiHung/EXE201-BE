@@ -3,6 +3,7 @@ package com.ailogis.api.controller;
 import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.User;
 import com.ailogis.api.security.CustomUserDetails;
+import com.ailogis.api.service.EmployeePasswordService;
 import com.ailogis.api.service.EmployeeService;
 import com.ailogis.api.service.UserService;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class UserController {
 
     private final EmployeeService employeeService;
     private final UserService userService;
+    private final EmployeePasswordService employeePasswordService;
 
     // GET /api/users?keyword=...
     @GetMapping
@@ -86,5 +88,12 @@ public class UserController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         return ResponseEntity.ok(userService.uploadAvatar(userDetails.getUser().getId(), file));
+    }
+
+    @PostMapping("/me/change-password")
+    public ResponseEntity<MessageResponseDTO> changeOwnPassword(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestBody ChangePasswordRequestDTO dto) {
+        return ResponseEntity.ok(employeePasswordService.changeOwnPassword(userDetails.getUser().getId(), dto));
     }
 }

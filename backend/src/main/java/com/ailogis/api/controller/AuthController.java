@@ -1,13 +1,19 @@
 package com.ailogis.api.controller;
 
+import com.ailogis.api.dto.ForgotPasswordRequestDTO;
+import com.ailogis.api.dto.ForgotPasswordResponseDTO;
 import com.ailogis.api.dto.LoginRequestDTO;
 import com.ailogis.api.dto.LoginResponseDTO;
+import com.ailogis.api.dto.MessageResponseDTO;
 import com.ailogis.api.dto.RegisterRequestDTO;
+import com.ailogis.api.dto.ResetPasswordRequestDTO;
+import com.ailogis.api.dto.VerifyOtpRequestDTO;
 import com.ailogis.api.entity.UserSession;
 import com.ailogis.api.repository.UserSessionRepository;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.security.JwtUtils;
 import com.ailogis.api.service.AuthService;
+import com.ailogis.api.service.PasswordResetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,6 +35,7 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtils jwtUtils;
     private final UserSessionRepository userSessionRepository;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> authenticateUser(@RequestBody LoginRequestDTO loginRequest) {
@@ -69,5 +76,20 @@ public class AuthController {
                     });
         }
         return ResponseEntity.ok("Đăng xuất thành công, session đã đóng!");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ForgotPasswordResponseDTO> forgotPassword(@RequestBody ForgotPasswordRequestDTO dto) {
+        return ResponseEntity.ok(passwordResetService.requestOtp(dto.email()));
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<MessageResponseDTO> verifyOtp(@RequestBody VerifyOtpRequestDTO dto) {
+        return ResponseEntity.ok(passwordResetService.verifyOtp(dto));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<MessageResponseDTO> resetPassword(@RequestBody ResetPasswordRequestDTO dto) {
+        return ResponseEntity.ok(passwordResetService.resetPassword(dto));
     }
 }

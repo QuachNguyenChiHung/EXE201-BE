@@ -2,6 +2,7 @@ package com.ailogis.api.controller;
 
 import com.ailogis.api.dto.*;
 import com.ailogis.api.enums.WarehouseStatus;
+import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.service.EmployeeService;
 import com.ailogis.api.service.WarehouseService;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
