@@ -174,7 +174,7 @@ public class RenterService {
                 Transaction transaction = Transaction.builder()
                                 .buyer(rentalRequest.getRenter())
                                 .rentalRequest(rentalRequest)
-                                .amount(100000.0)
+                                .amount(50000.0)
                                 .type("RENTAL_FEE")
                                 .status("PENDING")
                                 .createdAt(LocalDateTime.now())
