@@ -2,8 +2,11 @@ package com.ailogis.api.service;
 
 import com.ailogis.api.dto.*;
 import com.ailogis.api.entity.AiConversation;
+import com.ailogis.api.entity.AiSubscriptionTier;
+import com.ailogis.api.entity.Transaction;
 import com.ailogis.api.entity.User;
 import com.ailogis.api.repository.AiConversationRepository;
+import com.ailogis.api.repository.TransactionRepository;
 import com.ailogis.api.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -38,11 +42,50 @@ public class AiService {
 
     private final AiConversationRepository aiConversationRepository;
     private final UserRepository userRepository;
+    private final TransactionRepository transactionRepository;
     private final WarehouseService warehouseService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
     private static final String AI_AGENT_URL = "https://ai-agent-exe.onrender.com/api/chat";
+
+    private record AiAccess(AiSubscriptionTier tier, int remainingOutput) {
+    }
+
+    /**
+     * Resolves whether {@code user} currently has AI chat access and how many
+     * output tokens remain in their current billing window.
+     *
+     * Usage is computed on demand from {@code AiConversation} rows created by
+     * this user within the 1-month window since their latest completed
+     * AI_SUBSCRIPTION transaction — nothing is ever written back to the shared
+     * {@code AiSubscriptionTier} catalog row, so usage never leaks between users
+     * on the same tier. An expired window is treated identically to never having
+     * subscribed (same error, same buy flow gets a fresh window).
+     */
+    private AiAccess resolveAiAccess(User user) {
+        Transaction transaction = transactionRepository
+                .findFirstByBuyerIdAndTypeAndStatusOrderByCreatedAtDesc(user.getId(), "AI_SUBSCRIPTION", "COMPLETED")
+                .orElseThrow(() -> new RuntimeException("Truy cập bị từ chối: Bạn cần đăng ký Gói AI để sử dụng Trợ lý ảo!"));
+
+        LocalDateTime windowStart = transaction.getCreatedAt();
+        LocalDateTime windowEnd = windowStart.plusMonths(1);
+        if (!LocalDateTime.now().isBefore(windowEnd)) {
+            throw new RuntimeException("Truy cập bị từ chối: Bạn cần đăng ký Gói AI để sử dụng Trợ lý ảo!");
+        }
+
+        AiSubscriptionTier tier = transaction.getSubscription();
+        Long usedInput = aiConversationRepository.sumInputTokensByUserIdAndDateRange(user.getId(), windowStart, windowEnd);
+        Long usedOutput = aiConversationRepository.sumOutputTokensByUserIdAndDateRange(user.getId(), windowStart, windowEnd);
+
+        int remainingInput = tier.getTokenInput() - (usedInput != null ? usedInput.intValue() : 0);
+        int remainingOutput = tier.getTokenOutput() - (usedOutput != null ? usedOutput.intValue() : 0);
+        if (remainingInput <= 0 || remainingOutput <= 0) {
+            throw new RuntimeException("Không đủ token. Vui lòng nạp thêm gói AI!");
+        }
+
+        return new AiAccess(tier, remainingOutput);
+    }
 
     // Price multipliers to convert to monthly equivalent
     private static final Map<String, Double> PRICE_MULTIPLIER = Map.of(
@@ -158,14 +201,7 @@ public class AiService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        if (user.getAiTier() == null) {
-            throw new RuntimeException("Truy cập bị từ chức: Bạn cần đăng ký Gói AI để sử dụng Trợ lý ảo!");
-        }
-
-        int balance = user.getAiTier().getTokenOutput() != null ? user.getAiTier().getTokenOutput() : 0;
-        if (balance <= 0) {
-            throw new RuntimeException("Không đủ token. Vui lòng nạp thêm gói AI!");
-        }
+        int balance = resolveAiAccess(user).remainingOutput();
 
         // ── Upfront price-type guard ───────────────────────────────────────────────
         // Ask before any branching so BOTH initial-handshake and follow-up queries
@@ -179,8 +215,6 @@ public class AiService {
             boolean tokenExhausted = remaining < 0;
             if (tokenExhausted)
                 remaining = 0;
-            user.getAiTier().setTokenOutput(remaining);
-            userRepository.save(user);
             AiConversation convo = AiConversation.builder()
                     .user(user).criteria(query).message(clarification)
                     .totalInputTokens(0).totalOutputTokens(outputTokens)
@@ -270,8 +304,6 @@ public class AiService {
             boolean tokenExhausted = remaining < 0;
             if (tokenExhausted)
                 remaining = 0;
-            user.getAiTier().setTokenOutput(remaining);
-            userRepository.save(user);
             int inputTokens = query.length() / 4;
             AiConversation convo = AiConversation.builder()
                     .user(user).criteria(query).message(convAnswer)
@@ -334,9 +366,6 @@ public class AiService {
             remaining = 0;
         }
 
-        user.getAiTier().setTokenOutput(remaining);
-        userRepository.save(user);
-
         int inputTokens = (query == null ? 0 : query.length()) / 4;
         AiConversation conversation = AiConversation.builder()
                 .user(user)
@@ -372,13 +401,7 @@ public class AiService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại!"));
 
-        if (user.getAiTier() == null) {
-            throw new RuntimeException("Truy cập bị từ chối: Bạn cần đăng ký Gói AI để sử dụng Trợ lý ảo!");
-        }
-        int balance = user.getAiTier().getTokenOutput() != null ? user.getAiTier().getTokenOutput() : 0;
-        if (balance <= 0) {
-            throw new RuntimeException("Không đủ token. Vui lòng nạp thêm gói AI!");
-        }
+        int balance = resolveAiAccess(user).remainingOutput();
 
         // Convert FE warehouse objects → typed DTOs so we can build the prompt
         List<WarehouseResponseDTO> warehouseList = toListFromFeCandidates(warehouses);
@@ -396,8 +419,6 @@ public class AiService {
             boolean tokenExhausted = remaining < 0;
             if (tokenExhausted)
                 remaining = 0;
-            user.getAiTier().setTokenOutput(remaining);
-            userRepository.save(user);
             aiConversationRepository.save(AiConversation.builder()
                     .user(user).criteria(query == null ? "" : query)
                     .message("Xin lỗi bạn, hiện tại chúng mình chưa có kho lạnh tại " + outOfCoverageCity
@@ -458,9 +479,6 @@ public class AiService {
         boolean tokenExhausted = remaining < 0;
         if (tokenExhausted)
             remaining = 0;
-
-        user.getAiTier().setTokenOutput(remaining);
-        userRepository.save(user);
 
         AiConversation conversation = AiConversation.builder()
                 .user(user)
