@@ -26,10 +26,6 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     private static final int SEND_TIME_LIMIT_MS = 10000;
     private static final int BUFFER_SIZE_LIMIT_BYTES = 50000;
 
-    // Bump thu cong moi khi co thay doi dang chu y - dung de FE xac nhan dang ket noi dung backend build nao.
-    private static final String APP_VERSION = "1.0.0";
-    private static final String APP_UPDATED_DATE = "2026-08-11";
-
     private final ObjectMapper objectMapper;
 
     private final Map<Long, Set<WebSocketSession>> userSessions = new ConcurrentHashMap<>();
@@ -47,22 +43,6 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         }
         log.info("WebSocket kết nối: sessionId={}, userId={}, tổng session={}, tổng user online={}",
                 session.getId(), userId, allSessions.size(), userSessions.size());
-
-        sendServerInfo(wrapped);
-    }
-
-    // Gửi một lần ngay khi session mở, để FE xác nhận đang kết nối đúng backend build nào.
-    private void sendServerInfo(WebSocketSession session) {
-        Map<String, Object> message = new LinkedHashMap<>();
-        message.put("type", "SERVER_INFO");
-        message.put("version", APP_VERSION);
-        message.put("updatedDate", APP_UPDATED_DATE);
-
-        try {
-            session.sendMessage(new TextMessage(objectMapper.writeValueAsString(message)));
-        } catch (IOException e) {
-            log.warn("Không thể gửi SERVER_INFO tới session {}: {}", session.getId(), e.getMessage());
-        }
     }
 
     @Override
