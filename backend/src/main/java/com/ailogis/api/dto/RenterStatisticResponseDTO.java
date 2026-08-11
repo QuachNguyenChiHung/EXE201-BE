@@ -9,5 +9,6 @@ public record RenterStatisticResponseDTO(
         Long totalRentRequest,
         Long totalOwnerUpdatedRequest,
         Long totalActiveContract,
-        Long endOfContract
+        Long endOfContract,
+        String activeAiTierLabel
 ) {}

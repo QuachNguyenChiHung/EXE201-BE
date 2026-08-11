@@ -112,10 +112,11 @@ public class RenterController {
     @PostMapping("/ai-tiers/{id}/pay")
     public ResponseEntity<PaymentResponseDTO> processPaymentForAI(
             @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean immediate,
             HttpServletRequest request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long renterId = userDetails.getUser().getId();
-        return ResponseEntity.ok(renterService.buyAiSubscription(renterId, id, request));
+        return ResponseEntity.ok(renterService.buyAiSubscription(renterId, id, request, immediate));
     }
 
     @DeleteMapping("/ai-subscription")

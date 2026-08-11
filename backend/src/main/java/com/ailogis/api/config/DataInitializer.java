@@ -32,6 +32,7 @@ public class DataInitializer implements CommandLineRunner {
         private final AiSubscriptionTierRepository aiTierRepository;
         private final SponsorTierRepository sponsorTierRepository;
         private final ReviewRepository reviewRepository;
+        private final TransactionRepository transactionRepository;
 
         private final AuthService authService;
         private final EmployeeService employeeService;
@@ -506,13 +507,25 @@ public class DataInitializer implements CommandLineRunner {
                 // Renter 1 (Khách Thuê 1) mua gói AI Pro
                 renter1.setAiTier(aiProEntity);
                 userRepository.save(renter1);
+                transactionRepository.save(Transaction.builder()
+                                .buyer(renter1).subscription(aiProEntity).amount(aiProEntity.getPrice())
+                                .type("AI_SUBSCRIPTION").status("COMPLETED")
+                                .createdAt(LocalDateTime.now()).invoiceDate(LocalDateTime.now()).build());
 
                 // Renter 2 & 3 mua gói AI Basic
                 renter2.setAiTier(aiBasicEntity);
                 userRepository.save(renter2);
+                transactionRepository.save(Transaction.builder()
+                                .buyer(renter2).subscription(aiBasicEntity).amount(aiBasicEntity.getPrice())
+                                .type("AI_SUBSCRIPTION").status("COMPLETED")
+                                .createdAt(LocalDateTime.now()).invoiceDate(LocalDateTime.now()).build());
 
                 renter3.setAiTier(aiBasicEntity);
                 userRepository.save(renter3);
+                transactionRepository.save(Transaction.builder()
+                                .buyer(renter3).subscription(aiBasicEntity).amount(aiBasicEntity.getPrice())
+                                .type("AI_SUBSCRIPTION").status("COMPLETED")
+                                .createdAt(LocalDateTime.now()).invoiceDate(LocalDateTime.now()).build());
 
                 // Kho số 1 & 3 mua gói Tài trợ Vàng
                 wh1Entity.setIsSponsor(true);

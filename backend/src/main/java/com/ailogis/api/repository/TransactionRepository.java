@@ -10,9 +10,13 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
     List<Transaction> findByBuyerIdAndStatus(Long buyerId, String status);
+
+    Optional<Transaction> findFirstByBuyerIdAndTypeAndStatusOrderByCreatedAtDesc(Long buyerId, String type,
+            String status);
 
     @Query("SELECT SUM(t.sponsor.pricingPerMonth) FROM Transaction t WHERE t.buyer.id = :buyerId AND t.status = 'COMPLETED' AND t.invoiceDate >= :startDate AND t.invoiceDate <= :endDate")
     Double sumSponsorBillingByDateRange(@Param("buyerId") Long buyerId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);

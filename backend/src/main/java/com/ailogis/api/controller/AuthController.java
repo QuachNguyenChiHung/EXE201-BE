@@ -9,11 +9,13 @@ import com.ailogis.api.dto.RegisterRequestDTO;
 import com.ailogis.api.dto.ResetPasswordRequestDTO;
 import com.ailogis.api.dto.VerifyOtpRequestDTO;
 import com.ailogis.api.entity.UserSession;
+import com.ailogis.api.enums.Role;
 import com.ailogis.api.repository.UserSessionRepository;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.security.JwtUtils;
 import com.ailogis.api.service.AuthService;
 import com.ailogis.api.service.PasswordResetService;
+import com.ailogis.api.service.RenterService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,6 +38,7 @@ public class AuthController {
     private final JwtUtils jwtUtils;
     private final UserSessionRepository userSessionRepository;
     private final PasswordResetService passwordResetService;
+    private final RenterService renterService;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> authenticateUser(@RequestBody LoginRequestDTO loginRequest) {
@@ -53,11 +56,16 @@ public class AuthController {
                 .build();
         userSessionRepository.save(session);
 
+        Long aiRenewalTierId = userDetails.getUser().getRole() == Role.RENTER
+                ? renterService.getAiRenewalTierId(userDetails.getUser())
+                : null;
+
         return ResponseEntity.ok(new LoginResponseDTO(
                 jwtToken,
                 "Bearer",
                 userDetails.getUsername(),
-                userDetails.getUser().getRole().name()
+                userDetails.getUser().getRole().name(),
+                aiRenewalTierId
         ));
     }
 
