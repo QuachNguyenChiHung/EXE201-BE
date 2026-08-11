@@ -32,14 +32,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
 
     // ==== Employee Transaction Analytics ====
 
+    // Soft-deleted rows (status = 'DELETED', set by EmployeeService.softDeleteTransaction)
+    // are excluded from every query the employee transaction analytics page uses —
+    // both the raw table and every metric derived from it.
     @Query(value = "SELECT t FROM Transaction t JOIN FETCH t.buyer b " +
-            "WHERE (:type IS NULL OR t.type = :type) " +
+            "WHERE t.status <> 'DELETED' " +
+            "AND (:type IS NULL OR t.type = :type) " +
             "AND (:status IS NULL OR t.status = :status) " +
             "AND (:buyerRole IS NULL OR b.role = :buyerRole) " +
             "AND (CAST(:startDate AS timestamp) IS NULL OR t.createdAt >= :startDate) " +
             "AND (CAST(:endDate AS timestamp) IS NULL OR t.createdAt < :endDate)",
             countQuery = "SELECT COUNT(t) FROM Transaction t JOIN t.buyer b " +
-                    "WHERE (:type IS NULL OR t.type = :type) " +
+                    "WHERE t.status <> 'DELETED' " +
+                    "AND (:type IS NULL OR t.type = :type) " +
                     "AND (:status IS NULL OR t.status = :status) " +
                     "AND (:buyerRole IS NULL OR b.role = :buyerRole) " +
                     "AND (CAST(:startDate AS timestamp) IS NULL OR t.createdAt >= :startDate) " +
@@ -48,18 +53,19 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
             @Param("buyerRole") Role buyerRole, @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate, Pageable pageable);
 
-    @Query("SELECT t.type, SUM(t.amount), COUNT(t) FROM Transaction t WHERE t.amount IS NOT NULL GROUP BY t.type")
+    @Query("SELECT t.type, SUM(t.amount), COUNT(t) FROM Transaction t WHERE t.amount IS NOT NULL AND t.status <> 'DELETED' GROUP BY t.type")
     List<Object[]> sumAndCountByType();
 
-    @Query("SELECT t.buyer.role, SUM(t.amount) FROM Transaction t WHERE t.amount IS NOT NULL GROUP BY t.buyer.role")
+    @Query("SELECT t.buyer.role, SUM(t.amount) FROM Transaction t WHERE t.amount IS NOT NULL AND t.status <> 'DELETED' GROUP BY t.buyer.role")
     List<Object[]> sumAmountByBuyerRole();
 
-    @Query("SELECT t FROM Transaction t JOIN FETCH t.buyer WHERE t.amount IS NOT NULL ORDER BY t.amount DESC")
+    @Query("SELECT t FROM Transaction t JOIN FETCH t.buyer WHERE t.amount IS NOT NULL AND t.status <> 'DELETED' ORDER BY t.amount DESC")
     List<Transaction> findTopByAmountDesc(Pageable pageable);
 
     @Query(value = "SELECT DATE_TRUNC(:granularity, t.createdat) AS bucket, u.role AS buyer_role, SUM(t.amount) AS total " +
             "FROM transactions t JOIN users u ON u.id = t.id_buyer " +
             "WHERE t.createdat >= :startDateTime AND t.createdat < :endDateTime AND t.amount IS NOT NULL " +
+            "AND t.status <> 'DELETED' " +
             "GROUP BY bucket, u.role ORDER BY bucket", nativeQuery = true)
     List<Object[]> sumRevenueByGranularityAndRole(@Param("granularity") String granularity,
             @Param("startDateTime") LocalDateTime startDateTime, @Param("endDateTime") LocalDateTime endDateTime);

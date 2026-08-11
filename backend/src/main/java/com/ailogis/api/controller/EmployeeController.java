@@ -83,6 +83,12 @@ public class EmployeeController {
                 granularity, LocalDate.parse(startDate), LocalDate.parse(endDate)));
     }
 
+    @DeleteMapping("/transactions/{id}")
+    public ResponseEntity<String> deleteTransaction(@PathVariable Long id) {
+        employeeService.softDeleteTransaction(id);
+        return ResponseEntity.ok("Đã xóa giao dịch thành công!");
+    }
+
     @PatchMapping("/warehouses/{id}/accept")
     public ResponseEntity<WarehouseEmployeeDTO> acceptWarehouse(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.changeWarehouseStatus(id, WarehouseStatus.ACTIVE));

@@ -728,6 +728,26 @@ public class EmployeeService {
         return result;
     }
 
+    /**
+     * Soft-deletes a transaction by marking its status as DELETED rather than
+     * removing the row. Every query behind the transaction analytics page
+     * (searchAllTransactions, sumAndCountByType, sumAmountByBuyerRole,
+     * findTopByAmountDesc, sumRevenueByGranularityAndRole) filters out
+     * status = 'DELETED', so the row disappears from that page's table and every
+     * metric. Overwriting status also means other status-specific consumers
+     * (AI/sponsor active-subscription checks, the abandoned-PENDING cleanup job,
+     * etc.) stop recognizing this transaction, since none of them match 'DELETED' —
+     * an accepted side effect of reusing the status field instead of adding a
+     * dedicated flag.
+     */
+    @Transactional
+    public void softDeleteTransaction(Long id) {
+        Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch!"));
+        transaction.setStatus("DELETED");
+        transactionRepository.save(transaction);
+    }
+
     private LocalDateTime toLocalDateTime(Object value) {
         if (value instanceof java.sql.Timestamp ts) {
             return ts.toLocalDateTime();
