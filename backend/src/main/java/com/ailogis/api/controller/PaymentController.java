@@ -42,7 +42,13 @@ public class PaymentController {
         boolean isSuccess = false;
         if (orderCode != null) {
             try {
-                isSuccess = paymentService.verifyAndApplyByOrderCode(Long.parseLong(orderCode));
+                long parsedOrderCode = Long.parseLong(orderCode);
+                if ("true".equalsIgnoreCase(cancel)) {
+                    // PayOS đã báo người dùng chủ động hủy - hủy luôn thay vì đi hỏi lại trạng thái.
+                    paymentService.cancelPayOSTransaction(parsedOrderCode);
+                } else {
+                    isSuccess = paymentService.verifyAndApplyByOrderCode(parsedOrderCode);
+                }
             } catch (NumberFormatException e) {
                 log.warn("orderCode không hợp lệ từ PayOS return-url: {}", orderCode);
             }

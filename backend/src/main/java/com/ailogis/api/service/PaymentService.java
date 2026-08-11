@@ -49,6 +49,27 @@ public class PaymentService {
     @Value("${payos.webhook-url}")
     private String payosWebhookUrl;
 
+    // PayOS yeu cau orderCode phai duy nhat VINH VIEN trong pham vi tai khoan merchant - no
+    // khong bao gio "quen" mot orderCode da tung thay. Id cua bang transactions thi se reset
+    // ve 1 moi khi DB dev bi xoa/tao lai -> giao dich moi bi trung voi orderCode cu PayOS da
+    // thay -> loi "transaction has already existed". Ma hoa orderCode tu THOI DIEM TAO (khong
+    // bao gio lui lai duoc, ke ca khi DB reset) + id giup tranh dung lai orderCode cu vinh vien,
+    // khong chi mot lan nhu cach cong offset co dinh.
+    private static final long ORDER_CODE_ID_MODULUS = 100_000_000L; // du cho 99,999,999 giao dich
+
+    // Chu so cao = thoi diem tao (epoch giay, khong bao gio lui), chu so thap = id. Hai "the he"
+    // DB khac nhau (truoc/sau reset) luon roi vao thoi diem thuc te khac nhau nen orderCode
+    // khong bao gio trung nhau, du id co lap lai (vd ca hai deu la id=1).
+    private long encodeOrderCode(Transaction transaction) {
+        long epochSeconds = transaction.getCreatedAt().toEpochSecond(java.time.ZoneOffset.UTC);
+        return epochSeconds * ORDER_CODE_ID_MODULUS + (transaction.getId() % ORDER_CODE_ID_MODULUS);
+    }
+
+    // Giai ma khong can biet lai thoi diem tao - chi la phep chia lay du chinh xac, khong mo ho.
+    private long decodeTransactionId(long orderCode) {
+        return orderCode % ORDER_CODE_ID_MODULUS;
+    }
+
     // Sinh link thanh toán PayOS (thay thế cho createVNPayUrl)
     public String createPayOSPaymentLink(Transaction transaction) {
         String description = buildPayOSDescription(transaction);
@@ -58,7 +79,7 @@ public class PaymentService {
         }
 
         CreatePaymentLinkRequest req = CreatePaymentLinkRequest.builder()
-                .orderCode(transaction.getId())
+                .orderCode(encodeOrderCode(transaction))
                 // PayOS nhan so tien VND nguyen goc, KHONG nhan 100 (khac quy uoc cua VNPay)
                 .amount(Math.round(transaction.getAmount()))
                 .description(description)
@@ -173,7 +194,7 @@ public class PaymentService {
         }
 
         boolean paid = "00".equals(data.getCode());
-        applyPaymentResult(data.getOrderCode(), data.getPaymentLinkId(), data.getReference(),
+        applyPaymentResult(decodeTransactionId(data.getOrderCode()), data.getPaymentLinkId(), data.getReference(),
                 data.getTransactionDateTime(), paid);
         return true;
     }
@@ -193,7 +214,7 @@ public class PaymentService {
 
         PaymentLinkStatus status = link.getStatus();
         if (status == PaymentLinkStatus.PAID) {
-            applyPaymentResult(orderCode, link.getId(), null, null, true);
+            applyPaymentResult(decodeTransactionId(orderCode), link.getId(), null, null, true);
             return true;
         }
 
@@ -208,9 +229,21 @@ public class PaymentService {
         // to resolve authoritatively later.
         if (status == PaymentLinkStatus.CANCELLED || status == PaymentLinkStatus.EXPIRED
                 || status == PaymentLinkStatus.FAILED) {
-            applyPaymentResult(orderCode, link.getId(), null, null, false);
+            applyPaymentResult(decodeTransactionId(orderCode), link.getId(), null, null, false);
         }
         return false;
+    }
+
+    // Người dùng bấm hủy/thoát ngay trên trang thanh toán PayOS (cancel=true ở return-url) -
+    // không chờ tác vụ dọn dẹp 30 phút, hủy ngay cả link PayOS lẫn Transaction nội bộ.
+    @Transactional
+    public void cancelPayOSTransaction(long orderCode) {
+        try {
+            payOS.paymentRequests().cancel(orderCode);
+        } catch (Exception e) {
+            log.warn("Không thể hủy link thanh toán PayOS cho orderCode {}: {}", orderCode, e.getMessage());
+        }
+        applyPaymentResult(decodeTransactionId(orderCode), null, null, null, false);
     }
 
     // Đăng ký URL webhook với PayOS (thao tác 1 lần, chạy thủ công qua endpoint riêng, KHÔNG gọi lúc khởi động app)
@@ -243,7 +276,7 @@ public class PaymentService {
 
                 // Best-effort hủy link thanh toán bên PayOS, không để lỗi API chặn việc hủy ở DB nội bộ
                 try {
-                    payOS.paymentRequests().cancel(tx.getId());
+                    payOS.paymentRequests().cancel(encodeOrderCode(tx));
                 } catch (Exception e) {
                     log.warn("Không thể hủy link thanh toán PayOS cho giao dịch {}: {}", tx.getId(), e.getMessage());
                 }
