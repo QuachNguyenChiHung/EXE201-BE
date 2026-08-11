@@ -18,6 +18,9 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     Optional<Transaction> findFirstByBuyerIdAndTypeAndStatusOrderByCreatedAtDesc(Long buyerId, String type,
             String status);
 
+    Optional<Transaction> findFirstByWarehouseIdAndTypeAndStatusOrderByCreatedAtDesc(Long warehouseId, String type,
+            String status);
+
     @Query("SELECT SUM(t.sponsor.pricingPerMonth) FROM Transaction t WHERE t.buyer.id = :buyerId AND t.status = 'COMPLETED' AND t.invoiceDate >= :startDate AND t.invoiceDate <= :endDate")
     Double sumSponsorBillingByDateRange(@Param("buyerId") Long buyerId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 

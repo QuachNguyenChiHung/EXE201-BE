@@ -14,6 +14,7 @@ import com.ailogis.api.repository.UserSessionRepository;
 import com.ailogis.api.security.CustomUserDetails;
 import com.ailogis.api.security.JwtUtils;
 import com.ailogis.api.service.AuthService;
+import com.ailogis.api.service.OwnerService;
 import com.ailogis.api.service.PasswordResetService;
 import com.ailogis.api.service.RenterService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class AuthController {
     private final UserSessionRepository userSessionRepository;
     private final PasswordResetService passwordResetService;
     private final RenterService renterService;
+    private final OwnerService ownerService;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> authenticateUser(@RequestBody LoginRequestDTO loginRequest) {
@@ -60,12 +62,18 @@ public class AuthController {
                 ? renterService.getAiRenewalTierId(userDetails.getUser())
                 : null;
 
+        java.util.List<com.ailogis.api.dto.SponsorRenewalDTO> sponsorRenewals = userDetails.getUser()
+                        .getRole() == Role.OWNER
+                ? ownerService.getSponsorRenewals(userDetails.getUser().getId())
+                : java.util.List.of();
+
         return ResponseEntity.ok(new LoginResponseDTO(
                 jwtToken,
                 "Bearer",
                 userDetails.getUsername(),
                 userDetails.getUser().getRole().name(),
-                aiRenewalTierId
+                aiRenewalTierId,
+                sponsorRenewals
         ));
     }
 

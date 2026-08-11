@@ -179,11 +179,12 @@ public class OwnerController {
     public ResponseEntity<PaymentResponseDTO> buySponsorTier(
             @PathVariable Long id,
             @RequestBody BuySponsorRequestDTO dto,
+            @RequestParam(defaultValue = "false") boolean immediate,
             @AuthenticationPrincipal CustomUserDetails userDetails,
             jakarta.servlet.http.HttpServletRequest request) {
 
         Long ownerId = userDetails.getUser().getId();
-        return ResponseEntity.ok(ownerService.buySponsorTier(ownerId, id, dto, request));
+        return ResponseEntity.ok(ownerService.buySponsorTier(ownerId, id, dto, request, immediate));
     }
 
     // Lấy danh sách yêu cầu thuê của riêng 1 kho bãi
@@ -213,6 +214,13 @@ public class OwnerController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long ownerId = userDetails.getUser().getId();
         return ResponseEntity.ok(ownerService.getSponsorTiersForOwner(ownerId));
+    }
+
+    @GetMapping("/sponsor-renewals")
+    public ResponseEntity<List<SponsorRenewalDTO>> getSponsorRenewals(
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long ownerId = userDetails.getUser().getId();
+        return ResponseEntity.ok(ownerService.getSponsorRenewals(ownerId));
     }
 
     @PutMapping("/requests/{requestId}/accept")

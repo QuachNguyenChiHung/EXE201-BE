@@ -216,6 +216,60 @@ public class OwnerService {
         return warehouseMapper.toWarehouseResponseDTO(warehouseRepository.save(warehouse));
     }
 
+    /**
+     * The warehouse's latest COMPLETED SPONSOR_SUBSCRIPTION transaction, only if
+     * its 1-month window is still valid. Distinct from {@code Warehouse.isSponsor}
+     * /{@code sponsorType}, which reflect the tier the owner has *chosen*
+     * (possibly a not-yet-billed scheduled switch) — this reflects what's
+     * actually granting the ranking boost right now. Mirrors
+     * {@link RenterService#findActiveAiTransaction}.
+     */
+    private java.util.Optional<Transaction> findActiveSponsorTransaction(Long warehouseId) {
+        return transactionRepository
+                .findFirstByWarehouseIdAndTypeAndStatusOrderByCreatedAtDesc(warehouseId, "SPONSOR_SUBSCRIPTION",
+                        "COMPLETED")
+                .filter(tx -> LocalDateTime.now().isBefore(tx.getCreatedAt().plusMonths(1)));
+    }
+
+    /**
+     * Resolves whether {@code warehouse}'s sponsor subscription window has lapsed
+     * and, if so, returns the tier id that should be offered for renewal. Mirrors
+     * {@link RenterService#getAiRenewalTierId}: SponsorTier/Warehouse carry no
+     * expiry field, so the 1-month window is derived from the warehouse's latest
+     * COMPLETED SPONSOR_SUBSCRIPTION transaction instead. Returns null when the
+     * warehouse isn't sponsored (isSponsor == false) or its current window is
+     * still active.
+     */
+    public Long getSponsorRenewalTierId(Warehouse warehouse) {
+        if (!Boolean.TRUE.equals(warehouse.getIsSponsor()) || warehouse.getSponsorType() == null) {
+            return null;
+        }
+        if (findActiveSponsorTransaction(warehouse.getId()).isPresent()) {
+            return null;
+        }
+        return warehouse.getSponsorType().getId();
+    }
+
+    /**
+     * All of {@code ownerId}'s warehouses whose sponsor subscription has lapsed
+     * and still needs renewal, for surfacing a renewal prompt (e.g. on login).
+     * Sponsor tiers are per-warehouse, unlike AI tiers which are per-user, so
+     * this returns a list rather than the single id {@code getAiRenewalTierId}
+     * returns.
+     */
+    public List<SponsorRenewalDTO> getSponsorRenewals(Long ownerId) {
+        return warehouseRepository.findByOwnerId(ownerId).stream()
+                .map(w -> {
+                    Long renewalTierId = getSponsorRenewalTierId(w);
+                    if (renewalTierId == null) {
+                        return null;
+                    }
+                    return new SponsorRenewalDTO(w.getId(), w.getName(), renewalTierId);
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
     public OwnerStatisticResponseDTO getOwnerStatistics(Long ownerId) {
         // 1. Thống kê Kho bãi & Sức chứa
         List<Warehouse> warehouses = warehouseRepository.findByOwnerId(ownerId);
@@ -232,6 +286,21 @@ public class OwnerService {
                 Double activeRented = contractRepository.sumActiveRentedAreaBySection(s.getId());
                 double rented = activeRented != null ? activeRented : 0.0;
                 totalAvailable += Math.max(0.0, cap - rented);
+            }
+        }
+
+        // 1b. Thống kê gói Sponsor: kho đang trong hạn thanh toán vs. đã hết hạn
+        // (cần gia hạn), suy ra từ Transaction SPONSOR_SUBSCRIPTION mới nhất vì
+        // Warehouse không lưu ngày hết hạn.
+        long activeSponsorWarehouses = 0;
+        long sponsorsNeedingRenewal = 0;
+        for (Warehouse w : warehouses) {
+            if (Boolean.TRUE.equals(w.getIsSponsor())) {
+                if (findActiveSponsorTransaction(w.getId()).isPresent()) {
+                    activeSponsorWarehouses++;
+                } else {
+                    sponsorsNeedingRenewal++;
+                }
             }
         }
 
@@ -271,7 +340,9 @@ public class OwnerService {
                 pendingRequests,
                 activeContracts,
                 billing != null ? billing : 0.0,
-                endingContracts);
+                endingContracts,
+                activeSponsorWarehouses,
+                sponsorsNeedingRenewal);
     }
 
     public WarehouseRatingResponseDTO getWarehouseRatings(Long ownerId, Long warehouseId) {
@@ -537,7 +608,7 @@ public class OwnerService {
     // Trong OwnerService.java (Nhớ Inject thêm PaymentService)
     @Transactional
     public PaymentResponseDTO buySponsorTier(Long ownerId, Long warehouseId, BuySponsorRequestDTO dto,
-            HttpServletRequest request) {
+            HttpServletRequest request, boolean immediate) {
         Warehouse warehouse = warehouseRepository.findById(warehouseId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy kho bãi!"));
 
@@ -547,6 +618,16 @@ public class OwnerService {
 
         SponsorTier sponsorTier = sponsorTierRepository.findById(dto.sponsorTierId())
                 .orElseThrow(() -> new RuntimeException("Gói tài trợ không tồn tại!"));
+
+        // Kho đang có gói Sponsor còn hiệu lực và không ép buộc đổi ngay -> chỉ ghi
+        // nhận lựa chọn mới lên Warehouse.sponsorType, không tính phí, không tạo
+        // Transaction. Gói mới sẽ được tính phí và áp dụng khi gói hiện tại hết hạn
+        // (qua luồng renewal có sẵn, xem getSponsorRenewalTierId).
+        if (!immediate && findActiveSponsorTransaction(warehouseId).isPresent()) {
+            warehouse.setSponsorType(sponsorTier);
+            warehouseRepository.save(warehouse);
+            return new PaymentResponseDTO(null);
+        }
 
         // Tạo Transaction nháp (PENDING)
         Transaction transaction = Transaction.builder()
