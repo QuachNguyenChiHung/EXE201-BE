@@ -55,13 +55,25 @@ public class PaymentService {
     // thay -> loi "transaction has already existed". Ma hoa orderCode tu THOI DIEM TAO (khong
     // bao gio lui lai duoc, ke ca khi DB reset) + id giup tranh dung lai orderCode cu vinh vien,
     // khong chi mot lan nhu cach cong offset co dinh.
-    private static final long ORDER_CODE_ID_MODULUS = 100_000_000L; // du cho 99,999,999 giao dich
+    //
+    // QUAN TRONG: khong duoc de gia tri orderCode vuot qua Number.MAX_SAFE_INTEGER cua JS
+    // (9_007_199_254_740_991, 2^53-1) - he thong PayOS la JSON/JS nen so vuot nguong nay se bi
+    // JS lam tron ve so thuc gan nhat (mat chinh xac), khien nhieu orderCode KHAC NHAU phia minh
+    // gui len lai trung thanh CUNG MOT gia tri phia PayOS nhan duoc -> loi "already existed" ngay
+    // o giao dich thu hai. Vi vay epoch giay duoc neo (tru di) ve mot moc gan (ANCHOR_EPOCH_SECONDS)
+    // thay vi dung epoch tuyet doi, va modulus cho phan id duoc thu nho lai - tong ca hai van du nho
+    // de nam trong nguong an toan cua JS trong hang tram nam toi.
+    private static final long ANCHOR_EPOCH_SECONDS = java.time.LocalDate.of(2024, 1, 1)
+            .atStartOfDay(java.time.ZoneOffset.UTC).toEpochSecond();
+    private static final long ORDER_CODE_ID_MODULUS = 1_000_000L; // du cho 999,999 giao dich/giay
 
-    // Chu so cao = thoi diem tao (epoch giay, khong bao gio lui), chu so thap = id. Hai "the he"
-    // DB khac nhau (truoc/sau reset) luon roi vao thoi diem thuc te khac nhau nen orderCode
-    // khong bao gio trung nhau, du id co lap lai (vd ca hai deu la id=1).
+    // Chu so cao = thoi diem tao tinh tu ANCHOR_EPOCH_SECONDS (khong bao gio lui), chu so thap = id.
+    // Hai "the he" DB khac nhau (truoc/sau reset) luon roi vao thoi diem thuc te khac nhau nen
+    // orderCode khong bao gio trung nhau, du id co lap lai (vd ca hai deu la id=1). Khong phu thuoc
+    // vao trang thai runtime (vd thoi diem app khoi dong) nen giai ma van dung ngay ca khi app da
+    // restart giua luc tao link thanh toan va luc webhook PayOS goi ve.
     private long encodeOrderCode(Transaction transaction) {
-        long epochSeconds = transaction.getCreatedAt().toEpochSecond(java.time.ZoneOffset.UTC);
+        long epochSeconds = transaction.getCreatedAt().toEpochSecond(java.time.ZoneOffset.UTC) - ANCHOR_EPOCH_SECONDS;
         return epochSeconds * ORDER_CODE_ID_MODULUS + (transaction.getId() % ORDER_CODE_ID_MODULUS);
     }
 
