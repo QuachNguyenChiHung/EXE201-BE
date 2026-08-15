@@ -21,6 +21,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                 .setAllowedOrigins(
                         "http://localhost:5173",
                         "https://www.logicha.io.vn",
+                        "https://api.logicha.io.vn",
                         "https://logicha.io.vn");
     }
 }
