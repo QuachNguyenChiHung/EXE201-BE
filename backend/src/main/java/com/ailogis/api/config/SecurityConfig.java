@@ -70,7 +70,9 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "https://www.logicha.io.vn",
                 "https://logicha.io.vn",
-                "https://api.logicha.io.vn"
+                "https://api.logicha.io.vn",
+                "wss://api.logicha.io.vn",
+                "ws://api.logicha.io.vn"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Requested-With", "accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
