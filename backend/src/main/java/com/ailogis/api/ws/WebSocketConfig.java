@@ -22,6 +22,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
                         "http://localhost:5173",
                         "https://www.logicha.io.vn",
                         "https://api.logicha.io.vn",
+                        "http://localhost:8080",
                         "https://logicha.io.vn");
     }
 }
